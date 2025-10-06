@@ -47,7 +47,7 @@ export default async function QuestionPage({
 
       <Separator className="my-8" />
 
-      <div className="grid grid-cols-1 gap-12 md:grid-cols-[6fr_2fr]">
+      <div className="grid grid-cols-1 gap-12">
         <div>
           <div className="prose prose-lg dark:prose-invert max-w-none">
             <p>{question.body}</p>
@@ -80,16 +80,16 @@ export default async function QuestionPage({
           
           <AnswerSection question={question} />
 
+          <aside className="mt-12 space-y-6" id="answer-form">
+            <div className="rounded-lg bg-primary/5 p-6">
+              <h3 className="text-xl font-semibold text-primary">Post Your Answer</h3>
+              <form className="mt-4 space-y-4">
+                <Textarea placeholder="Type your answer here..." className="min-h-[150px]" />
+                <Button className="w-full">Submit Answer</Button>
+              </form>
+            </div>
+          </aside>
         </div>
-        <aside className="space-y-6">
-          <div className="rounded-lg bg-primary/5 p-4">
-            <h3 className="font-semibold text-primary">Post Your Answer</h3>
-            <form className="mt-4 space-y-4">
-              <Textarea placeholder="Type your answer here..." className="min-h-[150px]" />
-              <Button className="w-full">Submit Answer</Button>
-            </form>
-          </div>
-        </aside>
       </div>
     </div>
   );
