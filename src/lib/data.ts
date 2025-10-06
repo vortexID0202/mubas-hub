@@ -182,6 +182,14 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
     body: 'Find all the information you need about the MUBAS library, including opening and closing times, borrowing policies, and access to online journals.',
     createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString(),
   },
+  {
+    id: 'kb-4',
+    title: 'Official Guide to Resetting Your SMIS Password',
+    category: 'SMIS',
+    icon: 'BookOpen',
+    body: 'This is the official guide from the ICT services department for resetting your SMIS password. It covers the online "Forgot Password" process and the alternative in-person method.',
+    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+  },
 ];
 
 export const liveUpdates: LiveUpdate[] = [

@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import {
   BookOpen,
@@ -80,7 +81,7 @@ const browseItems = [
     title: 'Top Contributors',
     description: 'See the most helpful members of the community.',
     href: '#contributors',
-    icon: BarChart,
+icon: BarChart,
   },
 ];
 
@@ -187,7 +188,7 @@ export default async function Home() {
                 <TabsContent value="forum" className="mt-8">
                   {communityQuestions.length > 0 ? (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {communityQuestions.slice(0,3).map((question) => (
+                      {communityQuestions.slice(0, 3).map((question) => (
                         <QuestionCard key={question.id} question={question} />
                       ))}
                     </div>
@@ -209,10 +210,11 @@ export default async function Home() {
                   <div className="mt-8 text-center">
                     <Button variant="link" asChild>
                       <Link href="/forum">
-                        View all questions <ChevronRight className="ml-1 h-4 w-4" />
+                        View all questions{' '}
+                        <ChevronRight className="ml-1 h-4 w-4" />
                       </Link>
                     </Button>
-                </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="knowledge" className="mt-8" id="knowledge">
@@ -221,8 +223,15 @@ export default async function Home() {
                       <ArticleCard key={article.id} article={article} />
                     ))}
                   </div>
+                  <div className="mt-8 text-center">
+                    <Button variant="link" asChild>
+                      <Link href="/kb">
+                        View all articles{' '}
+                        <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
                 </TabsContent>
-
                 <TabsContent
                   value="contributors"
                   className="mt-8"
