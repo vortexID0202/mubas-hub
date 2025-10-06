@@ -5,7 +5,7 @@ import { Bell, Menu } from 'lucide-react';
 import Logo from '@/components/logo';
 import { UserProfileNav } from '@/components/user-profile-nav';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import SearchBar from '../search-bar';
 import { MobileNav } from './mobile-nav';
 import { useState } from 'react';
@@ -54,6 +54,10 @@ export function Header() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="pr-0">
+             <SheetTitle className="sr-only">Mobile Navigation</SheetTitle>
+             <SheetDescription className="sr-only">
+               Main navigation menu for mobile devices.
+             </SheetDescription>
             <MobileNav setOpen={setOpen} />
           </SheetContent>
         </Sheet>
