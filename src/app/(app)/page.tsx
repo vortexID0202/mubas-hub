@@ -1,4 +1,3 @@
-
 import Link from 'next/link';
 import {
   BookOpen,
@@ -25,7 +24,6 @@ import {
 import { cn } from '@/lib/utils';
 import ArticleCard from '@/components/article-card';
 import QuestionCard from '@/components/question-card';
-import SearchBar from '@/components/search-bar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -155,7 +153,10 @@ export default async function Home() {
             </div>
           </section>
 
-          <section className="w-full bg-muted/20 py-12 md:py-16 lg:py-20" id="forum">
+          <section
+            className="w-full bg-muted/20 py-12 md:py-16 lg:py-20"
+            id="forum"
+          >
             <div className="container px-4 md:px-6">
               <Tabs defaultValue="forum" className="w-full">
                 <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
@@ -186,7 +187,7 @@ export default async function Home() {
                 <TabsContent value="forum" className="mt-8">
                   {communityQuestions.length > 0 ? (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {communityQuestions.map((question) => (
+                      {communityQuestions.slice(0,3).map((question) => (
                         <QuestionCard key={question.id} question={question} />
                       ))}
                     </div>
@@ -205,6 +206,13 @@ export default async function Home() {
                       </Button>
                     </div>
                   )}
+                  <div className="mt-8 text-center">
+                    <Button variant="link" asChild>
+                      <Link href="/forum">
+                        View all questions <ChevronRight className="ml-1 h-4 w-4" />
+                      </Link>
+                    </Button>
+                </div>
                 </TabsContent>
 
                 <TabsContent value="knowledge" className="mt-8" id="knowledge">
@@ -215,7 +223,11 @@ export default async function Home() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="contributors" className="mt-8" id="contributors">
+                <TabsContent
+                  value="contributors"
+                  className="mt-8"
+                  id="contributors"
+                >
                   <Card>
                     <CardHeader>
                       <CardTitle>Top Contributors</CardTitle>
@@ -246,7 +258,9 @@ export default async function Home() {
                               </AvatarFallback>
                             </Avatar>
                             <Trophy className="mt-2 h-10 w-10 text-amber-400" />
-                            <p className="text-lg font-bold">{topThree[0].name}</p>
+                            <p className="text-lg font-bold">
+                              {topThree[0].name}
+                            </p>
                             <p className="text-sm text-muted-foreground">
                               {topThree[0].reputation} points
                             </p>
@@ -309,8 +323,8 @@ export default async function Home() {
                   <Rss className="h-7 w-7 text-primary" /> Live Updates
                 </h2>
                 <CardDescription className="mx-auto mt-2 max-w-md">
-                  Stay informed with the latest announcements and changes from the
-                  university administration.
+                  Stay informed with the latest announcements and changes from
+                  the university administration.
                 </CardDescription>
               </div>
 

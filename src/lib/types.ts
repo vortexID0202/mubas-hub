@@ -30,6 +30,7 @@ export type QuestionAnswer = {
   createdAt: string;
   votes: number;
   comments: AnswerComment[];
+  isVerified?: boolean;
 };
 
 export type AnswerComment = {
