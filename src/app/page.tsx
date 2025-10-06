@@ -1,3 +1,184 @@
-export default function Home() {
-  return <></>;
+import Link from 'next/link';
+import {
+  BookOpen,
+  Frown,
+  Medal,
+  MessageSquare,
+  Trophy,
+  Users,
+} from 'lucide-react';
+
+import {
+  communityQuestions,
+  knowledgeBaseArticles,
+  users,
+} from '@/lib/data';
+import { cn } from '@/lib/utils';
+import ArticleCard from '@/components/article-card';
+import QuestionCard from '@/components/question-card';
+import SearchBar from '@/components/search-bar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+export default async function Home() {
+  const sortedUsers = [...users].sort((a, b) => b.reputation - a.reputation);
+  const topThree = sortedUsers.slice(0, 3);
+  const restUsers = sortedUsers.slice(3, 10);
+
+  return (
+    <div className="flex w-full flex-col">
+      <section className="w-full bg-primary/5 py-16 md:py-24 lg:py-32">
+        <div className="container px-4 md:px-6">
+          <div className="mx-auto grid max-w-3xl items-center justify-center gap-4 text-center">
+            <h1 className="font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl">
+              Welcome to the MUBAS Community Hub
+            </h1>
+            <p className="text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+              Search for solutions, articles, or ask a question to the
+              community. We are here to help you succeed.
+            </p>
+          </div>
+          <div className="mx-auto mt-8 max-w-2xl">
+            <SearchBar />
+          </div>
+        </div>
+      </section>
+
+      <section className="w-full py-12 md:py-16 lg:py-20">
+        <div className="container px-4 md:px-6">
+          <Tabs defaultValue="forum" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 md:w-[400px]">
+              <TabsTrigger value="forum">
+                <MessageSquare className="mr-2 h-4 w-4" /> Community Forum
+              </TabsTrigger>
+              <TabsTrigger value="knowledge">
+                <BookOpen className="mr-2 h-4 w-4" /> Knowledge Base
+              </TabsTrigger>
+              <TabsTrigger value="contributors">
+                <Users className="mr-2 h-4 w-4" /> Top Contributors
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="forum" className="mt-8">
+              {communityQuestions.length > 0 ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {communityQuestions.map((question) => (
+                    <QuestionCard key={question.id} question={question} />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                  <Frown className="h-16 w-16 text-muted-foreground" />
+                  <h2 className="mt-6 text-xl font-semibold">
+                    No Questions Yet
+                  </h2>
+                  <p className="mt-2 text-center text-muted-foreground">
+                    Be the first to ask a question and get help from the
+                    community.
+                  </p>
+                  <Button asChild className="mt-6">
+                    <Link href="/ask">Ask a Question</Link>
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="knowledge" className="mt-8">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {knowledgeBaseArticles.map((article) => (
+                  <ArticleCard key={article.id} article={article} />
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="contributors" className="mt-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Top Contributors</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="mb-8 flex items-end justify-center gap-4">
+                    {topThree[1] && (
+                      <div className="flex flex-col items-center text-center">
+                        <Avatar className="h-20 w-20 border-4 border-slate-300">
+                          <AvatarImage src={topThree[1].avatarUrl} />
+                          <AvatarFallback>
+                            {topThree[1].name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Medal className="mt-2 h-8 w-8 text-slate-400" />
+                        <p className="font-semibold">{topThree[1].name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {topThree[1].reputation} points
+                        </p>
+                      </div>
+                    )}
+                    {topThree[0] && (
+                      <div className="flex flex-col items-center text-center">
+                        <Avatar className="h-24 w-24 border-4 border-amber-400">
+                          <AvatarImage src={topThree[0].avatarUrl} />
+                          <AvatarFallback>
+                            {topThree[0].name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Trophy className="mt-2 h-10 w-10 text-amber-400" />
+                        <p className="text-lg font-bold">{topThree[0].name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {topThree[0].reputation} points
+                        </p>
+                      </div>
+                    )}
+                    {topThree[2] && (
+                      <div className="flex flex-col items-center text-center">
+                        <Avatar className="h-20 w-20 border-4 border-amber-800">
+                          <AvatarImage src={topThree[2].avatarUrl} />
+                          <AvatarFallback>
+                            {topThree[2].name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Medal className="mt-2 h-8 w-8 text-amber-800" />
+                        <p className="font-semibold">{topThree[2].name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {topThree[2].reputation} points
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <ul className="space-y-2">
+                    {restUsers.map((user, index) => (
+                      <li
+                        key={user.id}
+                        className="flex items-center justify-between rounded-md bg-muted/50 p-3"
+                      >
+                        <div className="flex items-center gap-4">
+                          <span className="text-lg font-bold text-muted-foreground">
+                            {index + 4}
+                          </span>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={user.avatarUrl} />
+                            <AvatarFallback>
+                              {user.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold">{user.name}</p>
+                          </div>
+                        </div>
+                        <p className="font-mono text-lg font-semibold text-primary">
+                          {user.reputation}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </section>
+    </div>
+  );
 }
