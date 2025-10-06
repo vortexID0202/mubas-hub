@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CreditCard, LogOut, Settings, User } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings, User } from 'lucide-react';
 import { users } from '@/lib/data';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,13 +46,17 @@ export function UserProfileNav() {
               <span>Profile</span>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            <CreditCard className="mr-2 h-4 w-4" />
-            <span>Billing</span>
+          <DropdownMenuItem asChild>
+            <Link href="/admin">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              <span>Dashboard</span>
+            </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
+          <DropdownMenuItem asChild>
+            <Link href="/profile">
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

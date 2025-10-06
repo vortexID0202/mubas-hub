@@ -6,12 +6,17 @@ import {
   MessageSquare,
   Trophy,
   Users,
+  Rss,
+  ChevronRight,
+  Filter,
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 import {
   communityQuestions,
   knowledgeBaseArticles,
   users,
+  liveUpdates,
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import ArticleCard from '@/components/article-card';
@@ -19,8 +24,21 @@ import QuestionCard from '@/components/question-card';
 import SearchBar from '@/components/search-bar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
 
 export default async function Home() {
   const sortedUsers = [...users].sort((a, b) => b.reputation - a.reputation);
@@ -49,18 +67,31 @@ export default async function Home() {
       <section className="w-full py-12 md:py-16 lg:py-20">
         <div className="container px-4 md:px-6">
           <Tabs defaultValue="forum" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 md:w-[400px]">
-              <TabsTrigger value="forum">
-                <MessageSquare className="mr-2 h-4 w-4" /> Community Forum
-              </TabsTrigger>
-              <TabsTrigger value="knowledge">
-                <BookOpen className="mr-2 h-4 w-4" /> Knowledge Base
-              </TabsTrigger>
-              <TabsTrigger value="contributors">
-                <Users className="mr-2 h-4 w-4" /> Top Contributors
-              </TabsTrigger>
-            </TabsList>
-
+            <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+              <TabsList className="grid w-full grid-cols-3 md:w-auto">
+                <TabsTrigger value="forum">
+                  <MessageSquare className="mr-2 h-4 w-4" /> Community Forum
+                </TabsTrigger>
+                <TabsTrigger value="knowledge">
+                  <BookOpen className="mr-2 h-4 w-4" /> Knowledge Base
+                </TabsTrigger>
+                <TabsTrigger value="contributors">
+                  <Users className="mr-2 h-4 w-4" /> Top Contributors
+                </TabsTrigger>
+              </TabsList>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filter
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem>Recently Uploaded</DropdownMenuItem>
+                  <DropdownMenuItem>Popular Questions</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <TabsContent value="forum" className="mt-8">
               {communityQuestions.length > 0 ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -177,6 +208,41 @@ export default async function Home() {
               </Card>
             </TabsContent>
           </Tabs>
+        </div>
+      </section>
+
+      <section className="w-full bg-muted/50 py-12 md:py-16 lg:py-20">
+        <div className="container px-4 md:px-6">
+          <div className="flex items-center justify-between">
+            <h2 className="flex items-center gap-2 font-headline text-2xl font-bold tracking-tighter sm:text-3xl">
+              <Rss className="h-7 w-7 text-primary" /> Live Updates
+            </h2>
+            <Button variant="ghost" asChild>
+              <Link href="/updates">
+                View more <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+          <CardDescription className="mt-2">
+            Stay informed with the latest announcements and changes.
+          </CardDescription>
+
+          <div className="mt-8 grid gap-6">
+            {liveUpdates.slice(0, 3).map((update) => (
+              <Card key={update.id}>
+                <CardHeader>
+                  <CardTitle>{update.title}</CardTitle>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <Badge variant={update.category === 'Maintenance' ? 'destructive' : 'secondary'}>{update.category}</Badge>
+                    <span>{format(new Date(update.createdAt), "MMM d, yyyy")}</span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">{update.content}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
     </div>

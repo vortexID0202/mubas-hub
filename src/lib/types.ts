@@ -47,3 +47,11 @@ export type KnowledgeBaseArticle = {
   body: string;
   createdAt: string;
 };
+
+export type LiveUpdate = {
+  id: string;
+  title: string;
+  content: string;
+  category: 'Announcement' | 'Maintenance' | 'Academics';
+  createdAt: string;
+}

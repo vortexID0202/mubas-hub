@@ -1,6 +1,7 @@
 import {
   CommunityQuestion,
   KnowledgeBaseArticle,
+  LiveUpdate,
   User,
 } from '@/lib/types';
 
@@ -125,4 +126,35 @@ export const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
     body: 'Find all the information you need about the MUBAS library, including opening and closing times, borrowing policies, and access to online journals.',
     createdAt: '3 weeks ago',
   },
+];
+
+export const liveUpdates: LiveUpdate[] = [
+  {
+    id: 'update-1',
+    title: 'SMIS Portal Update',
+    content: 'The Student Management Information System (SMIS) will be undergoing scheduled maintenance on Friday from 10 PM to Saturday 2 AM. The portal will be inaccessible during this time.',
+    category: 'Maintenance',
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'update-2',
+    title: 'New Wi-Fi Hotspots Added',
+    content: 'We have added new Wi-Fi hotspots in the ODL building and the main cafeteria to improve network coverage. Please reconnect to the "MUBAS-WIFI" network to use them.',
+    category: 'Announcement',
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'update-3',
+    title: 'End of Semester Examination Timetable Released',
+    content: 'The final examination timetable for the current semester has been released. You can find it on the main noticeboard and on the university website\'s downloads section.',
+    category: 'Academics',
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'update-4',
+    title: 'Library Extended Opening Hours',
+    content: 'During the examination period, the library will extend its opening hours until 10 PM on weekdays and will be open from 9 AM to 5 PM on Saturdays.',
+    category: 'Announcement',
+    createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+  }
 ];

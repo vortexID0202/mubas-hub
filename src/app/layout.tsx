@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
   title: 'MUBAS Community Hub',
@@ -27,6 +28,7 @@ export default function RootLayout({
         <div className="relative flex min-h-screen w-full flex-col">
           <Header />
           <main className="flex-1">{children}</main>
+          <Footer />
         </div>
         <Toaster />
       </body>
