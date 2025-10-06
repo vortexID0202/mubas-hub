@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { User, Mail, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Eye, EyeOff, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import Logo from '@/components/logo';
 const SignUpPage: React.FC = () => {
   const [passwordShown, setPasswordShown] = useState(false);
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
   const togglePasswordVisibility = () => setPasswordShown(!passwordShown);
@@ -21,8 +22,14 @@ const SignUpPage: React.FC = () => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (password.length < 8) {
-      setErrorMessage('Password must be at least 8 characters long!');
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      setErrorMessage('Password must be at least 8 characters long, with one uppercase letter and one number.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match!');
       return;
     }
 
@@ -37,7 +44,7 @@ const SignUpPage: React.FC = () => {
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
        <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[350px] gap-6">
+        <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2 text-center">
              <div className="flex justify-center mb-4">
               <Logo />
@@ -70,6 +77,7 @@ const SignUpPage: React.FC = () => {
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="password"
                   name="password"
@@ -78,7 +86,7 @@ const SignUpPage: React.FC = () => {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pr-10"
+                  className="pl-10 pr-10"
                 />
                 <button
                   type="button"
@@ -88,7 +96,25 @@ const SignUpPage: React.FC = () => {
                   {passwordShown ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">Must be at least 8 characters.</p>
+              <p className="text-xs text-muted-foreground">
+                8+ characters, 1 uppercase, 1 number.
+              </p>
+            </div>
+             <div className="grid gap-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  id="confirm-password"
+                  name="confirm-password"
+                  type={passwordShown ? 'text' : 'password'}
+                  required
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
             <Button type="submit" className="w-full">
               Create an account
