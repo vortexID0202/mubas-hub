@@ -9,6 +9,9 @@ import {
   Rss,
   ChevronRight,
   Filter,
+  Megaphone,
+  Pencil,
+  BarChart,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -31,6 +34,13 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from '@/components/ui/carousel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
@@ -39,6 +49,39 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+
+const browseItems = [
+  {
+    title: 'Community Forum',
+    description: 'Ask questions and get help from your peers.',
+    href: '#forum',
+    icon: MessageSquare,
+  },
+  {
+    title: 'Knowledge Base',
+    description: 'Find official guides and verified information.',
+    href: '#knowledge',
+    icon: BookOpen,
+  },
+  {
+    title: 'Ask a Question',
+    description: 'Post your own question to the community.',
+    href: '/ask',
+    icon: Pencil,
+  },
+  {
+    title: 'Live Updates',
+    description: 'Latest announcements from the administration.',
+    href: '/updates',
+    icon: Megaphone,
+  },
+  {
+    title: 'Top Contributors',
+    description: 'See the most helpful members of the community.',
+    href: '#contributors',
+    icon: BarChart,
+  },
+];
 
 export default async function Home() {
   const sortedUsers = [...users].sort((a, b) => b.reputation - a.reputation);
@@ -65,6 +108,51 @@ export default async function Home() {
       </section>
 
       <section className="w-full py-12 md:py-16 lg:py-20">
+        <div className="container px-4 md:px-6">
+          <div className="space-y-2 text-center">
+            <h2 className="font-headline text-3xl font-bold tracking-tighter">
+              Browse
+            </h2>
+            <p className="text-muted-foreground">
+              Quickly navigate to what you need.
+            </p>
+          </div>
+          <Carousel
+            opts={{
+              align: 'start',
+              loop: true,
+            }}
+            className="mx-auto mt-10 w-full max-w-sm md:max-w-xl lg:max-w-4xl"
+          >
+            <CarouselContent>
+              {browseItems.map((item, index) => (
+                <CarouselItem
+                  key={index}
+                  className="md:basis-1/2 lg:basis-1/3"
+                >
+                  <div className="p-1">
+                    <Link href={item.href}>
+                      <Card className="flex h-48 flex-col items-center justify-center p-6 text-center transition-all duration-300 hover:scale-105 hover:bg-primary/5 hover:shadow-lg">
+                        <item.icon className="h-10 w-10 text-primary" />
+                        <CardTitle className="mt-4 text-xl">
+                          {item.title}
+                        </CardTitle>
+                        <CardDescription className="mt-1 text-sm">
+                          {item.description}
+                        </CardDescription>
+                      </Card>
+                    </Link>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="hidden sm:flex" />
+            <CarouselNext className="hidden sm:flex" />
+          </Carousel>
+        </div>
+      </section>
+
+      <section className="w-full bg-muted/20 py-12 md:py-16 lg:py-20">
         <div className="container px-4 md:px-6">
           <Tabs defaultValue="forum" className="w-full">
             <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
@@ -213,19 +301,15 @@ export default async function Home() {
 
       <section className="w-full bg-muted/50 py-12 md:py-16 lg:py-20">
         <div className="container px-4 md:px-6">
-          <div className="flex items-center justify-between">
-            <h2 className="flex items-center gap-2 font-headline text-2xl font-bold tracking-tighter sm:text-3xl">
+          <div className="text-center">
+            <h2 className="flex items-center justify-center gap-2 font-headline text-2xl font-bold tracking-tighter sm:text-3xl">
               <Rss className="h-7 w-7 text-primary" /> Live Updates
             </h2>
-            <Button variant="ghost" asChild>
-              <Link href="/updates">
-                View more <ChevronRight className="ml-1 h-4 w-4" />
-              </Link>
-            </Button>
+            <CardDescription className="mx-auto mt-2 max-w-md">
+              Stay informed with the latest announcements and changes from the
+              university administration.
+            </CardDescription>
           </div>
-          <CardDescription className="mt-2">
-            Stay informed with the latest announcements and changes.
-          </CardDescription>
 
           <div className="mt-8 grid gap-6">
             {liveUpdates.slice(0, 3).map((update) => (
@@ -233,8 +317,18 @@ export default async function Home() {
                 <CardHeader>
                   <CardTitle>{update.title}</CardTitle>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <Badge variant={update.category === 'Maintenance' ? 'destructive' : 'secondary'}>{update.category}</Badge>
-                    <span>{format(new Date(update.createdAt), "MMM d, yyyy")}</span>
+                    <Badge
+                      variant={
+                        update.category === 'Maintenance'
+                          ? 'destructive'
+                          : 'secondary'
+                      }
+                    >
+                      {update.category}
+                    </Badge>
+                    <span>
+                      {format(new Date(update.createdAt), 'MMM d, yyyy')}
+                    </span>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -242,6 +336,14 @@ export default async function Home() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          <div className="mt-8 text-center">
+            <Button variant="link" asChild>
+              <Link href="/updates">
+                View all updates <ChevronRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
