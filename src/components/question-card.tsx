@@ -54,10 +54,6 @@ export default function QuestionCard({ question }: QuestionCardProps) {
                 <MessageCircle className="h-4 w-4" />
                 <span>{question.answersCount}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <Eye className="h-4 w-4" />
-                <span>{question.views}</span>
-              </div>
             </div>
           </div>
         </CardHeader>

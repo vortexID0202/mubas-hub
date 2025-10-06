@@ -73,7 +73,7 @@ export default function SearchBar() {
         )}
       </div>
       {showSuggestions && (suggestions?.length ?? 0) > 0 && (
-        <div className="absolute top-full mt-2 w-full rounded-lg border bg-card shadow-lg animate-in fade-in-0 zoom-in-95">
+        <div className="absolute top-full z-10 mt-2 w-full rounded-lg border bg-card shadow-lg animate-in fade-in-0 zoom-in-95">
           <div className="p-2">
             {suggestions?.map((suggestion, index) => (
               <Link
