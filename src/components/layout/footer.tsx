@@ -16,7 +16,7 @@ export function Footer() {
             Home
           </Link>
           <Link
-            href="/#knowledge"
+            href="/kb"
             className="transition-colors hover:text-primary"
           >
             Knowledge Base

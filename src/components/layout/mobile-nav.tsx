@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -26,7 +25,7 @@ export function MobileNav({setOpen}: MobileNavProps) {
               Home
             </Link>
             <Link
-              href="/#knowledge"
+              href="/kb"
               className="rounded-md p-2 text-foreground/60 transition-colors hover:bg-muted"
               onClick={() => setOpen(false)}
             >

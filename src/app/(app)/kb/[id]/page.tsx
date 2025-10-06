@@ -48,7 +48,7 @@ export default function KnowledgeBaseArticlePage({
         <div className="container mx-auto max-w-4xl py-12 md:py-16">
           <div className="space-y-6">
             <Button variant="link" asChild className="pl-0">
-                <Link href="/#knowledge">
+                <Link href="/kb">
                     <ChevronLeft className="mr-2 h-4 w-4" />
                     Back to Knowledge Base
                 </Link>

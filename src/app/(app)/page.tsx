@@ -61,7 +61,7 @@ const browseItems = [
   {
     title: 'Knowledge Base',
     description: 'Find official guides and verified information.',
-    href: '/#knowledge',
+    href: '/kb',
     icon: BookOpen,
   },
   {

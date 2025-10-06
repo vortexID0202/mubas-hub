@@ -1,4 +1,3 @@
-
 'use client';
 import Link from 'next/link';
 import { Bell, Menu } from 'lucide-react';
@@ -28,7 +27,7 @@ export function Header() {
               Home
             </Link>
             <Link
-              href="/#knowledge"
+              href="/kb"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
               Knowledge Base
