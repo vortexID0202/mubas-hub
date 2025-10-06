@@ -1,18 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, 'useState } from 'react';
 import Link from 'next/link';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import Image from 'next/image';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import Logo from '@/components/logo';
 
@@ -36,20 +30,22 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/20 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Logo />
+    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:min-h-screen">
+      <div className="flex items-center justify-center py-12">
+        <div className="mx-auto grid w-[350px] gap-6">
+          <div className="grid gap-2 text-center">
+            <div className="flex justify-center mb-4">
+              <Logo />
+            </div>
+            <h1 className="text-3xl font-bold">Login</h1>
+            <p className="text-balance text-muted-foreground">
+              Enter your email below to login to your account
+            </p>
           </div>
-          <CardTitle>Welcome Back!</CardTitle>
-          <CardDescription>Sign in to access your account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email address</Label>
-              <div className="relative">
+          <form className="grid gap-4" onSubmit={handleSubmit}>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="email"
@@ -64,9 +60,16 @@ export default function LoginPage() {
                 />
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="grid gap-2">
+              <div className="flex items-center">
+                <Label htmlFor="password">Password</Label>
+                <Link
+                  href="/forgot"
+                  className="ml-auto inline-block text-sm underline"
+                >
+                  Forgot your password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
@@ -90,30 +93,28 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="remember-me" />
-                <Label htmlFor="remember-me" className="text-sm font-normal">Remember me</Label>
-              </div>
-              <Link href="/forgot" className="text-sm font-medium text-primary hover:underline">
-                Forgot password?
-              </Link>
-            </div>
-
             <Button type="submit" className="w-full">
-              Sign In
+              Login
             </Button>
           </form>
-
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link href="/signup" className="font-semibold text-primary hover:underline">
+          <div className="mt-4 text-center text-sm">
+            Don&apos;t have an account?{' '}
+            <Link href="/signup" className="underline">
               Sign up
             </Link>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+      <div className="hidden bg-muted lg:block">
+        <Image
+          src="https://picsum.photos/seed/mubas-login/1920/1080"
+          alt="Image"
+          width="1920"
+          height="1080"
+          data-ai-hint="university campus"
+          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+        />
+      </div>
     </div>
   );
 }
