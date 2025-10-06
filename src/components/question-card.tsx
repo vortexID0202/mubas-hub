@@ -84,7 +84,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           Asked{' '}
-          {formatDistanceToNow(new Date(), { addSuffix: true })}
+          {formatDistanceToNow(new Date(question.createdAt), { addSuffix: true })}
         </p>
       </CardFooter>
     </Card>
