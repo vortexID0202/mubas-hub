@@ -4,7 +4,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from '@/components/ui/avatar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import QuestionCard from '@/components/question-card';
 import { Button } from '@/components/ui/button';
@@ -68,7 +68,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="md:col-span-3">
-              <Tabs defaultValue="questions">
+              <Tabs defaultValue="settings">
                 <TabsList className="mb-4">
                   <TabsTrigger value="questions">My Questions</TabsTrigger>
                   <TabsTrigger value="answers">My Answers</TabsTrigger>
