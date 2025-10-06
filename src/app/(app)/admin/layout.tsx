@@ -23,6 +23,8 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
+  SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { UserProfileNav } from '@/components/user-profile-nav';
