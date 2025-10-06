@@ -21,7 +21,7 @@ export function Footer() {
           >
             Knowledge Base
           </Link>
-          <Link href="/#forum" className="transition-colors hover:text-primary">
+          <Link href="/forum" className="transition-colors hover:text-primary">
             Forum
           </Link>
           <Link href="/ask" className="transition-colors hover:text-primary">

@@ -33,7 +33,7 @@ export function MobileNav({setOpen}: MobileNavProps) {
               Knowledge Base
             </Link>
             <Link
-              href="/#forum"
+              href="/forum"
               className="rounded-md p-2 text-foreground/60 transition-colors hover:bg-muted"
               onClick={() => setOpen(false)}
             >

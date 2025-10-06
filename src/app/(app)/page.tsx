@@ -57,13 +57,13 @@ const browseItems = [
   {
     title: 'Community Forum',
     description: 'Ask questions and get help from your peers.',
-    href: '#forum',
+    href: '/forum',
     icon: MessageSquare,
   },
   {
     title: 'Knowledge Base',
     description: 'Find official guides and verified information.',
-    href: '#knowledge',
+    href: '/#knowledge',
     icon: BookOpen,
   },
   {
@@ -155,7 +155,7 @@ export default async function Home() {
             </div>
           </section>
 
-          <section className="w-full bg-muted/20 py-12 md:py-16 lg:py-20">
+          <section className="w-full bg-muted/20 py-12 md:py-16 lg:py-20" id="forum">
             <div className="container px-4 md:px-6">
               <Tabs defaultValue="forum" className="w-full">
                 <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
@@ -207,7 +207,7 @@ export default async function Home() {
                   )}
                 </TabsContent>
 
-                <TabsContent value="knowledge" className="mt-8">
+                <TabsContent value="knowledge" className="mt-8" id="knowledge">
                   <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {knowledgeBaseArticles.map((article) => (
                       <ArticleCard key={article.id} article={article} />
@@ -215,7 +215,7 @@ export default async function Home() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="contributors" className="mt-8">
+                <TabsContent value="contributors" className="mt-8" id="contributors">
                   <Card>
                     <CardHeader>
                       <CardTitle>Top Contributors</CardTitle>
@@ -356,4 +356,3 @@ export default async function Home() {
     </>
   );
 }
-

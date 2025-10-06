@@ -34,7 +34,7 @@ export function Header() {
               Knowledge Base
             </Link>
             <Link
-              href="/#forum"
+              href="/forum"
               className="transition-colors hover:text-foreground/80 text-foreground/60"
             >
               Forum
