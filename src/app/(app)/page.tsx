@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import {
   BookOpen,
@@ -105,9 +106,6 @@ export default async function Home() {
                   Search for solutions, articles, or ask a question to the
                   community. We are here to help you succeed.
                 </p>
-              </div>
-              <div className="mx-auto mt-8 max-w-2xl">
-                <SearchBar />
               </div>
             </div>
           </section>
@@ -358,3 +356,4 @@ export default async function Home() {
     </>
   );
 }
+
