@@ -37,15 +37,18 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       router.push(redirect);
     } catch (err: any) {
-      console.error('Manual Sign-In error:', err);
+      // Common codes for invalid credentials are:
+      // auth/invalid-credential, auth/wrong-password, auth/user-not-found
+      // We can catch them all and show a generic message.
       if (
+        err.code === 'auth/invalid-credential' ||
         err.code === 'auth/wrong-password' ||
-        err.code === 'auth/user-not-found' ||
-        err.code === 'auth/invalid-credential'
+        err.code === 'auth/user-not-found'
       ) {
         setError('Invalid email or password. Please try again.');
       } else {
-        setError('Failed to sign in. Please try again later.');
+        console.error('Manual Sign-In error:', err);
+        setError('An unexpected error occurred. Please try again later.');
       }
     } finally {
       setLoading(false);
