@@ -4,10 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertCircle } from 'lucide-react';
-import {
-  signInWithEmailAndPassword,
-} from 'firebase/auth';
+import { AlertCircle, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/logo';
@@ -18,6 +16,7 @@ import { Label } from '@/components/ui/label';
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
@@ -30,16 +29,20 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     if (!auth) {
-        setError('Authentication service is not available.');
-        setLoading(false);
-        return;
+      setError('Authentication service is not available.');
+      setLoading(false);
+      return;
     }
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push(redirect);
     } catch (err: any) {
       console.error('Manual Sign-In error:', err);
-      if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+      if (
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/user-not-found' ||
+        err.code === 'auth/invalid-credential'
+      ) {
         setError('Invalid email or password. Please try again.');
       } else {
         setError('Failed to sign in. Please try again later.');
@@ -57,9 +60,9 @@ export default function LoginPage() {
             <div className="flex justify-center mb-4">
               <Logo />
             </div>
-            <h1 className="text-3xl font-bold">Login</h1>
+            <h1 className="text-3xl font-bold">Welcome Back</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
+              Enter your credentials to access your account
             </p>
           </div>
           {error && (
@@ -72,15 +75,19 @@ export default function LoginPage() {
           <form onSubmit={handleManualSignIn} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="m@example.com"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-              />
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={loading}
+                  className="pl-10"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
               <div className="flex items-center">
@@ -92,14 +99,29 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-              />
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  className="pl-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Logging in...' : 'Login'}
