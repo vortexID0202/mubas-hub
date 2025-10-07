@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { CommunityQuestion, UserProfile } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,10 +78,10 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const userProfileRef =  (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null;
+  const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const userQuestionsQuery = (firestore && user?.uid) ? collection(firestore, 'users', user.uid, 'questions') : null;
+  const userQuestionsQuery = useMemoFirebase(() => (firestore && user?.uid) ? collection(firestore, 'users', user.uid, 'questions') : null, [firestore, user?.uid]);
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
   
   const [userAnswersCount, setUserAnswersCount] = useState(0);
@@ -306,7 +306,7 @@ export default function ProfilePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Answers you've provided</CardTitle>
-                        </CardHeader>
+                        </Header>
                         <CardContent>
                             <p>You haven't answered any questions yet.</p>
                         </CardContent>
