@@ -1,143 +1,119 @@
-/**
- * @fileoverview Firestore Security Rules for the MUBAS Community Hub.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles and a public-read, owner-write model for questions.
- * Knowledge base articles are restricted to admin-only access.
- *
- * Data Structure:
- * - /users/{userId}: Stores private user profile data, accessible only to the owning user.
- * - /questions/{questionId}: Stores public questions, readable by anyone but writable only by the author.
- * - /knowledgeBaseArticles/{knowledgeBaseArticleId}: Stores admin-managed knowledge base articles, accessible only to admins.
- * - /tags/{tagId}: Stores publicly available tags.
- * - /roles_admin/{userId}: Indicates admin status; existence grants admin privileges.
- *
- * Key Security Decisions:
- * - Users can only read/write their own profile data.
- * - Questions are publicly readable, but only the author can modify/delete them.
- * - Knowledge base articles are accessible and modifiable only by admins.
- * - Listing of user documents is disallowed.
- *
- * Denormalization for Authorization:
- * The `authorId` field is denormalized into the `Question` and `KnowledgeBaseArticle` documents to enable simple ownership checks without requiring additional reads.  Admin status is determined by the existence of a document in the `/roles_admin/{userId}` collection.
- *
- * Structural Segregation:
- * Public questions are stored in a top-level `/questions` collection. This segregation simplifies access control rules and optimizes list operations.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Defines a function to check if the user is signed in.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Defines a function to check if the authenticated user is the owner of the resource.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Defines a function to check if the authenticated user is the existing owner of the resource.
-     * @param userId The user ID to check against.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description Defines a function to check if the user is an administrator.
-     */
-    function isAdmin() {
-        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-    /**
-     * @description Security rules for user profiles.
+     * @description Manages user profiles. Allows users to create their own profile and prevents unauthorized modifications.
      * @path /users/{userId}
-     * @allow (create) User with matching UID can create their own profile.
-     * @allow (get, update, delete) User can access and modify their own profile.
-     * @deny (create) User cannot create a profile with a mismatched UID.
-     * @deny (list) No one can list all user profiles.
-     * @deny (update, delete) User cannot modify or delete another user's profile.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     * @allow (create) - Authenticated user creates their profile with matching userId.
+     * @allow (get) - Authenticated user gets their own profile with matching userId.
+     * @allow (update) - Authenticated user updates their profile with matching userId.
+     * @allow (delete) - Authenticated user deletes their profile with matching userId.
+     * @deny (create) - Unauthenticated user attempts to create a profile.
+     * @deny (update) - Authenticated user attempts to update another user's profile.
+     * @deny (delete) - Authenticated user attempts to delete another user's profile.
+     * @principle Enforces document ownership and identity verification for user profiles.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Security rules for questions.
-     * @path /questions/{questionId}
-     * @allow (get, list) Anyone can read all questions.
-     * @allow (create) Authenticated user can create a question if the authorId matches their UID.
-     * @allow (update, delete) Only the author can update or delete the question.
-     * @deny (create) User cannot create a question with a mismatched authorId.
-     * @deny (update, delete) User cannot modify or delete another user's question.
-     * @principle Enforces document ownership for writes, allows public reads, and validates relational integrity.
+     * @description Manages questions posted by users. Allows users to create, read, update, and delete their own questions.
+     * @path /users/{userId}/questions/{questionId}
+     * @allow (create) - Authenticated user creates a question under their userId.
+     * @allow (get) - Authenticated user gets a question under their userId.
+     * @allow (update) - Authenticated user updates a question under their userId.
+     * @allow (delete) - Authenticated user deletes a question under their userId.
+     * @deny (create) - Authenticated user attempts to create a question under another user's userId.
+     * @deny (update) - Authenticated user attempts to update another user's question.
+     * @deny (delete) - Authenticated user attempts to delete another user's question.
+     * @principle Enforces document ownership and path-based authorization for user-generated questions.
      */
-    match /questions/{questionId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.authorId);
-      allow delete: if isExistingOwner(resource.data.authorId);
+    match /users/{userId}/questions/{questionId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Security rules for knowledge base articles.
-     * @path /knowledgeBaseArticles/{knowledgeBaseArticleId}
-     * @allow (get, list) Anyone can read knowledge base articles.
-     * @allow (create, update, delete) Only admins can create, update, or delete knowledge base articles.
-     * @deny (create, update, delete) Non-admins cannot create, update, or delete knowledge base articles.
-     * @principle Restricts access to knowledge base articles to administrators only.
+     * @description Manages answers posted by users to specific questions. Allows users to create, read, update, and delete their own answers.
+     * @path /users/{userId}/answers/{answerId}
+     * @allow (create) - Authenticated user creates an answer under their userId.
+     * @allow (get) - Authenticated user gets an answer under their userId.
+     * @allow (update) - Authenticated user updates an answer under their userId.
+     * @allow (delete) - Authenticated user deletes an answer under their userId.
+     * @deny (create) - Authenticated user attempts to create an answer under another user's userId.
+     * @deny (update) - Authenticated user attempts to update another user's answer.
+     * @deny (delete) - Authenticated user attempts to delete another user's answer.
+     * @principle Enforces document ownership and path-based authorization for user-generated answers.
      */
-    match /knowledgeBaseArticles/{knowledgeBaseArticleId} {
-      allow get, list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+    match /users/{userId}/answers/{answerId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
 
     /**
-     * @description Security rules for tags.
-     * @path /tags/{tagId}
-     * @allow (get, list) Anyone can read all tags.
-     * @allow (create) Only admins can create tags.
-     * @allow (update, delete) Only admins can update or delete tags.
-     * @deny (create, update, delete) Non-admins cannot create, update, or delete tags.
-     * @principle Restricts write access to tags to administrators only, allowing public read access.
+     * @description Manages knowledge base articles. Allows public read access but restricts create, update, and delete operations to admins.
+     * @path /knowledge_base_articles/{articleId}
+     * @allow (get) - Any user can read knowledge base articles.
+     * @allow (list) - Any user can list knowledge base articles.
+     * @allow (create) - Only admins can create knowledge base articles.
+     * @allow (update) - Only admins can update knowledge base articles.
+     * @allow (delete) - Only admins can delete knowledge base articles.
+     * @deny (create) - Non-admin user attempts to create a knowledge base article.
+     * @deny (update) - Non-admin user attempts to update a knowledge base article.
+     * @deny (delete) - Non-admin user attempts to delete a knowledge base article.
+     * @principle Restricts write access to knowledge base articles based on user role (admin).
      */
-    match /tags/{tagId} {
-      allow get, list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+    match /knowledge_base_articles/{articleId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && isAdmin();
     }
 
     /**
-     * @description Security rules for admin roles.
-     * @path /roles_admin/{userId}
-     * @allow (get) Anyone can check if a user is an admin.
-     * @allow (create) Only admins can assign admin roles.
-     * @allow (delete) Only admins can revoke admin roles.
-     * @deny (list, update) Listing and updating admin roles is not allowed.
-     * @principle Restricts modification of admin roles to administrators only.
+     * @description Manages notifications for users. Allows users to create, read, update, and delete their own notifications.
+     * @path /users/{userId}/notifications/{notificationId}
+     * @allow (create) - Authenticated user creates a notification under their userId.
+     * @allow (get) - Authenticated user gets a notification under their userId.
+     * @allow (update) - Authenticated user updates a notification under their userId.
+     * @allow (delete) - Authenticated user deletes a notification under their userId.
+     * @deny (create) - Authenticated user attempts to create a notification under another user's userId.
+     * @deny (update) - Authenticated user attempts to update another user's notification.
+     * @deny (delete) - Authenticated user attempts to delete another user's notification.
+     * @principle Enforces document ownership and path-based authorization for user notifications.
      */
-    match /roles_admin/{userId} {
-        allow get: if true;
-        allow list: if false;
-        allow create: if isAdmin();
-        allow update: if false;
-        allow delete: if isAdmin() && resource != null;
+    match /users/{userId}/notifications/{notificationId} {
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
+  }
+
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+  function isAdmin() {
+    return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
   }
 }
