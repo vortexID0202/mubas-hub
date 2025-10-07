@@ -15,20 +15,25 @@
           "description": "The user's email address."
         },
         "avatarUrl": {
-            "type": "string",
-            "format": "uri",
-            "description": "URL for the user's profile picture."
+          "type": "string",
+          "format": "uri",
+          "description": "URL for the user's profile picture."
         },
         "reputation": {
-            "type": "number",
-            "description": "The user's reputation score in the community."
+          "type": "number",
+          "description": "The user's reputation score in the community."
         }
       },
-      "required": ["fullName", "email"]
+      "required": [
+        "fullName",
+        "email"
+      ]
     }
   },
   "auth": {
-    "providers": ["email-password"]
+    "providers": [
+      "google"
+    ]
   },
   "firestore": {
     "/users/{userId}": {

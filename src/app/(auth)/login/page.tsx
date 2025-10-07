@@ -4,51 +4,31 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { AlertCircle } from 'lucide-react';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import Logo from '@/components/logo';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
-  const [passwordShown, setPasswordShown] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
   const router = useRouter();
 
-  const togglePasswordVisibility = () => {
-    setPasswordShown(!passwordShown);
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleGoogleSignIn = async () => {
     setError(null);
     setLoading(true);
-
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      setLoading(false);
-      return;
-    }
-
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
       router.push('/');
     } catch (err: any) {
-      console.error('Login error:', err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError('Invalid email or password.');
-      } else {
-        setError('An unexpected error occurred. Please try again.');
-      }
+      console.error('Google Sign-In error:', err);
+      setError('Failed to sign in with Google. Please try again.');
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -62,7 +42,7 @@ export default function LoginPage() {
             </div>
             <h1 className="text-3xl font-bold">Login</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
+              Sign in to your MUBAS Hub account
             </p>
           </div>
           {error && (
@@ -72,64 +52,37 @@ export default function LoginPage() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          <form className="grid gap-4" onSubmit={handleSubmit}>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  placeholder="you@mubas.ac.mw"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <Link
-                  href="/forgot"
-                  className="ml-auto inline-block text-sm underline"
-                >
-                  Forgot your password?
-                </Link>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  name="password"
-                  type={passwordShown ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  placeholder="••••••••"
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
-                  onClick={togglePasswordVisibility}
-                  aria-label={passwordShown ? 'Hide password' : 'Show password'}
-                  disabled={loading}
-                >
-                  {passwordShown ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Logging in...' : 'Login'}
+          <div className="grid gap-4">
+            <Button
+              variant="outline"
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? (
+                'Signing in...'
+              ) : (
+                <>
+                  <svg
+                    className="mr-2 h-4 w-4"
+                    aria-hidden="true"
+                    focusable="false"
+                    data-prefix="fab"
+                    data-icon="google"
+                    role="img"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 488 512"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M488 261.8C488 403.3 381.5 512 244 512 109.8 512 0 402.2 0 261.8 0 120.3 109.8 8.4 244 8.4c77.9 0 144.3 30.8 192.3 78.6l-69.8 67.2c-23.6-22.5-54.8-36.4-92.5-36.4-69.8 0-127.5 57.8-127.5 128.2s57.7 128.2 127.5 128.2c80.6 0 110-58.2 113.5-87.8H244v-73.6h244z"
+                    ></path>
+                  </svg>
+                  Sign in with Google
+                </>
+              )}
             </Button>
-          </form>
+          </div>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
             <Link href="/signup" className="underline">

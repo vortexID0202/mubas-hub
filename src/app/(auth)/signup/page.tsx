@@ -4,23 +4,19 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Eye, EyeOff, Lock, AlertCircle } from 'lucide-react';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { AlertCircle } from 'lucide-react';
+import {
+  signInWithPopup,
+  GoogleAuthProvider,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
-
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Logo from '@/components/logo';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const SignUpPage: React.FC = () => {
-  const [passwordShown, setPasswordShown] = useState(false);
-  const [fullname, setFullname] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -28,72 +24,58 @@ const SignUpPage: React.FC = () => {
   const firestore = useFirestore();
   const router = useRouter();
 
-  const togglePasswordVisibility = () => setPasswordShown(!passwordShown);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleGoogleSignUp = async () => {
     setErrorMessage('');
     setLoading(true);
 
-    if (!email.endsWith('@mubas.ac.mw')) {
-        setErrorMessage('Please use a valid MUBAS email address.');
-        setLoading(false);
-        return;
-    }
-
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!passwordRegex.test(password)) {
-      setErrorMessage('Password must be at least 8 characters long, with one uppercase letter and one number.');
-      setLoading(false);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setErrorMessage('Passwords do not match!');
-      setLoading(false);
-      return;
-    }
-
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        hd: 'mubas.ac.mw',
+      });
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
 
-        await updateProfile(user, {
-            displayName: fullname
+      // Check if user profile already exists
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // Create a new user profile if it doesn't exist
+        await setDoc(userDocRef, {
+          fullName: user.displayName,
+          email: user.email,
+          avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
+          reputation: 0,
         });
+      }
 
-        await setDoc(doc(firestore, "users", user.uid), {
-            fullName: fullname,
-            email: user.email,
-            avatarUrl: `https://picsum.photos/seed/${user.uid}/40/40`,
-            reputation: 0,
-        });
-
-        router.push('/');
-
+      router.push('/');
     } catch (err: any) {
-        if (err.code === 'auth/email-already-in-use') {
-            setErrorMessage('An account with this email already exists.');
-        } else {
-            setErrorMessage('An unexpected error occurred. Please try again.');
-        }
-        console.error("Signup error:", err);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setErrorMessage('Sign-up process was cancelled.');
+      } else if (err.code === 'auth/account-exists-with-different-credential') {
+        setErrorMessage('An account with this email already exists using a different sign-in method.');
+      } else {
+        setErrorMessage('An unexpected error occurred. Please try again.');
+      }
+      console.error('Signup error:', err);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-       <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2 text-center">
-             <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-4">
               <Logo />
             </div>
             <h1 className="text-3xl font-bold">Sign Up</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your information to create an account
+              Create your MUBAS Hub account with Google
             </p>
           </div>
           {errorMessage && (
@@ -103,89 +85,37 @@ const SignUpPage: React.FC = () => {
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
-          <form onSubmit={handleSubmit} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="fullname">Full Name</Label>
-               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input 
-                    id="fullname" 
-                    name="fullname" 
-                    required 
-                    placeholder="John Doe" 
-                    className="pl-10" 
-                    value={fullname}
-                    onChange={e => setFullname(e.target.value)}
-                    disabled={loading}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input 
-                    id="email" 
-                    name="email" 
-                    type="email" 
-                    required 
-                    placeholder="you@mubas.ac.mw" 
-                    className="pl-10" 
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    disabled={loading}
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  name="password"
-                  type={passwordShown ? 'text' : 'password'}
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
-                  onClick={togglePasswordVisibility}
-                  disabled={loading}
-                >
-                  {passwordShown ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                8+ characters, 1 uppercase, 1 number.
-              </p>
-            </div>
-             <div className="grid gap-2">
-              <Label htmlFor="confirm-password">Confirm Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="confirm-password"
-                  name="confirm-password"
-                  type={passwordShown ? 'text' : 'password'}
-                  required
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10"
-                  disabled={loading}
-                />
-              </div>
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating Account...' : 'Create an account'}
+          <div className="grid gap-4">
+            <Button
+              variant="outline"
+              onClick={handleGoogleSignUp}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? (
+                'Creating Account...'
+              ) : (
+                <>
+                  <svg
+                    className="mr-2 h-4 w-4"
+                    aria-hidden="true"
+                    focusable="false"
+                    data-prefix="fab"
+                    data-icon="google"
+                    role="img"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 488 512"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M488 261.8C488 403.3 381.5 512 244 512 109.8 512 0 402.2 0 261.8 0 120.3 109.8 8.4 244 8.4c77.9 0 144.3 30.8 192.3 78.6l-69.8 67.2c-23.6-22.5-54.8-36.4-92.5-36.4-69.8 0-127.5 57.8-127.5 128.2s57.7 128.2 127.5 128.2c80.6 0 110-58.2 113.5-87.8H244v-73.6h244z"
+                    ></path>
+                  </svg>
+                  Sign up with Google
+                </>
+              )}
             </Button>
-          </form>
+          </div>
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
             <Link href="/login" className="underline">
