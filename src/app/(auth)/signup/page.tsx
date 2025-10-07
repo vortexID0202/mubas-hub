@@ -11,7 +11,7 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/logo';
@@ -50,6 +50,12 @@ const SignUpPage: React.FC = () => {
     setErrorMessage('');
     setLoading(true);
 
+    if (!auth || !firestore) {
+        setErrorMessage('Firebase services are not available.');
+        setLoading(false);
+        return;
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -66,6 +72,7 @@ const SignUpPage: React.FC = () => {
         email: user.email,
         avatarUrl: user.photoURL,
         reputation: 0,
+        createdAt: serverTimestamp(),
       });
 
       router.push('/');
@@ -80,8 +87,17 @@ const SignUpPage: React.FC = () => {
     setErrorMessage('');
     setLoading(true);
 
+    if (!auth || !firestore) {
+        setErrorMessage('Firebase services are not available.');
+        setLoading(false);
+        return;
+    }
+
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
 
@@ -95,6 +111,7 @@ const SignUpPage: React.FC = () => {
           email: user.email,
           avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
           reputation: 0,
+          createdAt: serverTimestamp(),
         });
       }
 
@@ -153,6 +170,7 @@ const SignUpPage: React.FC = () => {
                 required 
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div className="grid gap-2">
@@ -164,6 +182,7 @@ const SignUpPage: React.FC = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
               />
             </div>
             <div className="grid gap-2">
@@ -174,6 +193,7 @@ const SignUpPage: React.FC = () => {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
               />
               <p className="text-xs text-muted-foreground">
                 Password must be at least 8 characters long.
@@ -187,6 +207,7 @@ const SignUpPage: React.FC = () => {
                 required 
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>

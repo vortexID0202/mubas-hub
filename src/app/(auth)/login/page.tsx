@@ -17,7 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -34,6 +34,11 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    if (!auth) {
+        setError('Authentication service is not available.');
+        setLoading(false);
+        return;
+    }
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push(redirect);
@@ -52,8 +57,16 @@ export default function LoginPage() {
   const handleGoogleSignIn = async () => {
     setError(null);
     setLoading(true);
+    if (!auth || !firestore) {
+        setError('Firebase services are not available.');
+        setLoading(false);
+        return;
+    }
     try {
       const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
       const userCredential = await signInWithPopup(auth, provider);
       const user = userCredential.user;
 
@@ -67,6 +80,7 @@ export default function LoginPage() {
           email: user.email,
           avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
           reputation: 0,
+          createdAt: serverTimestamp(),
         });
       }
       router.push(redirect);
@@ -135,7 +149,7 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading && !error ? 'Logging in...' : 'Login'}
+              {loading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
           <Separator className="my-2" />
