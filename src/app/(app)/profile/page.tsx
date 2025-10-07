@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection } from '@/firebase';
 import { CommunityQuestion, UserProfile } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,18 +78,10 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const userProfileRef = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user?.uid]);
-
+  const userProfileRef =  (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null;
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const userQuestionsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    return collection(firestore, 'users', user.uid, 'questions');
-  }, [firestore, user?.uid]);
-  
+  const userQuestionsQuery = (firestore && user?.uid) ? collection(firestore, 'users', user.uid, 'questions') : null;
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
   
   const [userAnswersCount, setUserAnswersCount] = useState(0);
@@ -123,27 +115,19 @@ export default function ProfilePage() {
       });
     }
   }, [userProfile, profileForm]);
-
-  const handleProfileUpdate = async (data: z.infer<typeof profileSchema>, avatarUrl?: string) => {
+  
+  const handleProfileUpdate: SubmitHandler<z.infer<typeof profileSchema>> = async (data) => {
     if (!user || !firestore) return;
     
     try {
-      const authProfileUpdate: { displayName: string; photoURL?: string } = {
+      await updateProfile(user, {
         displayName: data.fullName,
-      };
-      if (avatarUrl) {
-        authProfileUpdate.photoURL = avatarUrl;
-      }
-      await updateProfile(user, authProfileUpdate);
-
-      const firestoreProfileUpdate: { fullName: string; avatarUrl?: string } = {
-        fullName: data.fullName,
-      };
-       if (avatarUrl) {
-        firestoreProfileUpdate.avatarUrl = avatarUrl;
-      }
+      });
+      
       const userDocRef = doc(firestore, 'users', user.uid);
-      await updateDoc(userDocRef, firestoreProfileUpdate);
+      await updateDoc(userDocRef, {
+        fullName: data.fullName,
+      });
 
       toast({
         title: "Profile Updated",
@@ -156,14 +140,7 @@ export default function ProfilePage() {
         title: "Update Failed",
         description: "Could not update your profile. Please try again.",
       });
-    } finally {
-        profileForm.formState.isSubmitting = false;
-        setIsUploading(false);
     }
-  };
-
-  const onProfileFormSubmit: SubmitHandler<z.infer<typeof profileSchema>> = (data) => {
-    handleProfileUpdate(data);
   };
   
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,8 +160,14 @@ export default function ProfilePage() {
         await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(imageRef);
         
-        const currentFormValues = profileForm.getValues();
-        await handleProfileUpdate(currentFormValues, downloadURL);
+        await updateProfile(user, { photoURL: downloadURL });
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await updateDoc(userDocRef, { avatarUrl: downloadURL });
+
+        toast({
+            title: 'Profile Picture Updated',
+            description: 'Your new picture has been saved.',
+        });
 
     } catch (error) {
         console.error("Error uploading image:", error);
@@ -193,6 +176,7 @@ export default function ProfilePage() {
             title: 'Upload Failed',
             description: 'Could not upload your new profile picture.',
         });
+    } finally {
         setIsUploading(false);
     }
   }
@@ -330,7 +314,7 @@ export default function ProfilePage() {
                 </TabsContent>
                 <TabsContent value="settings" className="space-y-6">
                  <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(onProfileFormSubmit)}>
+                  <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)}>
                     <Card>
                       <CardHeader>
                         <CardTitle>Profile Settings</CardTitle>
