@@ -229,10 +229,6 @@ export default function ProfilePage() {
     return <ProfilePageSkeleton />;
   }
   
-  if (!user && !isUserLoading) {
-     return <ProfilePageSkeleton />;
-  }
-  
   if (!userProfile && !isProfileLoading) {
     return (
         <>
@@ -240,12 +236,12 @@ export default function ProfilePage() {
         <main className="flex-1 bg-muted/20">
           <div className="container mx-auto max-w-6xl py-12 flex items-center justify-center">
             <Card className="p-8 text-center">
-              <CardTitle className="text-2xl">User Not Found</CardTitle>
+              <CardTitle className="text-2xl">User not found.</CardTitle>
               <CardDescription className="mt-2">
-                We couldn't find a profile for your account. It's possible it wasn't created correctly.
+                We couldn't find a profile for your account. Please try logging in again.
               </CardDescription>
               <Button onClick={() => router.push('/login')} className="mt-6">
-                Try Logging In Again
+                Go to Login
               </Button>
             </Card>
           </div>
