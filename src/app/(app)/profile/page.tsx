@@ -1,8 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/firebase';
-import { useDoc, useCollection } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { CommunityQuestion, UserProfile } from '@/lib/types';
 import {
   Avatar,
@@ -19,16 +18,26 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Pen } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { collection, query, where } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const { user, loading: userLoading } = useUser();
   const router = useRouter();
+  const firestore = useFirestore();
   
-  // Fetch user profile data from Firestore
-  const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
-  
-  // Fetch questions asked by the user
-  const { data: userQuestions, loading: questionsLoading } = useCollection<CommunityQuestion>('questions', user?.uid);
+  const userProfileRef = useMemoFirebase(() => {
+      if (!user) return null;
+      return `users/${user.uid}`;
+  }, [user]);
+
+  const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+
+  const userQuestionsQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return query(collection(firestore, 'questions'), where('authorId', '==', user.uid));
+  }, [firestore, user?.uid]);
+
+  const { data: userQuestions, loading: questionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
   
   // In a real app, you would fetch this from a subcollection or aggregate
   const [userAnswersCount, setUserAnswersCount] = useState(0);
