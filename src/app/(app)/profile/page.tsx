@@ -1,7 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, useFirebase } from '@/firebase';
 import { CommunityQuestion, UserProfile } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,10 +19,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { Pen } from 'lucide-react';
+import { Pen, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, doc, updateDoc } from 'firebase/firestore';
 import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
@@ -57,7 +58,6 @@ function ProfilePageSkeleton() {
 
 const profileSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
-  avatarUrl: z.string().url('Invalid URL format').or(z.literal('')),
 });
 
 const passwordSchema = z.object({
@@ -72,8 +72,10 @@ const passwordSchema = z.object({
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const firestore = useFirestore();
+  const { firestore } = useFirebase();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -95,7 +97,6 @@ export default function ProfilePage() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       fullName: '',
-      avatarUrl: '',
     }
   });
 
@@ -118,7 +119,6 @@ export default function ProfilePage() {
     if (userProfile) {
       profileForm.reset({
         fullName: userProfile.fullName,
-        avatarUrl: userProfile.avatarUrl,
       });
     }
   }, [userProfile, profileForm]);
@@ -127,22 +127,18 @@ export default function ProfilePage() {
     if (!user || !firestore) return;
 
     try {
-      // Update Auth profile
       await updateProfile(user, {
         displayName: data.fullName,
-        photoURL: data.avatarUrl,
       });
 
-      // Update Firestore document
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, {
         fullName: data.fullName,
-        avatarUrl: data.avatarUrl,
       });
 
       toast({
         title: "Profile Updated",
-        description: "Your profile information has been successfully saved.",
+        description: "Your name has been successfully saved.",
       });
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -153,6 +149,43 @@ export default function ProfilePage() {
       });
     }
   };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsUploading(true);
+    toast({
+      title: 'Uploading...',
+      description: 'Your new profile picture is being uploaded.',
+    });
+
+    const storage = getStorage();
+    const imageRef = storageRef(storage, `profile_pictures/${user.uid}`);
+
+    try {
+        await uploadBytes(imageRef, file);
+        const downloadURL = await getDownloadURL(imageRef);
+
+        await updateProfile(user, { photoURL: downloadURL });
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await updateDoc(userDocRef, { avatarUrl: downloadURL });
+
+        toast({
+            title: 'Success!',
+            description: 'Your profile picture has been updated.',
+        });
+    } catch (error) {
+        console.error("Error uploading image:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Upload Failed',
+            description: 'Could not upload your new profile picture.',
+        });
+    } finally {
+        setIsUploading(false);
+    }
+  }
   
   const handlePasswordChange: SubmitHandler<z.infer<typeof passwordSchema>> = async (data) => {
     if (!user || !user.email) return;
@@ -183,11 +216,12 @@ export default function ProfilePage() {
     return <ProfilePageSkeleton />;
   }
   
-  if (!user) {
-    return <ProfilePageSkeleton />;
+  if (!user && !isUserLoading) {
+     router.push('/login?redirect=/profile');
+     return <ProfilePageSkeleton />;
   }
-
-  if (profileError || (!isProfileLoading && !userProfile)) {
+  
+  if (!userProfile && !isProfileLoading) {
     return (
         <>
         <Header />
@@ -208,6 +242,8 @@ export default function ProfilePage() {
         </>
     )
   }
+  
+  if (!userProfile) return <ProfilePageSkeleton />;
 
   return (
     <>
@@ -225,8 +261,9 @@ export default function ProfilePage() {
                             {userProfile.fullName.charAt(0)}
                             </AvatarFallback>
                         </Avatar>
-                        <Button variant="outline" size="icon" className="absolute bottom-1 right-1 h-8 w-8 rounded-full bg-background">
-                            <Pen className="h-4 w-4"/>
+                        <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+                        <Button variant="outline" size="icon" className="absolute bottom-1 right-1 h-8 w-8 rounded-full bg-background" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                            {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Pen className="h-4 w-4"/>}
                             <span className="sr-only">Change Profile Picture</span>
                         </Button>
                     </div>
@@ -301,19 +338,6 @@ export default function ProfilePage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Full Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                         <FormField
-                          control={profileForm.control}
-                          name="avatarUrl"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Avatar URL</FormLabel>
                               <FormControl>
                                 <Input {...field} />
                               </FormControl>
@@ -401,5 +425,3 @@ export default function ProfilePage() {
     </>
   );
 }
-
-    
