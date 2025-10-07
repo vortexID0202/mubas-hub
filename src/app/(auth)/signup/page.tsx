@@ -23,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 const SignUpPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,6 +38,15 @@ const SignUpPage: React.FC = () => {
       setErrorMessage('Please enter your full name.');
       return;
     }
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match.');
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters long.');
+      return;
+    }
+    
     setErrorMessage('');
     setLoading(true);
 
@@ -51,6 +61,7 @@ const SignUpPage: React.FC = () => {
 
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDoc(userDocRef, {
+        id: user.uid,
         fullName: fullName,
         email: user.email,
         avatarUrl: user.photoURL,
@@ -79,6 +90,7 @@ const SignUpPage: React.FC = () => {
 
       if (!userDoc.exists()) {
         await setDoc(userDocRef, {
+          id: user.uid,
           fullName: user.displayName,
           email: user.email,
           avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
@@ -102,9 +114,9 @@ const SignUpPage: React.FC = () => {
       } else if (err.code === 'auth/email-already-in-use') {
         setErrorMessage('This email address is already in use by another account.');
       } else if (err.code === 'auth/weak-password') {
-        setErrorMessage('The password is too weak. Please use at least 6 characters.');
-      } else if (err.code === 'auth/configuration-not-found') {
-        setErrorMessage('Authentication method not enabled. Please enable Email/Password and Google sign-in in your Firebase console.');
+        setErrorMessage('The password is too weak. Please use at least 8 characters.');
+      } else if (err.code === 'auth/operation-not-allowed') {
+         setErrorMessage('Email/password sign up is not enabled. Please contact support.');
       }
       else {
         setErrorMessage('An unexpected error occurred. Please try again.');
@@ -162,6 +174,19 @@ const SignUpPage: React.FC = () => {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Password must be at least 8 characters long.
+              </p>
+            </div>
+             <div className="grid gap-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <Input 
+                id="confirm-password" 
+                type="password" 
+                required 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>

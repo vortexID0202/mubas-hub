@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
@@ -52,11 +54,29 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+         await setDoc(userDocRef, {
+          id: user.uid,
+          fullName: user.displayName,
+          email: user.email,
+          avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
+          reputation: 0,
+        });
+      }
       router.push(redirect);
     } catch (err: any) {
       console.error('Google Sign-In error:', err);
-      setError('Failed to sign in with Google. Please try again.');
+      if (err.code === 'auth/operation-not-allowed') {
+        setError('Google sign-in is not enabled. Please contact support.');
+      } else {
+        setError('Failed to sign in with Google. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

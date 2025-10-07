@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
             </div>
             <h1 className="text-3xl font-bold">Forgot Password</h1>
             <p className="text-balance text-muted-foreground">
-              Enter your email below to reset your password
+              Enter your email below to receive a password reset link.
             </p>
           </div>
           <div className="grid gap-4">
@@ -34,7 +34,7 @@ export default function ForgotPasswordPage() {
               />
             </div>
             <Button type="submit" className="w-full">
-              Send reset link
+              Send Reset Link
             </Button>
           </div>
            <div className="mt-4 text-center text-sm">
