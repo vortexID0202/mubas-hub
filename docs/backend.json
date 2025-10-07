@@ -32,7 +32,8 @@
   },
   "auth": {
     "providers": [
-      "google"
+      "google",
+      "email"
     ]
   },
   "firestore": {
