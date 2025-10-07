@@ -18,7 +18,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Pen } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 
 export default function ProfilePage() {
   const { user, loading: userLoading } = useUser();
@@ -26,9 +26,9 @@ export default function ProfilePage() {
   const firestore = useFirestore();
   
   const userProfileRef = useMemoFirebase(() => {
-      if (!user) return null;
-      return `users/${user.uid}`;
-  }, [user]);
+      if (!firestore || !user) return null;
+      return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
 
   const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(userProfileRef);
 
