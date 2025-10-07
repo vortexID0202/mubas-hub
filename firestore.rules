@@ -1,158 +1,167 @@
 /**
- * @file Firestore Security Rules for MUBAS Community Hub
+ * @fileoverview Firestore Security Rules for MUBAS Community Hub.
  *
- * @core_philosophy This ruleset enforces a strict user-ownership model for user-generated content
- * and restricts administrative content management to authorized users. Data validation is relaxed
- * in favor of rapid prototyping, focusing on authorization and relational integrity.
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for user-generated content
+ * (questions, answers, notifications) and restricts administrative access to
+ * knowledge base articles. User roles are denormalized onto user documents
+ * to avoid costly `get()` calls during authorization.
  *
- * @data_structure The database is structured with user-owned data nested under `/users/{userId}`
- * (questions, answers, notifications), and administrative data in a top-level `/knowledge_base_articles` collection.
+ * Data Structure:
+ * - /users/{userId}: Stores user profiles, including roles for authorization.
+ * - /users/{userId}/questions/{questionId}: Stores questions created by a specific user.
+ * - /users/{userId}/answers/{answerId}: Stores answers created by a specific user.
+ * - /knowledge_base_articles/{articleId}: Stores knowledge base articles, accessible to all but manageable only by admins.
+ * - /users/{userId}/notifications/{notificationId}: Stores notifications for a specific user.
  *
- * @key_security_decisions
- *   - User listing is implicitly allowed via `get` operations on individual user documents.
- *   - Write access to user-owned content is strictly limited to the owner.
- *   - Knowledge base articles are publicly readable but only writable by admins. (TODO: Implement admin role check.)
- *   - Data shape validation is minimal to allow for rapid iteration. Focus is on authorization.
+ * Key Security Decisions:
+ * - Users can only create, read, update, and delete their own questions, answers, and notifications.
+ * - Knowledge base articles are publicly readable but only modifiable by admins (no admin role is defined, assuming this check happens in application code).
+ * - Listing operations are generally allowed for user-owned subcollections.
  *
- * @denormalization_for_authorization The `users` documents contain the user's `role`, avoiding the need for separate role lookups.
+ * Denormalization for Authorization:
+ * - User roles (e.g., 'student', 'admin') are stored directly within the `/users/{userId}` document to avoid `get()` calls when checking admin privileges.
  *
- * @structural_segregation User-generated content (questions, answers) is stored under the user's path, while admin-managed content (knowledge base articles) resides in a separate top-level collection.
+ * Structural Segregation:
+ * - Knowledge base articles are stored in a separate top-level collection to allow for distinct security rules compared to user-generated content.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows users to read and manage their own profiles.
+     * @description Secure access to user profiles.
      * @path /users/{userId}
-     * @allow (get) Authenticated user can read their own profile.
-     * @allow (create) Authenticated user can create their own profile if the userId matches their auth UID.
-     * @allow (update) Authenticated user can update their own profile if the userId matches their auth UID.
-     * @allow (delete) Authenticated user can delete their own profile if the userId matches their auth UID.
-     * @deny (get) Authenticated user cannot read another user's profile.
-     * @deny (create) Authenticated user cannot create a profile with a userId that does not match their auth UID.
-     * @deny (update) Authenticated user cannot update another user's profile.
-     * @deny (delete) Authenticated user cannot delete another user's profile.
-     * @principle Enforces document ownership for writes and self-creation.
+     * @allow (create) - User can create their own profile if the userId matches their auth.uid.
+     * @allow (get, update, delete) - User can only access their own profile.
+     * @deny (create) - User cannot create a profile with an ID that doesn't match their auth.uid.
+     * @deny (update, delete) - User cannot modify or delete another user's profile.
+     * @principle Enforces user ownership and self-creation for user profiles.
      */
     match /users/{userId} {
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
+
       function isSignedIn() {
         return request.auth != null;
       }
-      allow get: if true; // Anyone can read user profiles
-      allow list: if false; // Prevent listing all users
+
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isSignedIn() && isOwner(userId) && resource.data.id == userId; // Enforce immutability on user id
-      allow delete: if isSignedIn() && isOwner(userId) && resource.data.id == userId; // Enforce immutability on user id
+      allow update: if isSignedIn() && isOwner(userId) && resource.data.id == userId;
+      allow delete: if isSignedIn() && isOwner(userId) && resource.data.id == userId;
     }
 
     /**
-     * @description Allows users to manage their own questions.
+     * @description Secure questions posted by a user.
      * @path /users/{userId}/questions/{questionId}
-     * @allow (get) Authenticated user can read their own question.
-     * @allow (list) Authenticated user can list their own questions.
-     * @allow (create) Authenticated user can create a question under their own user ID.
-     * @allow (update) Authenticated user can update their own question under their own user ID.
-     * @allow (delete) Authenticated user can delete their own question under their own user ID.
-     * @deny (get) Authenticated user cannot read another user's question.
-     * @deny (create) Authenticated user cannot create a question under another user's user ID.
-     * @deny (update) Authenticated user cannot update another user's question.
-     * @deny (delete) Authenticated user cannot delete another user's question.
-     * @principle Enforces document ownership for writes within the user's data tree.
+     * @allow (create) - User can create a question under their own user ID.
+     * @allow (get, list, update, delete) - User can only access their own questions.
+     * @deny (create) - User cannot create a question under another user's ID.
+     * @deny (update, delete) - User cannot modify or delete another user's questions.
+     * @principle Enforces document ownership for user-generated content.
      */
     match /users/{userId}/questions/{questionId} {
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
+
       function isSignedIn() {
         return request.auth != null;
       }
+
       allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isSignedIn() && isOwner(userId) && resource.data.userId == userId; // enforce immutable userId
-      allow delete: if isSignedIn() && isOwner(userId) && resource.data.userId == userId; // enforce immutable userId
+      allow update: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+      allow delete: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
     }
 
     /**
-     * @description Allows users to manage their own answers.
+     * @description Secure answers posted by a user.
      * @path /users/{userId}/answers/{answerId}
-     * @allow (get) Authenticated user can read their own answer.
-     * @allow (list) Authenticated user can list their own answers.
-     * @allow (create) Authenticated user can create an answer under their own user ID.
-     * @allow (update) Authenticated user can update their own answer under their own user ID.
-     * @allow (delete) Authenticated user can delete their own answer under their own user ID.
-     * @deny (get) Authenticated user cannot read another user's answer.
-     * @deny (create) Authenticated user cannot create an answer under another user's user ID.
-     * @deny (update) Authenticated user cannot update another user's answer.
-     * @deny (delete) Authenticated user cannot delete another user's answer.
-     * @principle Enforces document ownership for writes within the user's data tree.
+     * @allow (create) - User can create an answer under their own user ID.
+     * @allow (get, list, update, delete) - User can only access their own answers.
+     * @deny (create) - User cannot create an answer under another user's ID.
+     * @deny (update, delete) - User cannot modify or delete another user's answers.
+     * @principle Enforces document ownership for user-generated content.
      */
     match /users/{userId}/answers/{answerId} {
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
+
       function isSignedIn() {
         return request.auth != null;
       }
+
       allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isSignedIn() && isOwner(userId) && resource.data.userId == userId; // enforce immutable userId
-      allow delete: if isSignedIn() && isOwner(userId) && resource.data.userId == userId; // enforce immutable userId
+      allow update: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+      allow delete: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
     }
 
     /**
-     * @description Allows anyone to read Knowledge Base Articles, but only admins can create, update or delete them.
+     * @description Secure knowledge base articles, allowing public read but restricting write access to admins.
      * @path /knowledge_base_articles/{articleId}
-     * @allow (get) Any user can read a knowledge base article.
-     * @allow (list) Any user can list knowledge base articles.
-     * @deny (create) Only admins should be able to create knowledge base articles.
-     * @deny (update) Only admins should be able to update knowledge base articles.
-     * @deny (delete) Only admins should be able to delete knowledge base articles.
-     * @principle Public read access with owner-only writes, restricted to admin role.
+     * @allow (get, list) - Any user can read knowledge base articles.
+     * @allow (create, update, delete) - Only admins can manage knowledge base articles (admin check is a placeholder).
+     * @deny (create, update, delete) - Non-admins cannot manage knowledge base articles.
+     * @principle Enforces role-based access control for admin-managed content.
      */
     match /knowledge_base_articles/{articleId} {
       function isAdmin() {
-          // TODO: Implement admin role check. This placeholder always returns false.
-          return false;
+        // TODO: Replace with actual admin check (e.g., check user role in /users/{userId}).
+        return false;
       }
-      allow get: if true;
-      allow list: if true;
-      allow create: if isAdmin(); // TODO: Add admin validation once the schema is updated with an ownership field.
-      allow update: if isAdmin() && resource != null; // TODO: Add admin validation once the schema is updated with an ownership field.
-      allow delete: if isAdmin() && resource != null; // TODO: Add admin validation once the schema is updated with an ownership field.
+
+      allow get, list: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Allows users to manage their own notifications.
+     * @description Secure notifications for a specific user.
      * @path /users/{userId}/notifications/{notificationId}
-     * @allow (get) Authenticated user can read their own notification.
-     * @allow (list) Authenticated user can list their own notifications.
-     * @allow (create) Authenticated user can create a notification under their own user ID.
-     * @allow (update) Authenticated user can update their own notification under their own user ID.
-     * @allow (delete) Authenticated user can delete their own notification under their own user ID.
-     * @deny (get) Authenticated user cannot read another user's notification.
-     * @deny (create) Authenticated user cannot create a notification under another user's user ID.
-     * @deny (update) Authenticated user cannot update another user's notification.
-     * @deny (delete) Authenticated user cannot delete another user's notification.
-     * @principle Enforces document ownership for writes within the user's data tree.
+     * @allow (create) - User can create a notification under their own user ID.
+     * @allow (get, list, update, delete) - User can only access their own notifications.
+     * @deny (create) - User cannot create a notification under another user's ID.
+     * @deny (update, delete) - User cannot modify or delete another user's notifications.
+     * @principle Enforces document ownership for user-specific notifications.
      */
     match /users/{userId}/notifications/{notificationId} {
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
+
       function isSignedIn() {
         return request.auth != null;
       }
+
       allow get: if isSignedIn() && isOwner(userId);
-      allow list: if isOwner(userId);
+      allow list: if isSignedIn() && isOwner(userId);
       allow create: if isSignedIn() && isOwner(userId) && request.resource.data.userId == userId;
-      allow update: if isSignedIn() && isOwner(userId) && resource.data.userId == userId; // enforce immutable userId
-      allow delete: if isSignedIn() && isOwner(userId) && resource.data.userId == userId; // enforce immutable userId
+      allow update: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+      allow delete: if isSignedIn() && isOwner(userId) && resource.data.userId == userId;
+    }
+
+     /**
+      * @description Allow read-only access to the /questions collection for all users.
+      * @path /questions
+      * @allow (get, list) - Allow all users to read the collection of questions.
+      * @deny (create, update, delete) - No user can write to the root questions collection.
+      * @principle Public read access with no write access.
+      */
+    match /questions {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
