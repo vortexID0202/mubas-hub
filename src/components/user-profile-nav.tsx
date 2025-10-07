@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
+import { ThemeToggle } from './theme-toggle';
 
 export function UserProfileNav() {
   const currentUser = users[0];
@@ -59,6 +60,13 @@ export function UserProfileNav() {
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+            <div className="flex items-center justify-between w-full">
+                <span>Theme</span>
+                <ThemeToggle />
+            </div>
+         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link href="/login">
