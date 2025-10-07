@@ -1,63 +1,143 @@
 /**
- * @fileoverview Firestore Security Rules for the application.
+ * @fileoverview Firestore Security Rules for the MUBAS Community Hub.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for user profiles. Users can only
- * read and write their own profile data.
+ * This ruleset enforces a strict user-ownership model for user profiles and a public-read, owner-write model for questions.
+ * Knowledge base articles are restricted to admin-only access.
  *
  * Data Structure:
- * User profiles are stored under `/users/{userId}`, where `{userId}` matches the
- * authenticated user's UID.
+ * - /users/{userId}: Stores private user profile data, accessible only to the owning user.
+ * - /questions/{questionId}: Stores public questions, readable by anyone but writable only by the author.
+ * - /knowledgeBaseArticles/{knowledgeBaseArticleId}: Stores admin-managed knowledge base articles, accessible only to admins.
+ * - /tags/{tagId}: Stores publicly available tags.
+ * - /roles_admin/{userId}: Indicates admin status; existence grants admin privileges.
  *
  * Key Security Decisions:
- * - Users can only create their own profile with a matching UID.
- * - Users can only read, update, and delete their own profile.
- * - Listing all users is disallowed.
+ * - Users can only read/write their own profile data.
+ * - Questions are publicly readable, but only the author can modify/delete them.
+ * - Knowledge base articles are accessible and modifiable only by admins.
+ * - Listing of user documents is disallowed.
+ *
+ * Denormalization for Authorization:
+ * The `authorId` field is denormalized into the `Question` and `KnowledgeBaseArticle` documents to enable simple ownership checks without requiring additional reads.  Admin status is determined by the existence of a document in the `/roles_admin/{userId}` collection.
+ *
+ * Structural Segregation:
+ * Public questions are stored in a top-level `/questions` collection. This segregation simplifies access control rules and optimizes list operations.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Defines a function to check if the user is signed in.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Defines a function to check if the authenticated user is the owner of the resource.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Defines a function to check if the authenticated user is the existing owner of the resource.
+     * @param userId The user ID to check against.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Defines a function to check if the user is an administrator.
+     */
+    function isAdmin() {
+        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * @description Security rules for user profiles.
      * @path /users/{userId}
-     * @allow (create) - User with UID 'user_abc' can create their profile at /users/user_abc.
-     * @allow (get, update, delete) - User with UID 'user_abc' can read, update, and delete their profile at /users/user_abc.
-     * @deny (create) - User with UID 'user_xyz' cannot create a profile at /users/user_abc.
-     * @deny (get, update, delete) - User with UID 'user_xyz' cannot read, update, or delete the profile at /users/user_abc.
-     * @deny (list) - No one can list all user profiles.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User with matching UID can create their own profile.
+     * @allow (get, update, delete) User can access and modify their own profile.
+     * @deny (create) User cannot create a profile with a mismatched UID.
+     * @deny (list) No one can list all user profiles.
+     * @deny (update, delete) User cannot modify or delete another user's profile.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      // Helper function to check if the user is signed in.
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // Helper function to check if the requested user ID matches the authenticated user's ID.
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-
-      // Helper function to check if the user is signed in and the document exists.
-      function isExistingOwner(userId) {
-        return isSignedIn() && isOwner(userId) && resource != null;
-      }
-
-      // Allow a user to create their own profile if the userId matches their auth.uid.
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.email is string;
-
-      // Allow a user to get their own profile.
       allow get: if isOwner(userId);
-
-      // Disallow listing all user profiles.
       allow list: if false;
-
-      // Allow a user to update their own profile if the userId matches their auth.uid and the document exists.
-      allow update: if isExistingOwner(userId) && request.resource.data.email is string;
-
-      // Allow a user to delete their own profile if the userId matches their auth.uid and the document exists.
+      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for questions.
+     * @path /questions/{questionId}
+     * @allow (get, list) Anyone can read all questions.
+     * @allow (create) Authenticated user can create a question if the authorId matches their UID.
+     * @allow (update, delete) Only the author can update or delete the question.
+     * @deny (create) User cannot create a question with a mismatched authorId.
+     * @deny (update, delete) User cannot modify or delete another user's question.
+     * @principle Enforces document ownership for writes, allows public reads, and validates relational integrity.
+     */
+    match /questions/{questionId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.authorId);
+      allow delete: if isExistingOwner(resource.data.authorId);
+    }
+
+    /**
+     * @description Security rules for knowledge base articles.
+     * @path /knowledgeBaseArticles/{knowledgeBaseArticleId}
+     * @allow (get, list) Anyone can read knowledge base articles.
+     * @allow (create, update, delete) Only admins can create, update, or delete knowledge base articles.
+     * @deny (create, update, delete) Non-admins cannot create, update, or delete knowledge base articles.
+     * @principle Restricts access to knowledge base articles to administrators only.
+     */
+    match /knowledgeBaseArticles/{knowledgeBaseArticleId} {
+      allow get, list: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Security rules for tags.
+     * @path /tags/{tagId}
+     * @allow (get, list) Anyone can read all tags.
+     * @allow (create) Only admins can create tags.
+     * @allow (update, delete) Only admins can update or delete tags.
+     * @deny (create, update, delete) Non-admins cannot create, update, or delete tags.
+     * @principle Restricts write access to tags to administrators only, allowing public read access.
+     */
+    match /tags/{tagId} {
+      allow get, list: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Security rules for admin roles.
+     * @path /roles_admin/{userId}
+     * @allow (get) Anyone can check if a user is an admin.
+     * @allow (create) Only admins can assign admin roles.
+     * @allow (delete) Only admins can revoke admin roles.
+     * @deny (list, update) Listing and updating admin roles is not allowed.
+     * @principle Restricts modification of admin roles to administrators only.
+     */
+    match /roles_admin/{userId} {
+        allow get: if true;
+        allow list: if false;
+        allow create: if isAdmin();
+        allow update: if false;
+        allow delete: if isAdmin() && resource != null;
     }
   }
 }

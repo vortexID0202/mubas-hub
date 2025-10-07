@@ -1,47 +1,286 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "User Profile",
-      "description": "Represents a user's public profile and settings.",
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
       "type": "object",
+      "description": "Represents a user of the MUBAS Community Hub.",
       "properties": {
-        "fullName": {
+        "id": {
           "type": "string",
-          "description": "The user's full name."
+          "description": "Unique identifier for the User entity."
+        },
+        "username": {
+          "type": "string",
+          "description": "The user's username."
         },
         "email": {
           "type": "string",
-          "format": "email",
-          "description": "The user's email address."
+          "description": "The user's email address.",
+          "format": "email"
         },
-        "avatarUrl": {
+        "profilePicture": {
           "type": "string",
-          "format": "uri",
-          "description": "URL for the user's profile picture."
+          "description": "URL to the user's profile picture.",
+          "format": "uri"
         },
-        "reputation": {
-          "type": "number",
-          "description": "The user's reputation score in the community."
+        "bio": {
+          "type": "string",
+          "description": "A short biography of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role (e.g., student, admin)."
         }
       },
       "required": [
-        "fullName",
-        "email"
+        "id",
+        "username",
+        "email",
+        "role"
+      ]
+    },
+    "Question": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Question",
+      "type": "object",
+      "description": "Represents a question posted on the community forum.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Question entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the question."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the question."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Question)"
+        },
+        "datePosted": {
+          "type": "string",
+          "description": "The date and time the question was posted.",
+          "format": "date-time"
+        },
+        "tagIds": {
+          "type": "array",
+          "description": "References to Tags. (Relationship: Tag N:N Question)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content",
+        "authorId",
+        "datePosted"
+      ]
+    },
+    "Answer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Answer",
+      "type": "object",
+      "description": "Represents an answer to a question.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Answer entity."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the answer."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Answer)"
+        },
+        "questionId": {
+          "type": "string",
+          "description": "Reference to Question. (Relationship: Question 1:N Answer)"
+        },
+        "datePosted": {
+          "type": "string",
+          "description": "The date and time the answer was posted.",
+          "format": "date-time"
+        },
+        "isBestAnswer": {
+          "type": "boolean",
+          "description": "Indicates if this is the best answer to the question."
+        }
+      },
+      "required": [
+        "id",
+        "content",
+        "authorId",
+        "questionId",
+        "datePosted"
+      ]
+    },
+    "KnowledgeBaseArticle": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "KnowledgeBaseArticle",
+      "type": "object",
+      "description": "Represents a knowledge base article.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the KnowledgeBaseArticle entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the article."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the article."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N KnowledgeBaseArticle)"
+        },
+        "datePublished": {
+          "type": "string",
+          "description": "The date and time the article was published.",
+          "format": "date-time"
+        },
+        "category": {
+          "type": "string",
+          "description": "The category of the article (e.g., Wi-Fi Setup, SMIS Help)."
+        },
+        "tagIds": {
+          "type": "array",
+          "description": "References to Tags. (Relationship: Tag N:N KnowledgeBaseArticle)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "content",
+        "authorId",
+        "datePublished",
+        "category"
+      ]
+    },
+    "Tag": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Tag",
+      "type": "object",
+      "description": "Represents a tag that can be applied to questions or knowledge base articles.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Tag entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the tag."
+        }
+      },
+      "required": [
+        "id",
+        "name"
       ]
     }
   },
   "auth": {
     "providers": [
-      "google",
-      "email"
+      "password",
+      "anonymous"
     ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/UserProfile"
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile information.  Only the user themselves can access this data.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
       },
-      "description": "Stores public user profile data."
-    }
+      {
+        "path": "/questions/{questionId}",
+        "definition": {
+          "entityName": "Question",
+          "schema": {
+            "$ref": "#/backend/entities/Question"
+          },
+          "description": "Stores publicly listed questions.",
+          "params": [
+            {
+              "name": "questionId",
+              "description": "The unique identifier of the question."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/knowledgeBaseArticles/{knowledgeBaseArticleId}",
+        "definition": {
+          "entityName": "KnowledgeBaseArticle",
+          "schema": {
+            "$ref": "#/backend/entities/KnowledgeBaseArticle"
+          },
+          "description": "Stores knowledge base articles created by admins. Only admins can create/modify articles.",
+          "params": [
+            {
+              "name": "knowledgeBaseArticleId",
+              "description": "The unique identifier of the knowledge base article."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tags/{tagId}",
+        "definition": {
+          "entityName": "Tag",
+          "schema": {
+            "$ref": "#/backend/entities/Tag"
+          },
+          "description": "Stores tags that can be applied to questions and knowledge base articles.",
+          "params": [
+            {
+              "name": "tagId",
+              "description": "The unique identifier of the tag."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Indicates that a user is an administrator. Existence of the document grants admin privileges.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to ensure Authorization Independence, clarity, and scalability for the MUBAS Community Hub. It leverages structural segregation and denormalization of authorization data to avoid complex security rules that rely on `get()` calls.  User data is stored in a private collection (`/users/{userId}`), ensuring that each user can only access their own data.  Questions and answers are stored in a hierarchical structure under each user (`/users/{userId}/questions/{questionId}` and `/users/{userId}/questions/{questionId}/answers/{answerId}`). This approach simplifies ownership-based security rules and supports atomic operations. To support the N:N relationship between Questions and Tags, the `tagIds` array is used within the `Question` entity.  Knowledge base articles are stored in a separate collection (`/knowledgeBaseArticles`) to clearly differentiate them from user-generated content and apply specific authorization rules for admins.  To maintain authorization independence, the `authorId` is denormalized into both questions and answers, removing the need to perform a `get()` operation on the parent document to verify ownership. The use of dedicated collections for different data types (questions, answers, knowledge base articles) allows for QAPs-compliant list operations, as each collection has a homogeneous security posture.\n\nTo ensure QAPs compliance for listing questions and knowledge base articles, we segregate data based on access requirements. Publicly listable questions will be stored under `/questions`. Knowledge base articles, which are admin-managed, will reside in `/knowledgeBaseArticles`. Admins can be granted access using a dedicated `/roles_admin/{uid}` collection, checked using `exists()` in rules, which facilitates efficient and secure `list` operations without exposing private data."
   }
 }
