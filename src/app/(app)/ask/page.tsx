@@ -1,6 +1,8 @@
+'use client';
+
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
-import { Info, Send } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Info, Send, AlertCircle } from 'lucide-react';
 import { submitQuestion } from '@/app/actions';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -18,15 +20,38 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { useUser } from '@/firebase';
+import React from 'react';
 
 export default function AskQuestionPage() {
-  
+  const { user, loading } = useUser();
+  const router = useRouter();
+  const [error, setError] = React.useState<string | null>(null);
+  const [formLoading, setFormLoading] = React.useState(false);
+
   async function handleFormSubmit(formData: FormData) {
-    'use server';
+    setFormLoading(true);
+    setError(null);
     const result = await submitQuestion(formData);
     if (result.success) {
-      redirect('/');
+      router.push('/forum');
+    } else {
+        setError(result.message ?? 'An unknown error occurred.');
     }
+    setFormLoading(false);
+  }
+
+  if (loading) {
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <p>Loading...</p>
+        </div>
+    )
+  }
+
+  if (!user) {
+    router.push('/login?redirect=/ask');
+    return null;
   }
 
   return (
@@ -55,6 +80,13 @@ export default function AskQuestionPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
+                    {error && (
+                        <Alert variant="destructive">
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Error</AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="title">Title</Label>
                       <Input
@@ -62,6 +94,7 @@ export default function AskQuestionPage() {
                         name="title"
                         placeholder="e.g. Is there a way to connect to campus Wi-Fi on Linux?"
                         required
+                        disabled={formLoading}
                       />
                       <p className="text-xs text-muted-foreground">
                         Be specific and imagine you’re asking a question to another
@@ -77,6 +110,7 @@ export default function AskQuestionPage() {
                         placeholder="Include all the information someone would need to answer your question."
                         className="min-h-[200px]"
                         required
+                        disabled={formLoading}
                       />
                     </div>
 
@@ -87,6 +121,7 @@ export default function AskQuestionPage() {
                         name="tags"
                         placeholder="e.g. (smis, wifi, fees, exams)"
                         required
+                        disabled={formLoading}
                       />
                       <p className="text-xs text-muted-foreground">
                         Add up to 5 tags to describe what your question is about.
@@ -95,8 +130,9 @@ export default function AskQuestionPage() {
                     </div>
                   </CardContent>
                   <CardFooter className="justify-end">
-                    <Button type="submit">
-                      <Send className="mr-2 h-4 w-4" /> Post Your Question
+                    <Button type="submit" disabled={formLoading}>
+                      <Send className="mr-2 h-4 w-4" /> 
+                      {formLoading ? 'Posting...' : 'Post Your Question'}
                     </Button>
                   </CardFooter>
                 </Card>

@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
+import { FirebaseClientProvider } from '@/firebase';
+import { UserProvider } from '@/firebase/auth/use-user';
+
 
 export const metadata: Metadata = {
   title: 'MUBAS Community Hub',
@@ -24,15 +27,19 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-        >
-            {children}
-            <Toaster />
-        </ThemeProvider>
+        <FirebaseClientProvider>
+            <UserProvider>
+                <ThemeProvider
+                    attribute="class"
+                    defaultTheme="system"
+                    enableSystem
+                    disableTransitionOnChange
+                >
+                    {children}
+                    <Toaster />
+                </ThemeProvider>
+            </UserProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

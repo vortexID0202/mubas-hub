@@ -3,29 +3,53 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Logo from '@/components/logo';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
   const [passwordShown, setPasswordShown] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const auth = useAuth();
+  const router = useRouter();
 
   const togglePasswordVisibility = () => {
     setPasswordShown(!passwordShown);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
+    setLoading(true);
+
     if (!email || !password) {
-      alert('Please fill in all fields');
+      setError('Please fill in all fields');
+      setLoading(false);
       return;
     }
-    console.log('Login attempt:', { email, password });
-    alert('Login functionality is not yet implemented.');
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push('/');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        setError('Invalid email or password.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
+    } finally {
+        setLoading(false);
+    }
   };
 
   return (
@@ -41,6 +65,13 @@ export default function LoginPage() {
               Enter your email below to login to your account
             </p>
           </div>
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Login Failed</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <form className="grid gap-4" onSubmit={handleSubmit}>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -55,7 +86,8 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
-                  placeholder="you@example.com"
+                  placeholder="you@mubas.ac.mw"
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -81,19 +113,21 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
                   placeholder="••••••••"
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground"
                   onClick={togglePasswordVisibility}
                   aria-label={passwordShown ? 'Hide password' : 'Show password'}
+                  disabled={loading}
                 >
                   {passwordShown ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full">
-              Login
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">

@@ -1,4 +1,9 @@
-import { communityQuestions, users } from '@/lib/data';
+'use client';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase';
+import { useDoc, useCollection } from '@/firebase';
+import { CommunityQuestion, UserProfile } from '@/lib/types';
 import {
   Avatar,
   AvatarFallback,
@@ -13,16 +18,62 @@ import { Label } from '@/components/ui/label';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Pen } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProfilePage() {
-  const user = users[0];
-  const userQuestions = communityQuestions.filter(
-    (q) => q.author.id === user.id
-  );
-  // This is mock data, in a real app you'd fetch this
-  const userAnswersCount = communityQuestions.reduce((acc, q) => {
-      return acc + q.answers.filter(a => a.author.id === user.id).length;
-  }, 0);
+  const { user, loading: userLoading } = useUser();
+  const router = useRouter();
+  
+  // Fetch user profile data from Firestore
+  const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(user ? `users/${user.uid}` : '');
+  
+  // Fetch questions asked by the user
+  const { data: userQuestions, loading: questionsLoading } = useCollection<CommunityQuestion>('questions', user?.uid);
+  
+  // In a real app, you would fetch this from a subcollection or aggregate
+  const [userAnswersCount, setUserAnswersCount] = useState(0);
+
+  useEffect(() => {
+    if (!userLoading && !user) {
+      router.push('/login?redirect=/profile');
+    }
+  }, [user, userLoading, router]);
+
+  const isLoading = userLoading || profileLoading || questionsLoading;
+
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <main className="flex-1 bg-muted/20">
+          <div className="container mx-auto max-w-6xl py-12">
+            <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
+              <div className="md:col-span-1">
+                <Card>
+                  <CardContent className="flex flex-col items-center p-6">
+                    <Skeleton className="h-32 w-32 rounded-full" />
+                    <Skeleton className="h-6 w-3/4 mt-4" />
+                    <Skeleton className="h-4 w-1/2 mt-1" />
+                    <Skeleton className="h-8 w-1/3 mt-4" />
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="md:col-span-3">
+                 <Skeleton className="h-10 w-48 mb-4" />
+                 <Skeleton className="h-96 w-full" />
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (!user || !userProfile) {
+    // This state should ideally not be reached if redirection works
+    return <p>User not found.</p>;
+  }
 
 
   return (
@@ -36,9 +87,9 @@ export default function ProfilePage() {
                 <CardContent className="flex flex-col items-center p-6">
                     <div className="relative">
                         <Avatar className="h-32 w-32 border-4 border-primary">
-                            <AvatarImage src={user.avatarUrl} alt={user.name} />
+                            <AvatarImage src={userProfile.avatarUrl} alt={userProfile.fullName} />
                             <AvatarFallback className="text-4xl">
-                            {user.name.charAt(0)}
+                            {userProfile.fullName.charAt(0)}
                             </AvatarFallback>
                         </Avatar>
                         <Button variant="outline" size="icon" className="absolute bottom-1 right-1 h-8 w-8 rounded-full bg-background">
@@ -46,16 +97,16 @@ export default function ProfilePage() {
                             <span className="sr-only">Change Profile Picture</span>
                         </Button>
                     </div>
-                  <h1 className="mt-4 text-center font-headline text-2xl font-bold">{user.name}</h1>
+                  <h1 className="mt-4 text-center font-headline text-2xl font-bold">{userProfile.fullName}</h1>
                   <p className="mt-1 text-center text-muted-foreground">
-                    {user.id}@mubas.ac.mw
+                    {userProfile.email}
                   </p>
                   <div className="mt-4 w-full text-center">
-                     <p className="font-bold text-lg text-primary">{user.reputation} <span className="text-sm font-normal text-muted-foreground">Reputation</span></p>
+                     <p className="font-bold text-lg text-primary">{userProfile.reputation} <span className="text-sm font-normal text-muted-foreground">Reputation</span></p>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-4 w-full text-center">
                       <div>
-                          <p className="font-bold text-lg">{userQuestions.length}</p>
+                          <p className="font-bold text-lg">{userQuestions?.length || 0}</p>
                           <p className="text-xs text-muted-foreground">Questions</p>
                       </div>
                       <div>
@@ -80,7 +131,7 @@ export default function ProfilePage() {
                       <CardTitle>Questions you've asked</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {userQuestions.length > 0 ? (
+                      {userQuestions && userQuestions.length > 0 ? (
                         <div className="grid gap-4 md:grid-cols-2">
                           {userQuestions.map((q) => (
                             <QuestionCard key={q.id} question={q} />
@@ -111,15 +162,15 @@ export default function ProfilePage() {
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Full Name</Label>
-                        <Input id="name" defaultValue={user.name} />
+                        <Input id="name" defaultValue={userProfile.fullName} />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
-                        <Input id="email" type="email" defaultValue={`${user.id}@mubas.ac.mw`} disabled />
+                        <Input id="email" type="email" defaultValue={userProfile.email} disabled />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="avatarUrl">Avatar URL</Label>
-                        <Input id="avatarUrl" defaultValue={user.avatarUrl} />
+                        <Input id="avatarUrl" defaultValue={userProfile.avatarUrl} />
                       </div>
                     </CardContent>
                     <CardFooter>

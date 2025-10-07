@@ -1,3 +1,11 @@
+export type UserProfile = {
+  id: string;
+  fullName: string;
+  email: string;
+  avatarUrl: string;
+  reputation: number;
+};
+
 export type User = {
   id: string;
   name: string;
@@ -24,7 +32,7 @@ export type CommunityQuestion = {
 };
 
 export type QuestionAnswer = {
-  id: string;
+  id:string;
   body: string;
   author: User;
   createdAt: string;
