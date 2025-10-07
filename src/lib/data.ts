@@ -8,7 +8,7 @@ import {
 export const users: User[] = Array.from({ length: 10 }, (_, i) => ({
   id: `user${i + 1}`,
   name: `Student ${i + 1}`,
-  avatarUrl: `https://picsum.photos/seed/user${i + 1}/40/40`,
+  avatarUrl: '',
   reputation: Math.floor(Math.random() * 500) + 50,
 }));
 

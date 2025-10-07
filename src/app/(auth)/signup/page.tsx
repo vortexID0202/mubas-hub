@@ -63,7 +63,7 @@ const SignUpPage: React.FC = () => {
 
       await updateProfile(user, {
         displayName: fullName,
-        photoURL: `https://picsum.photos/seed/${user.uid}/40/40`,
+        photoURL: null,
       });
 
       const userDocRef = doc(firestore, 'users', user.uid);
@@ -71,7 +71,7 @@ const SignUpPage: React.FC = () => {
         id: user.uid,
         fullName: fullName,
         email: user.email,
-        avatarUrl: `https://picsum.photos/seed/${user.uid}/40/40`,
+        avatarUrl: null,
         reputation: 0,
         createdAt: serverTimestamp(),
       });
