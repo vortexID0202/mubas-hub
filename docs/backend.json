@@ -4,11 +4,11 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents a user within the MUBAS Community Hub.",
+      "description": "Represents a user of the MUBAS Community Hub.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the user."
+          "description": "Unique identifier for the User entity."
         },
         "username": {
           "type": "string",
@@ -27,10 +27,6 @@
         "role": {
           "type": "string",
           "description": "The user's role (e.g., student, admin)."
-        },
-        "reputation": {
-          "type": "number",
-          "description": "User's reputation score within the community."
         }
       },
       "required": [
@@ -44,11 +40,15 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Question",
       "type": "object",
-      "description": "Represents a question posted in the MUBAS Community Hub.",
+      "description": "Represents a question posted in the community forum.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the question."
+          "description": "Unique identifier for the Question entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who posted the question. (Relationship: User 1:N Question)"
         },
         "title": {
           "type": "string",
@@ -56,46 +56,43 @@
         },
         "content": {
           "type": "string",
-          "description": "The content of the question (actual question text)."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the User who posted the question. (Relationship: User 1:N Question)"
-        },
-        "dateCreated": {
-          "type": "string",
-          "description": "The date and time the question was created.",
-          "format": "date-time"
+          "description": "The content of the question."
         },
         "tags": {
           "type": "array",
-          "description": "A list of tags associated with the question.",
+          "description": "Tags associated with the question.",
           "items": {
             "type": "string"
           }
         },
-        "viewCount": {
-          "type": "number",
-          "description": "The number of times the question has been viewed."
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the question was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the question was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
         "id",
+        "userId",
         "title",
         "content",
-        "userId",
-        "dateCreated"
+        "createdAt"
       ]
     },
     "Answer": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Answer",
       "type": "object",
-      "description": "Represents an answer to a question in the MUBAS Community Hub.",
+      "description": "Represents an answer to a question in the community forum.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the answer."
+          "description": "Unique identifier for the Answer entity."
         },
         "questionId": {
           "type": "string",
@@ -103,28 +100,25 @@
         },
         "userId": {
           "type": "string",
-          "description": "Reference to the User who provided the answer. (Relationship: User 1:N Answer)"
+          "description": "Reference to the User who posted the answer. (Relationship: User 1:N Answer)"
         },
         "content": {
           "type": "string",
           "description": "The content of the answer."
         },
-        "dateCreated": {
+        "createdAt": {
           "type": "string",
-          "description": "The date and time the answer was created.",
+          "description": "Timestamp indicating when the answer was created.",
           "format": "date-time"
         },
-        "isAccepted": {
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the answer was last updated.",
+          "format": "date-time"
+        },
+        "isBestAnswer": {
           "type": "boolean",
-          "description": "Indicates whether the answer has been accepted as the correct answer."
-        },
-        "upvotes": {
-          "type": "number",
-          "description": "The number of upvotes for the answer."
-        },
-        "downvotes": {
-          "type": "number",
-          "description": "The number of downvotes for the answer."
+          "description": "Indicates whether this answer is the best answer for the question."
         }
       },
       "required": [
@@ -132,7 +126,7 @@
         "questionId",
         "userId",
         "content",
-        "dateCreated"
+        "createdAt"
       ]
     },
     "KnowledgeBaseArticle": {
@@ -143,48 +137,61 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the knowledge base article."
+          "description": "Unique identifier for the KnowledgeBaseArticle entity."
         },
         "title": {
           "type": "string",
-          "description": "The title of the article."
+          "description": "The title of the knowledge base article."
         },
         "content": {
           "type": "string",
-          "description": "The content of the article."
+          "description": "The content of the knowledge base article."
         },
-        "authorId": {
+        "categoryId": {
           "type": "string",
-          "description": "Reference to the User who authored the article. (Relationship: User 1:N KnowledgeBaseArticle)"
+          "description": "Reference to the Category this article belongs to. (Relationship: Category 1:N KnowledgeBaseArticle)"
         },
-        "dateCreated": {
+        "createdAt": {
           "type": "string",
-          "description": "The date and time the article was created.",
+          "description": "Timestamp indicating when the article was created.",
           "format": "date-time"
         },
-        "lastUpdated": {
+        "updatedAt": {
           "type": "string",
-          "description": "The date and time the article was last updated.",
+          "description": "Timestamp indicating when the article was last updated.",
           "format": "date-time"
-        },
-        "category": {
-          "type": "string",
-          "description": "The category of the knowledge base article."
-        },
-        "tags": {
-          "type": "array",
-          "description": "A list of tags associated with the knowledge base article.",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "required": [
         "id",
         "title",
         "content",
-        "authorId",
-        "dateCreated"
+        "categoryId",
+        "createdAt"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a category for knowledge base articles.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Category entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the category."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the category."
+        }
+      },
+      "required": [
+        "id",
+        "name"
       ]
     },
     "Notification": {
@@ -195,46 +202,47 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the notification."
+          "description": "Unique identifier for the Notification entity."
         },
         "userId": {
           "type": "string",
-          "description": "Reference to the User the notification is for. (Relationship: User 1:N Notification)"
+          "description": "Reference to the User who receives the notification. (Relationship: User 1:N Notification)"
         },
         "message": {
           "type": "string",
           "description": "The message of the notification."
         },
-        "dateCreated": {
+        "type": {
           "type": "string",
-          "description": "The date and time the notification was created.",
+          "description": "The type of notification (e.g., new answer, new question)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the notification was created.",
           "format": "date-time"
         },
         "isRead": {
           "type": "boolean",
           "description": "Indicates whether the notification has been read."
         },
-        "type": {
+        "questionId": {
           "type": "string",
-          "description": "The type of notification (e.g., new answer, mention)."
-        },
-        "relatedItemId": {
-          "type": "string",
-          "description": "Reference to the related item (e.g., question id, answer id)."
+          "description": "Reference to the Question related to the notification. (Relationship: Question 1:N Notification)"
         }
       },
       "required": [
         "id",
         "userId",
         "message",
-        "dateCreated"
+        "type",
+        "createdAt"
       ]
     }
   },
   "auth": {
     "providers": [
       "password",
-      "google"
+      "anonymous"
     ]
   },
   "firestore": {
@@ -246,11 +254,11 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles. Includes user role for authorization.",
+          "description": "Stores user profiles. Access is restricted to the user themselves and administrators.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user."
+              "description": "The unique identifier of the user."
             }
           ]
         }
@@ -262,51 +270,71 @@
           "schema": {
             "$ref": "#/backend/entities/Question"
           },
-          "description": "Stores questions posted by a user. Enables path-based ownership for security rules.",
+          "description": "Stores questions posted by a specific user. Includes denormalized 'userId' for authorization independence.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user."
+              "description": "The unique identifier of the user."
             },
             {
               "name": "questionId",
-              "description": "The unique identifier for the question."
+              "description": "The unique identifier of the question."
             }
           ]
         }
       },
       {
-        "path": "/users/{userId}/answers/{answerId}",
+        "path": "/questions/{questionId}/answers/{answerId}",
         "definition": {
           "entityName": "Answer",
           "schema": {
             "$ref": "#/backend/entities/Answer"
           },
-          "description": "Stores answers posted by a user to a specific question. Enables path-based ownership for security rules.",
+          "description": "Stores answers to questions. Includes denormalized 'questionId' and 'userId' for authorization independence.",
           "params": [
             {
-              "name": "userId",
-              "description": "The unique identifier for the user."
+              "name": "questionId",
+              "description": "The unique identifier of the question."
             },
             {
               "name": "answerId",
-              "description": "The unique identifier for the answer."
+              "description": "The unique identifier of the answer."
             }
           ]
         }
       },
       {
-        "path": "/knowledge_base_articles/{articleId}",
+        "path": "/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores knowledge base categories. Admins can create, edit, and delete categories.",
+          "params": [
+            {
+              "name": "categoryId",
+              "description": "The unique identifier of the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/categories/{categoryId}/articles/{articleId}",
         "definition": {
           "entityName": "KnowledgeBaseArticle",
           "schema": {
             "$ref": "#/backend/entities/KnowledgeBaseArticle"
           },
-          "description": "Stores knowledge base articles managed by admins.  Accessible to all users for read, but only admins can create/update/delete.",
+          "description": "Stores knowledge base articles within specific categories. Includes denormalized 'categoryId' for authorization independence.",
           "params": [
             {
+              "name": "categoryId",
+              "description": "The unique identifier of the category."
+            },
+            {
               "name": "articleId",
-              "description": "The unique identifier for the knowledge base article."
+              "description": "The unique identifier of the article."
             }
           ]
         }
@@ -318,20 +346,36 @@
           "schema": {
             "$ref": "#/backend/entities/Notification"
           },
-          "description": "Stores notifications for a specific user. Enables path-based ownership.",
+          "description": "Stores notifications for individual users. Path-based ownership ensures that only the user can access their notifications.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier for the user."
+              "description": "The unique identifier of the user."
             },
             {
               "name": "notificationId",
-              "description": "The unique identifier for the notification."
+              "description": "The unique identifier of the notification."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "roles_admin",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Documents in this collection indicate admin privileges for a user. Existence of a document grants admin rights.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who has admin privileges."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to address the 'auth/operation-not-allowed' error, ensure security, and support the features of the MUBAS Community Hub. The core strategy revolves around authorization independence through denormalization and structural segregation for simplified security rules and QAPs.\n\n**Authorization Independence:**\n*   User roles and memberships are crucial for authorization. To avoid `get()` calls in security rules, user roles (student, admin) are stored directly within the `users` document.\n\n**Structural Segregation:**\n*   User-generated content (questions and answers) is stored under the respective user's path (`/users/{userId}/questions/{questionId}`). This simplifies ownership-based security rules.\n*   Knowledge base articles, managed by admins, are stored in a separate collection (`/knowledge_base_articles`). This segregation allows distinct security rules for admin-managed content versus user-generated content.\n\n**Access Modeling:**\n*   Path-based ownership is used for questions and answers to simplify security rules based on the user ID. Notifications also follow the same pattern.\n\n**QAPs Support:**\n*   Secure `list` operations are enabled by the homogeneous security posture of each collection. For example, listing questions under a user's path is secure because all documents in that subcollection are owned by that user.\n\nThis structure enables simple, robust, and easily debuggable security rules, minimizing complexity and ensuring data integrity."
+    "reasoning": "The Firestore structure is designed to support the MUBAS Community Hub's features, emphasizing security, scalability, and maintainability. It follows the principles of Authorization Independence, Structural Segregation, Access Modeling, and Data Clarity.  \n\n*   **Authorization Independence:** Achieved through denormalization. For example, the `questions` collection includes the `userId` field, which eliminates the need to perform `get()` operations to verify ownership.  The `answers` collection includes `userId` and `questionId` fields to easily verify user and question relationships without additional reads.  For collaborative data like knowledge base articles, the `categories` collection could include an `adminMembers` map, and that map would be denormalized into the knowledge base articles.  \n*   **Structural Segregation:** Different data types (questions, answers, knowledge base articles, categories, and notifications) are stored in separate collections to maintain a homogeneous security posture within each collection. Private user data is stored under `/users/{userId}`.\n*   **Access Modeling:** Path-based ownership is used for entities like notifications (`/users/{userId}/notifications/{notificationId}`), questions (`/users/{userId}/questions/{questionId}`) and answers (`/questions/{questionId}/answers/{answerId}`). The membership map approach (if needed for collaborative documents like knowledge base articles in the future with `adminMembers`) would also be used, ensuring consistent authorization patterns. The `roles_admin` collection would handle global admin roles based on document existence.\n*   **QAPs (Rules are not Filters):**  The structure enables secure `list` operations.  For example, listing questions is secure because the security rules can efficiently check if the user has permission to view questions within a particular collection based on their role.\n*   **Invariants:**  The structure facilitates the enforcement of invariants like ownership and timestamps. Security rules can ensure that the `userId` in questions and answers matches the authenticated user and that `createdAt` and `updatedAt` fields are properly managed.\n\n**Detailed Explanation of Collections:**\n\n*   `/users/{userId}`: Stores user profiles.  Access is restricted to the user themselves and administrators.\n*   `/users/{userId}/questions/{questionId}`: Stores questions posted by a specific user. This supports the 'User 1:N Question' relationship and simplifies ownership-based rules.\n*   `/questions/{questionId}/answers/{answerId}`: Stores answers to questions.  Maintains the relationship between questions and answers and allows for efficient retrieval of answers for a given question.\n*   `/categories/{categoryId}`: Stores knowledge base categories. Admins can create, edit, and delete categories.\n*   `/categories/{categoryId}/articles/{articleId}`: Stores knowledge base articles within specific categories. This structure provides a clear hierarchy for managing articles.\n*   `/users/{userId}/notifications/{notificationId}`: Stores notifications for individual users. Path-based ownership ensures that only the user can access their notifications.\n*   `/roles_admin/{userId}`: Documents in this collection indicate admin privileges for a user.  Existence of a document grants admin rights.\n\nThis structure effectively balances security, scalability, and ease of maintenance, providing a solid foundation for the MUBAS Community Hub application."
   }
 }
