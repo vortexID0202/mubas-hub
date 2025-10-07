@@ -6,19 +6,16 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import {
-  signInWithPopup,
-  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/logo';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 
 const SignUpPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -82,53 +79,9 @@ const SignUpPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const handleGoogleSignUp = async () => {
-    setErrorMessage('');
-    setLoading(true);
-
-    if (!auth || !firestore) {
-        setErrorMessage('Firebase services are not available.');
-        setLoading(false);
-        return;
-    }
-
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({
-        prompt: 'select_account'
-      });
-      const userCredential = await signInWithPopup(auth, provider);
-      const user = userCredential.user;
-
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        await setDoc(userDocRef, {
-          id: user.uid,
-          fullName: user.displayName,
-          email: user.email,
-          avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/40/40`,
-          reputation: 0,
-          createdAt: serverTimestamp(),
-        });
-      }
-
-      router.push('/');
-    } catch (err: any) {
-      handleAuthError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
   
   const handleAuthError = (err: any) => {
-       if (err.code === 'auth/popup-closed-by-user') {
-        setErrorMessage('Sign-up process was cancelled.');
-      } else if (err.code === 'auth/account-exists-with-different-credential') {
-        setErrorMessage('An account with this email already exists using a different sign-in method.');
-      } else if (err.code === 'auth/email-already-in-use') {
+       if (err.code === 'auth/email-already-in-use') {
         setErrorMessage('This email address is already in use by another account.');
       } else if (err.code === 'auth/weak-password') {
         setErrorMessage('The password is too weak. Please use at least 8 characters.');
@@ -214,30 +167,6 @@ const SignUpPage: React.FC = () => {
               {loading ? 'Creating account...' : 'Create account'}
             </Button>
           </form>
-           <Separator className="my-2" />
-            <Button
-              variant="outline"
-              onClick={handleGoogleSignUp}
-              disabled={loading}
-              className="w-full"
-            >
-              <svg
-                className="mr-2 h-4 w-4"
-                aria-hidden="true"
-                focusable="false"
-                data-prefix="fab"
-                data-icon="google"
-                role="img"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 488 512"
-              >
-                <path
-                  fill="currentColor"
-                  d="M488 261.8C488 403.3 381.5 512 244 512 109.8 512 0 402.2 0 261.8 0 120.3 109.8 8.4 244 8.4c77.9 0 144.3 30.8 192.3 78.6l-69.8 67.2c-23.6-22.5-54.8-36.4-92.5-36.4-69.8 0-127.5 57.8-127.5 128.2s57.7 128.2 127.5 128.2c80.6 0 110-58.2 113.5-87.8H244v-73.6h244z"
-                ></path>
-              </svg>
-              Sign up with Google
-            </Button>
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
             <Link href="/login" className="underline">
