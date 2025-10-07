@@ -116,17 +116,24 @@ export default function ProfilePage() {
     }
   }, [userProfile, profileForm]);
   
-  const handleProfileUpdate: SubmitHandler<z.infer<typeof profileSchema>> = async (data) => {
+  const handleProfileUpdate: SubmitHandler<z.infer<typeof profileSchema>> = async (data, avatarUrl?: string) => {
     if (!user || !firestore) return;
     
+    const newFullName = data.fullName;
+    const newAvatarUrl = avatarUrl || user.photoURL;
+
     try {
+      // Update Firebase Auth profile
       await updateProfile(user, {
-        displayName: data.fullName,
+        displayName: newFullName,
+        photoURL: newAvatarUrl,
       });
       
+      // Update Firestore document
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, {
-        fullName: data.fullName,
+        fullName: newFullName,
+        avatarUrl: newAvatarUrl,
       });
 
       toast({
@@ -145,7 +152,7 @@ export default function ProfilePage() {
   
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user) return;
+    if (!file || !user || !userProfile) return;
 
     setIsUploading(true);
     toast({
@@ -160,14 +167,8 @@ export default function ProfilePage() {
         await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(imageRef);
         
-        await updateProfile(user, { photoURL: downloadURL });
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userDocRef, { avatarUrl: downloadURL });
-
-        toast({
-            title: 'Profile Picture Updated',
-            description: 'Your new picture has been saved.',
-        });
+        // Call the consolidated update function
+        await handleProfileUpdate({ fullName: userProfile.fullName }, downloadURL);
 
     } catch (error) {
         console.error("Error uploading image:", error);
