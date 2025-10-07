@@ -1,3 +1,4 @@
+import 'dotenv/config';
 // This file is intentionally left blank. 
 // The Firebase configuration will be populated by the backend.
 // In a real-world scenario, you would populate this with your Firebase project's configuration.
