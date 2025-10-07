@@ -14,70 +14,110 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { communityQuestions, users, liveUpdates } from '@/lib/data';
-import { Activity, ArrowUpRight, BookOpen, Users, ShieldAlert } from 'lucide-react';
+import { Activity, ArrowUpRight, BookOpen, Users, ShieldAlert, FileText, Download, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminDashboardPage() {
+  const overviewCards = [
+    {
+      title: 'Total Users',
+      icon: Users,
+      value: users.length,
+      change: '+10.1% from last month',
+      href: '/admin/users'
+    },
+    {
+      title: 'Total Questions',
+      icon: BookOpen,
+      value: communityQuestions.length,
+      change: '+12.2% from last month',
+      href: '/forum'
+    },
+    {
+      title: 'Pending Moderation',
+      icon: ShieldAlert,
+      value: 3,
+      change: '+2 flagged since last hour',
+      href: '/admin/moderation'
+    },
+    {
+      title: 'Live Updates',
+      icon: Activity,
+      value: liveUpdates.length,
+      change: '+2 since last week',
+      href: '/admin/content'
+    }
+  ];
+  const systemCards = [
+     {
+      title: 'System Logs',
+      icon: FileText,
+      value: "2,350",
+      change: 'View system activity',
+      href: '/admin/system/logs'
+    },
+     {
+      title: 'Reports',
+      icon: Download,
+      value: "Download",
+      change: 'Generate system reports',
+      href: '/admin/system/reports'
+    },
+     {
+      title: 'Security',
+      icon: Shield,
+      value: "Healthy",
+      change: 'Monitor system security',
+      href: '/admin/system/security'
+    }
+  ];
+
   return (
     <>
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl">System Overview</h1>
       </div>
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{users.length}</div>
-            <p className="text-xs text-muted-foreground">
-              +10.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Questions
-            </CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{communityQuestions.length}</div>
-            <p className="text-xs text-muted-foreground">
-              +12.2% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Moderation</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">
-              +2 flagged posts since last hour
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Live Updates</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{liveUpdates.length}</div>
-            <p className="text-xs text-muted-foreground">
-              +2 since last week
-            </p>
-          </CardContent>
-        </Card>
+        {overviewCards.map((card) => (
+          <Link href={card.href} key={card.title}>
+            <Card className="hover:bg-muted/50 transition-colors">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                <card.icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{card.value}</div>
+                <p className="text-xs text-muted-foreground">
+                  {card.change}
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
       </div>
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 border-t pt-8">
+        <h2 className="text-lg font-semibold md:text-xl mb-4">System Health</h2>
+         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+            {systemCards.map((card) => (
+              <Link href={card.href} key={card.title}>
+                <Card className="hover:bg-muted/50 transition-colors col-span-1">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                    <card.icon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{card.value}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {card.change}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+        </div>
+      </div>
+      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3 mt-8">
         <Card className="xl:col-span-2">
           <CardHeader className="flex flex-row items-center">
             <div className="grid gap-2">
