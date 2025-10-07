@@ -1,7 +1,5 @@
 import 'dotenv/config';
-// This file is intentionally left blank. 
-// The Firebase configuration will be populated by the backend.
-// In a real-world scenario, you would populate this with your Firebase project's configuration.
+
 export const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
