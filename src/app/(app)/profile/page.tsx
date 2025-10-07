@@ -163,7 +163,6 @@ export default function ProfilePage() {
   };
 
   const onProfileFormSubmit: SubmitHandler<z.infer<typeof profileSchema>> = (data) => {
-    profileForm.formState.isSubmitting = true;
     handleProfileUpdate(data);
   };
   
@@ -201,7 +200,6 @@ export default function ProfilePage() {
   const handlePasswordChange: SubmitHandler<z.infer<typeof passwordSchema>> = async (data) => {
     if (!user || !user.email) return;
 
-    passwordForm.formState.isSubmitting = true;
     const credential = EmailAuthProvider.credential(user.email, data.currentPassword);
 
     try {
@@ -219,8 +217,6 @@ export default function ProfilePage() {
             title: 'Password Change Failed',
             description: 'Could not update your password. Please check your current password and try again.',
         });
-    } finally {
-      passwordForm.formState.isSubmitting = false;
     }
   };
 
