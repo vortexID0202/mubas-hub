@@ -123,22 +123,28 @@ export default function ProfilePage() {
     }
   }, [userProfile, profileForm]);
 
-  const handleProfileUpdate: SubmitHandler<z.infer<typeof profileSchema>> = async (data) => {
+  const handleProfileUpdate = async (data: z.infer<typeof profileSchema>, avatarUrl?: string) => {
     if (!user || !firestore) return;
+    
+    profileForm.formState.isSubmitting = true;
 
     try {
-      await updateProfile(user, {
+      const authProfileUpdate = {
         displayName: data.fullName,
-      });
+        ...(avatarUrl && { photoURL: avatarUrl }),
+      };
+      await updateProfile(user, authProfileUpdate);
 
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await updateDoc(userDocRef, {
+      const firestoreProfileUpdate = {
         fullName: data.fullName,
-      });
+        ...(avatarUrl && { avatarUrl: avatarUrl }),
+      };
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userDocRef, firestoreProfileUpdate);
 
       toast({
         title: "Profile Updated",
-        description: "Your name has been successfully saved.",
+        description: "Your information has been successfully saved.",
       });
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -147,9 +153,15 @@ export default function ProfilePage() {
         title: "Update Failed",
         description: "Could not update your profile. Please try again.",
       });
+    } finally {
+        profileForm.formState.isSubmitting = false;
     }
   };
 
+  const onProfileFormSubmit: SubmitHandler<z.infer<typeof profileSchema>> = (data) => {
+    handleProfileUpdate(data);
+  };
+  
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
@@ -166,20 +178,11 @@ export default function ProfilePage() {
     try {
         await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(imageRef);
-
-        if (user) {
-          await updateProfile(user, { photoURL: downloadURL });
-        }
         
-        if (firestore) {
-            const userDocRef = doc(firestore, 'users', user.uid);
-            await updateDoc(userDocRef, { avatarUrl: downloadURL });
-        }
+        // Use the existing form values for name, and provide the new URL
+        const currentFormValues = profileForm.getValues();
+        await handleProfileUpdate(currentFormValues, downloadURL);
 
-        toast({
-            title: 'Success!',
-            description: 'Your profile picture has been updated.',
-        });
     } catch (error) {
         console.error("Error uploading image:", error);
         toast({
@@ -222,7 +225,6 @@ export default function ProfilePage() {
   }
   
   if (!user && !isUserLoading) {
-     router.push('/login?redirect=/profile');
      return <ProfilePageSkeleton />;
   }
   
@@ -330,7 +332,7 @@ export default function ProfilePage() {
                 </TabsContent>
                 <TabsContent value="settings" className="space-y-6">
                  <Form {...profileForm}>
-                  <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)}>
+                  <form onSubmit={profileForm.handleSubmit(onProfileFormSubmit)}>
                     <Card>
                       <CardHeader>
                         <CardTitle>Profile Settings</CardTitle>
@@ -370,7 +372,7 @@ export default function ProfilePage() {
                       <CardHeader>
                         <CardTitle>Change Password</CardTitle>
                         <CardDescription>Update your account password. It is recommended to use a strong, unique password.</CardDescription>
-                      </CardHeader>
+                      </Header>
                       <CardContent className="space-y-4">
                         <FormField
                           control={passwordForm.control}
