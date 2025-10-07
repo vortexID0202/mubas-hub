@@ -1,9 +1,9 @@
 'use client';
 
-import {createContext, useContext, useMemo} from 'react';
-import type {FirebaseApp} from 'firebase/app';
-import type {Auth} from 'firebase/auth';
-import type {Firestore} from 'firebase/firestore';
+import { createContext, useContext } from 'react';
+import type { FirebaseApp } from 'firebase/app';
+import type { Auth } from 'firebase/auth';
+import type { Firestore } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 type FirebaseContextValue = {
@@ -18,21 +18,22 @@ const FirebaseContext = createContext<FirebaseContextValue | undefined>(
 
 export function FirebaseProvider({
   children,
-  value,
+  ...value
 }: {
   children: React.ReactNode;
-  value: FirebaseContextValue;
+  app: FirebaseApp;
+  auth: Auth;
+  firestore: Firestore;
 }) {
-  const memoizedValue = useMemo(() => value, [value]);
   return (
-    <FirebaseContext.Provider value={memoizedValue}>
+    <FirebaseContext.Provider value={value}>
       {children}
       <FirebaseErrorListener />
     </FirebaseContext.Provider>
   );
 }
 
-function useFirebase() {
+export function useFirebase() {
   const context = useContext(FirebaseContext);
   if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider');
