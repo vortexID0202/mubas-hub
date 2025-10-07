@@ -3,6 +3,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { CommunityQuestion, UserProfile } from '@/lib/types';
+import { useForm, SubmitHandler } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import {
   Avatar,
   AvatarFallback,
@@ -18,7 +21,10 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Pen } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, doc, updateDoc } from 'firebase/firestore';
+import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { useToast } from '@/hooks/use-toast';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 function ProfilePageSkeleton() {
   return (
@@ -49,19 +55,33 @@ function ProfilePageSkeleton() {
   );
 }
 
+const profileSchema = z.object({
+  fullName: z.string().min(1, 'Full name is required'),
+  avatarUrl: z.string().url('Invalid URL format').or(z.literal('')),
+});
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters long'),
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+});
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
-  
+  const { data: userProfile, isLoading: isProfileLoading, error: profileError } = useDoc<UserProfile>(userProfileRef);
+
   const userQuestionsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return collection(firestore, 'users', user.uid, 'questions');
@@ -69,14 +89,93 @@ export default function ProfilePage() {
   
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
   
-  // In a real app, you would fetch this from a subcollection or aggregate
   const [userAnswersCount, setUserAnswersCount] = useState(0);
+
+  const profileForm = useForm<z.infer<typeof profileSchema>>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      fullName: '',
+      avatarUrl: '',
+    }
+  });
+
+  const passwordForm = useForm<z.infer<typeof passwordSchema>>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+    }
+  });
 
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/login?redirect=/profile');
     }
   }, [user, isUserLoading, router]);
+
+  useEffect(() => {
+    if (userProfile) {
+      profileForm.reset({
+        fullName: userProfile.fullName,
+        avatarUrl: userProfile.avatarUrl,
+      });
+    }
+  }, [userProfile, profileForm]);
+
+  const handleProfileUpdate: SubmitHandler<z.infer<typeof profileSchema>> = async (data) => {
+    if (!user || !firestore) return;
+
+    try {
+      // Update Auth profile
+      await updateProfile(user, {
+        displayName: data.fullName,
+        photoURL: data.avatarUrl,
+      });
+
+      // Update Firestore document
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        fullName: data.fullName,
+        avatarUrl: data.avatarUrl,
+      });
+
+      toast({
+        title: "Profile Updated",
+        description: "Your profile information has been successfully saved.",
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not update your profile. Please try again.",
+      });
+    }
+  };
+  
+  const handlePasswordChange: SubmitHandler<z.infer<typeof passwordSchema>> = async (data) => {
+    if (!user || !user.email) return;
+
+    const credential = EmailAuthProvider.credential(user.email, data.currentPassword);
+
+    try {
+        await reauthenticateWithCredential(user, credential);
+        await updatePassword(user, data.newPassword);
+        toast({
+            title: 'Password Updated',
+            description: 'Your password has been changed successfully.',
+        });
+        passwordForm.reset();
+    } catch (error) {
+        console.error('Password change error:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Password Change Failed',
+            description: 'Could not update your password. Please check your current password and try again.',
+        });
+    }
+  };
 
   const isLoading = isUserLoading || isProfileLoading || areQuestionsLoading;
   
@@ -88,8 +187,7 @@ export default function ProfilePage() {
     return <ProfilePageSkeleton />;
   }
 
-
-  if (!userProfile) {
+  if (profileError || (!isProfileLoading && !userProfile)) {
     return (
         <>
         <Header />
@@ -110,7 +208,6 @@ export default function ProfilePage() {
         </>
     )
   }
-
 
   return (
     <>
@@ -190,53 +287,110 @@ export default function ProfilePage() {
                     </Card>
                 </TabsContent>
                 <TabsContent value="settings" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Profile Settings</CardTitle>
-                      <CardDescription>Manage your public profile information.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Full Name</Label>
-                        <Input id="name" defaultValue={userProfile.fullName} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input id="email" type="email" defaultValue={userProfile.email} disabled />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="avatarUrl">Avatar URL</Label>
-                        <Input id="avatarUrl" defaultValue={userProfile.avatarUrl} />
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button>Save Profile</Button>
-                    </CardFooter>
-                  </Card>
+                 <Form {...profileForm}>
+                  <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)}>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Profile Settings</CardTitle>
+                        <CardDescription>Manage your public profile information.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <FormField
+                          control={profileForm.control}
+                          name="fullName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         <FormField
+                          control={profileForm.control}
+                          name="avatarUrl"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Avatar URL</FormLabel>
+                              <FormControl>
+                                <Input {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="email">Email</Label>
+                          <Input id="email" type="email" defaultValue={userProfile.email} disabled />
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button type="submit" disabled={profileForm.formState.isSubmitting}>
+                          {profileForm.formState.isSubmitting ? 'Saving...' : 'Save Profile'}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </form>
+                 </Form>
 
-                   <Card>
-                    <CardHeader>
-                      <CardTitle>Change Password</CardTitle>
-                      <CardDescription>Update your account password. It is recommended to use a strong, unique password.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="current-password">Current Password</Label>
-                        <Input id="current-password" type="password" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="new-password">New Password</Label>
-                        <Input id="new-password" type="password" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="confirm-password">Confirm New Password</Label>
-                        <Input id="confirm-password" type="password" />
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button>Update Password</Button>
-                    </CardFooter>
-                  </Card>
+                <Form {...passwordForm}>
+                  <form onSubmit={passwordForm.handleSubmit(handlePasswordChange)}>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Change Password</CardTitle>
+                        <CardDescription>Update your account password. It is recommended to use a strong, unique password.</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <FormField
+                          control={passwordForm.control}
+                          name="currentPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Current Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={passwordForm.control}
+                          name="newPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         <FormField
+                          control={passwordForm.control}
+                          name="confirmPassword"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Confirm New Password</FormLabel>
+                              <FormControl>
+                                <Input type="password" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </CardContent>
+                      <CardFooter>
+                        <Button type="submit" disabled={passwordForm.formState.isSubmitting}>
+                            {passwordForm.formState.isSubmitting ? 'Updating...' : 'Update Password'}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                   </form>
+                  </Form>
                 </TabsContent>
               </Tabs>
             </div>
@@ -247,3 +401,5 @@ export default function ProfilePage() {
     </>
   );
 }
+
+    
