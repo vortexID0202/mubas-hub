@@ -116,30 +116,29 @@ export default function ProfilePage() {
     }
   }, [userProfile, profileForm]);
   
-  const handleProfileUpdate: SubmitHandler<z.infer<typeof profileSchema>> = async (data, avatarUrl?: string) => {
+  const handleProfileUpdate: SubmitHandler<z.infer<typeof profileSchema>> = async (data) => {
     if (!user || !firestore) return;
     
     const newFullName = data.fullName;
-    const newAvatarUrl = avatarUrl || user.photoURL;
 
+    profileForm.formState.isSubmitting;
     try {
       // Update Firebase Auth profile
       await updateProfile(user, {
         displayName: newFullName,
-        photoURL: newAvatarUrl,
       });
       
       // Update Firestore document
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, {
         fullName: newFullName,
-        avatarUrl: newAvatarUrl,
       });
 
       toast({
         title: "Profile Updated",
         description: "Your information has been successfully saved.",
       });
+      router.refresh();
     } catch (error) {
       console.error("Error updating profile:", error);
       toast({
@@ -152,7 +151,7 @@ export default function ProfilePage() {
   
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !user || !userProfile) return;
+    if (!file || !user || !firestore) return;
 
     setIsUploading(true);
     toast({
@@ -167,8 +166,16 @@ export default function ProfilePage() {
         await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(imageRef);
         
-        // Call the consolidated update function
-        await handleProfileUpdate({ fullName: userProfile.fullName }, downloadURL);
+        await updateProfile(user, { photoURL: downloadURL });
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await updateDoc(userDocRef, { avatarUrl: downloadURL });
+
+        toast({
+            title: 'Profile Picture Updated',
+            description: 'Your new picture has been saved.',
+        });
+        // Refresh the page to show the new picture
+        router.refresh();
 
     } catch (error) {
         console.error("Error uploading image:", error);
@@ -187,6 +194,7 @@ export default function ProfilePage() {
 
     const credential = EmailAuthProvider.credential(user.email, data.currentPassword);
 
+    passwordForm.formState.isSubmitting;
     try {
         await reauthenticateWithCredential(user, credential);
         await updatePassword(user, data.newPassword);
@@ -233,7 +241,7 @@ export default function ProfilePage() {
     )
   }
   
-  if (!userProfile) return <ProfilePageSkeleton />;
+  if (!userProfile || !user) return <ProfilePageSkeleton />;
 
   return (
     <>
@@ -246,9 +254,9 @@ export default function ProfilePage() {
                 <CardContent className="flex flex-col items-center p-6">
                     <div className="relative">
                         <Avatar className="h-32 w-32 border-4 border-primary">
-                            <AvatarImage src={userProfile.avatarUrl} alt={userProfile.fullName} />
+                            <AvatarImage src={user.photoURL ?? undefined} alt={user.displayName ?? ''} />
                             <AvatarFallback className="text-4xl">
-                            {userProfile.fullName.charAt(0)}
+                            {user.displayName?.charAt(0)}
                             </AvatarFallback>
                         </Avatar>
                         <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
@@ -342,7 +350,7 @@ export default function ProfilePage() {
                       </CardContent>
                       <CardFooter>
                         <Button type="submit" disabled={profileForm.formState.isSubmitting}>
-                          {profileForm.formState.isSubmitting ? 'Saving...' : 'Save Profile'}
+                          {profileForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Profile'}
                         </Button>
                       </CardFooter>
                     </Card>
@@ -399,7 +407,7 @@ export default function ProfilePage() {
                       </CardContent>
                       <CardFooter>
                         <Button type="submit" disabled={passwordForm.formState.isSubmitting}>
-                            {passwordForm.formState.isSubmitting ? 'Updating...' : 'Update Password'}
+                            {passwordForm.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Updating...</> : 'Update Password'}
                         </Button>
                       </CardFooter>
                     </Card>
