@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { CommunityQuestion, UserProfile } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +26,8 @@ import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updateP
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useCollection } from '@/firebase/firestore/use-collection';
+
 
 function ProfilePageSkeleton() {
   return (
@@ -86,7 +88,8 @@ export default function ProfilePage() {
 
   const userQuestionsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return collection(firestore, 'questions');
+    // Correctly query the subcollection
+    return collection(firestore, 'users', user.uid, 'questions');
   }, [firestore, user?.uid]);
   
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
@@ -129,16 +132,20 @@ export default function ProfilePage() {
     profileForm.formState.isSubmitting = true;
 
     try {
-      const authProfileUpdate = {
+      const authProfileUpdate: { displayName: string; photoURL?: string } = {
         displayName: data.fullName,
-        ...(avatarUrl && { photoURL: avatarUrl }),
       };
+      if (avatarUrl) {
+        authProfileUpdate.photoURL = avatarUrl;
+      }
       await updateProfile(user, authProfileUpdate);
 
-      const firestoreProfileUpdate = {
+      const firestoreProfileUpdate: { fullName: string; avatarUrl?: string } = {
         fullName: data.fullName,
-        ...(avatarUrl && { avatarUrl: avatarUrl }),
       };
+       if (avatarUrl) {
+        firestoreProfileUpdate.avatarUrl = avatarUrl;
+      }
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, firestoreProfileUpdate);
 
