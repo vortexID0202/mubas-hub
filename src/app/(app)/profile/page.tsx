@@ -26,7 +26,7 @@ import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updateP
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useCollection } from '@/firebase';
 
 
 function ProfilePageSkeleton() {
