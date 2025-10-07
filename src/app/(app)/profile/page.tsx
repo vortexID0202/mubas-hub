@@ -86,7 +86,7 @@ export default function ProfilePage() {
 
   const userQuestionsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return collection(firestore, 'users', user.uid, 'questions');
+    return collection(firestore, 'questions');
   }, [firestore, user?.uid]);
   
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
@@ -179,7 +179,6 @@ export default function ProfilePage() {
         await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(imageRef);
         
-        // Use the existing form values for name, and provide the new URL
         const currentFormValues = profileForm.getValues();
         await handleProfileUpdate(currentFormValues, downloadURL);
 
