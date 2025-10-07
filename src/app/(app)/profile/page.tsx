@@ -20,23 +20,53 @@ import { Pen } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, query, where, doc } from 'firebase/firestore';
 
+function ProfilePageSkeleton() {
+  return (
+    <>
+      <Header />
+      <main className="flex-1 bg-muted/20">
+        <div className="container mx-auto max-w-6xl py-12">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
+            <div className="md:col-span-1">
+              <Card>
+                <CardContent className="flex flex-col items-center p-6">
+                  <Skeleton className="h-32 w-32 rounded-full" />
+                  <Skeleton className="h-6 w-3/4 mt-4" />
+                  <Skeleton className="h-4 w-1/2 mt-1" />
+                  <Skeleton className="h-8 w-1/3 mt-4" />
+                </CardContent>
+              </Card>
+            </div>
+            <div className="md:col-span-3">
+               <Skeleton className="h-10 w-48 mb-4" />
+               <Skeleton className="h-96 w-full" />
+            </div>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}
+
+
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
-  
+
   const userProfileRef = useMemoFirebase(() => {
-      if (!firestore || !user) return null;
-      return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
+    if (!firestore || !user?.uid) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
-
+  
   const userQuestionsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return collection(firestore, 'users', user.uid, 'questions');
   }, [firestore, user?.uid]);
-
+  
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
   
   // In a real app, you would fetch this from a subcollection or aggregate
@@ -49,37 +79,12 @@ export default function ProfilePage() {
   }, [user, isUserLoading, router]);
 
   const isLoading = isUserLoading || isProfileLoading || areQuestionsLoading;
-
+  
   if (isLoading) {
-    return (
-      <>
-        <Header />
-        <main className="flex-1 bg-muted/20">
-          <div className="container mx-auto max-w-6xl py-12">
-            <div className="grid grid-cols-1 gap-12 md:grid-cols-4">
-              <div className="md:col-span-1">
-                <Card>
-                  <CardContent className="flex flex-col items-center p-6">
-                    <Skeleton className="h-32 w-32 rounded-full" />
-                    <Skeleton className="h-6 w-3/4 mt-4" />
-                    <Skeleton className="h-4 w-1/2 mt-1" />
-                    <Skeleton className="h-8 w-1/3 mt-4" />
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="md:col-span-3">
-                 <Skeleton className="h-10 w-48 mb-4" />
-                 <Skeleton className="h-96 w-full" />
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
+    return <ProfilePageSkeleton />;
   }
 
-  if (!user || !userProfile) {
+  if (!userProfile) {
     return (
         <>
         <Header />
@@ -188,7 +193,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="avatarUrl">Avatar URL</Label>
-                        <Input id="avatarUrl" defaultValue={userProfile.avatarUrl} />
+                        <Input id="avatarUrl" defaultValue={user_profile.avatarUrl} />
                       </div>
                     </CardContent>
                     <CardFooter>
