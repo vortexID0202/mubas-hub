@@ -88,7 +88,6 @@ export default function ProfilePage() {
 
   const userQuestionsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    // Correctly query the subcollection
     return collection(firestore, 'users', user.uid, 'questions');
   }, [firestore, user?.uid]);
   
