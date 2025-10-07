@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LayoutDashboard, LogOut, Settings, User, Loader2 } from 'lucide-react';
-import { useUser } from '@/firebase/auth/use-user';
-import { useAuth } from '@/firebase';
+import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
