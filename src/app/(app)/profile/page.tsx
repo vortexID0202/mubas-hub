@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
 import { CommunityQuestion, UserProfile } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +26,6 @@ import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updateP
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useCollection } from '@/firebase';
 
 
 function ProfilePageSkeleton() {
@@ -128,8 +127,6 @@ export default function ProfilePage() {
   const handleProfileUpdate = async (data: z.infer<typeof profileSchema>, avatarUrl?: string) => {
     if (!user || !firestore) return;
     
-    profileForm.formState.isSubmitting = true;
-
     try {
       const authProfileUpdate: { displayName: string; photoURL?: string } = {
         displayName: data.fullName,
@@ -161,10 +158,12 @@ export default function ProfilePage() {
       });
     } finally {
         profileForm.formState.isSubmitting = false;
+        setIsUploading(false);
     }
   };
 
   const onProfileFormSubmit: SubmitHandler<z.infer<typeof profileSchema>> = (data) => {
+    profileForm.formState.isSubmitting = true;
     handleProfileUpdate(data);
   };
   
@@ -195,7 +194,6 @@ export default function ProfilePage() {
             title: 'Upload Failed',
             description: 'Could not upload your new profile picture.',
         });
-    } finally {
         setIsUploading(false);
     }
   }
@@ -203,6 +201,7 @@ export default function ProfilePage() {
   const handlePasswordChange: SubmitHandler<z.infer<typeof passwordSchema>> = async (data) => {
     if (!user || !user.email) return;
 
+    passwordForm.formState.isSubmitting = true;
     const credential = EmailAuthProvider.credential(user.email, data.currentPassword);
 
     try {
@@ -220,6 +219,8 @@ export default function ProfilePage() {
             title: 'Password Change Failed',
             description: 'Could not update your password. Please check your current password and try again.',
         });
+    } finally {
+      passwordForm.formState.isSubmitting = false;
     }
   };
 
