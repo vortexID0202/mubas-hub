@@ -83,6 +83,11 @@ export default function ProfilePage() {
   if (isLoading) {
     return <ProfilePageSkeleton />;
   }
+  
+  if (!user) {
+    return <ProfilePageSkeleton />;
+  }
+
 
   if (!userProfile) {
     return (
@@ -90,7 +95,15 @@ export default function ProfilePage() {
         <Header />
         <main className="flex-1 bg-muted/20">
           <div className="container mx-auto max-w-6xl py-12 flex items-center justify-center">
-            <p>User not found. Please try logging in again.</p>
+            <Card className="p-8 text-center">
+              <CardTitle className="text-2xl">User Not Found</CardTitle>
+              <CardDescription className="mt-2">
+                We couldn't find a profile for your account. It's possible it wasn't created correctly.
+              </CardDescription>
+              <Button onClick={() => router.push('/login')} className="mt-6">
+                Try Logging In Again
+              </Button>
+            </Card>
           </div>
         </main>
         <Footer />
@@ -193,7 +206,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="avatarUrl">Avatar URL</Label>
-                        <Input id="avatarUrl" defaultValue={user_profile.avatarUrl} />
+                        <Input id="avatarUrl" defaultValue={userProfile.avatarUrl} />
                       </div>
                     </CardContent>
                     <CardFooter>

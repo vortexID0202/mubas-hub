@@ -71,7 +71,7 @@ const SignUpPage: React.FC = () => {
         id: user.uid,
         fullName: fullName,
         email: user.email,
-        avatarUrl: user.photoURL,
+        avatarUrl: `https://picsum.photos/seed/${user.uid}/40/40`,
         reputation: 0,
         createdAt: serverTimestamp(),
       });
