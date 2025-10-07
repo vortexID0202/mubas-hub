@@ -34,7 +34,7 @@ export default function ProfilePage() {
 
   const userQuestionsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return query(collection(firestore, 'questions'), where('authorId', '==', user.uid));
+    return collection(firestore, 'users', user.uid, 'questions');
   }, [firestore, user?.uid]);
 
   const { data: userQuestions, loading: questionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
@@ -220,3 +220,5 @@ export default function ProfilePage() {
     </>
   );
 }
+
+    

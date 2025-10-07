@@ -46,7 +46,7 @@
           "type": "string",
           "description": "Unique identifier for the Question entity."
         },
-        "userId": {
+        "authorId": {
           "type": "string",
           "description": "Reference to the User who posted the question. (Relationship: User 1:N Question)"
         },
@@ -78,7 +78,7 @@
       },
       "required": [
         "id",
-        "userId",
+        "authorId",
         "title",
         "content",
         "createdAt"
@@ -241,8 +241,8 @@
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "google",
+      "password"
     ]
   },
   "firestore": {
@@ -379,3 +379,4 @@
     "reasoning": "The Firestore structure is designed to support the MUBAS Community Hub's features, emphasizing security, scalability, and maintainability. It follows the principles of Authorization Independence, Structural Segregation, Access Modeling, and Data Clarity.  \n\n*   **Authorization Independence:** Achieved through denormalization. For example, the `questions` collection includes the `userId` field, which eliminates the need to perform `get()` operations to verify ownership.  The `answers` collection includes `userId` and `questionId` fields to easily verify user and question relationships without additional reads.  For collaborative data like knowledge base articles, the `categories` collection could include an `adminMembers` map, and that map would be denormalized into the knowledge base articles.  \n*   **Structural Segregation:** Different data types (questions, answers, knowledge base articles, categories, and notifications) are stored in separate collections to maintain a homogeneous security posture within each collection. Private user data is stored under `/users/{userId}`.\n*   **Access Modeling:** Path-based ownership is used for entities like notifications (`/users/{userId}/notifications/{notificationId}`), questions (`/users/{userId}/questions/{questionId}`) and answers (`/questions/{questionId}/answers/{answerId}`). The membership map approach (if needed for collaborative documents like knowledge base articles in the future with `adminMembers`) would also be used, ensuring consistent authorization patterns. The `roles_admin` collection would handle global admin roles based on document existence.\n*   **QAPs (Rules are not Filters):**  The structure enables secure `list` operations.  For example, listing questions is secure because the security rules can efficiently check if the user has permission to view questions within a particular collection based on their role.\n*   **Invariants:**  The structure facilitates the enforcement of invariants like ownership and timestamps. Security rules can ensure that the `userId` in questions and answers matches the authenticated user and that `createdAt` and `updatedAt` fields are properly managed.\n\n**Detailed Explanation of Collections:**\n\n*   `/users/{userId}`: Stores user profiles.  Access is restricted to the user themselves and administrators.\n*   `/users/{userId}/questions/{questionId}`: Stores questions posted by a specific user. This supports the 'User 1:N Question' relationship and simplifies ownership-based rules.\n*   `/questions/{questionId}/answers/{answerId}`: Stores answers to questions.  Maintains the relationship between questions and answers and allows for efficient retrieval of answers for a given question.\n*   `/categories/{categoryId}`: Stores knowledge base categories. Admins can create, edit, and delete categories.\n*   `/categories/{categoryId}/articles/{articleId}`: Stores knowledge base articles within specific categories. This structure provides a clear hierarchy for managing articles.\n*   `/users/{userId}/notifications/{notificationId}`: Stores notifications for individual users. Path-based ownership ensures that only the user can access their notifications.\n*   `/roles_admin/{userId}`: Documents in this collection indicate admin privileges for a user.  Existence of a document grants admin rights.\n\nThis structure effectively balances security, scalability, and ease of maintenance, providing a solid foundation for the MUBAS Community Hub application."
   }
 }
+    

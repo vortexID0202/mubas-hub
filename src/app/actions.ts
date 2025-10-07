@@ -10,7 +10,7 @@ import {
 } from '@/ai/flows/community-forum-answer-ranker';
 import { revalidatePath } from 'next/cache';
 import { getAuth } from 'firebase/auth';
-import { collection, addDoc, getFirestore } from 'firebase/firestore';
+import { collection, addDoc, getFirestore, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
 
@@ -29,21 +29,40 @@ export async function getRankedAnswers(input: RankAnswersInput) {
 
 export async function submitQuestion(formData: FormData) {
     'use server';
-    // NOTE: Firebase is initialized on the client.
-    // We cannot initialize or use Firebase Admin SDK here in Server Actions.
-    // This function will need to be refactored to be a client-side function
-    // that calls a server action only for non-Firebase logic if needed.
-    // For now, we return an error.
     
-    // This is a placeholder to demonstrate the need for client-side Firebase logic.
+    // This is a placeholder as we cannot get the currently logged-in user
+    // in a server action without more complex setup.
+    const authorId = 'server-user'; // Replace with actual user logic
+    
     const title = formData.get('title') as string;
-    if (!title) {
-        return { success: false, message: 'Title is required.' };
+    const details = formData.get('details') as string;
+    const tags = (formData.get('tags') as string).split(',').map(tag => tag.trim());
+
+    if (!title || !details) {
+        return { success: false, message: 'Title and details are required.' };
     }
     
-    console.log("Submitting question (server-side):", title);
-    // In a real implementation, you would not use the Firebase client SDK here.
-    // This is a temporary measure.
-    
-    return { success: false, message: "Question submission is not fully implemented. Please implement client-side Firestore logic." };
+    try {
+        // This is a simplified example. In a real app, you'd get the db instance differently.
+        const { firestore } = initializeFirebase(); 
+        
+        await addDoc(collection(firestore, `users/${authorId}/questions`), {
+            authorId: authorId, // This is redundant with nesting but good for denormalization
+            title,
+            body: details,
+            tags: tags,
+            createdAt: serverTimestamp(),
+            votes: 0,
+            answersCount: 0,
+            views: 0,
+        });
+
+        revalidatePath('/forum');
+        return { success: true };
+    } catch (error: any) {
+        console.error("Error submitting question:", error);
+        return { success: false, message: error.message || "Failed to submit question." };
+    }
 }
+
+    
