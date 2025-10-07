@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, useFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { CommunityQuestion, UserProfile } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -72,7 +72,7 @@ const passwordSchema = z.object({
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const { firestore } = useFirebase();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -82,7 +82,7 @@ export default function ProfilePage() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user?.uid]);
 
-  const { data: userProfile, isLoading: isProfileLoading, error: profileError } = useDoc<UserProfile>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const userQuestionsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -167,9 +167,14 @@ export default function ProfilePage() {
         await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(imageRef);
 
-        await updateProfile(user, { photoURL: downloadURL });
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userDocRef, { avatarUrl: downloadURL });
+        if (user) {
+          await updateProfile(user, { photoURL: downloadURL });
+        }
+        
+        if (firestore) {
+            const userDocRef = doc(firestore, 'users', user.uid);
+            await updateDoc(userDocRef, { avatarUrl: downloadURL });
+        }
 
         toast({
             title: 'Success!',
