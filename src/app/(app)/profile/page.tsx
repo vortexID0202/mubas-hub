@@ -306,7 +306,7 @@ export default function ProfilePage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Answers you've provided</CardTitle>
-                        </Header>
+                        </CardHeader> 
                         <CardContent>
                             <p>You haven't answered any questions yet.</p>
                         </CardContent>
@@ -354,7 +354,7 @@ export default function ProfilePage() {
                       <CardHeader>
                         <CardTitle>Change Password</CardTitle>
                         <CardDescription>Update your account password. It is recommended to use a strong, unique password.</CardDescription>
-                      </Header>
+                      </CardHeader>
                       <CardContent className="space-y-4">
                         <FormField
                           control={passwordForm.control}
