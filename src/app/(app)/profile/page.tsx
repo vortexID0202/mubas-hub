@@ -21,7 +21,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { collection, query, where, doc } from 'firebase/firestore';
 
 export default function ProfilePage() {
-  const { user, loading: userLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
   
@@ -30,25 +30,25 @@ export default function ProfilePage() {
       return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
 
-  const { data: userProfile, loading: profileLoading } = useDoc<UserProfile>(userProfileRef);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const userQuestionsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return collection(firestore, 'users', user.uid, 'questions');
   }, [firestore, user?.uid]);
 
-  const { data: userQuestions, loading: questionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
+  const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
   
   // In a real app, you would fetch this from a subcollection or aggregate
   const [userAnswersCount, setUserAnswersCount] = useState(0);
 
   useEffect(() => {
-    if (!userLoading && !user) {
+    if (!isUserLoading && !user) {
       router.push('/login?redirect=/profile');
     }
-  }, [user, userLoading, router]);
+  }, [user, isUserLoading, router]);
 
-  const isLoading = userLoading || profileLoading || questionsLoading;
+  const isLoading = isUserLoading || isProfileLoading || areQuestionsLoading;
 
   if (isLoading) {
     return (
@@ -80,8 +80,17 @@ export default function ProfilePage() {
   }
 
   if (!user || !userProfile) {
-    // This state should ideally not be reached if redirection works
-    return <p>User not found.</p>;
+    return (
+        <>
+        <Header />
+        <main className="flex-1 bg-muted/20">
+          <div className="container mx-auto max-w-6xl py-12 flex items-center justify-center">
+            <p>User not found. Please try logging in again.</p>
+          </div>
+        </main>
+        <Footer />
+        </>
+    )
   }
 
 
@@ -220,5 +229,3 @@ export default function ProfilePage() {
     </>
   );
 }
-
-    

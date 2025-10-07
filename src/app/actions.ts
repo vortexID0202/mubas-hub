@@ -9,7 +9,8 @@ import {
   RankAnswersInput,
 } from '@/ai/flows/community-forum-answer-ranker';
 import { revalidatePath } from 'next/cache';
-import { getAuth } from 'firebase/auth';
+import { headers } from 'next/headers';
+import { getAuth } from 'firebase-admin/auth';
 import { collection, addDoc, getFirestore, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase';
 
@@ -30,9 +31,12 @@ export async function getRankedAnswers(input: RankAnswersInput) {
 export async function submitQuestion(formData: FormData) {
     'use server';
     
+    // In a real app, you would get the current user from the session
     // This is a placeholder as we cannot get the currently logged-in user
-    // in a server action without more complex setup.
-    const authorId = 'server-user'; // Replace with actual user logic
+    // in a server action without more complex setup with session management.
+    // For this example, let's assume we can get the user ID.
+    // A more robust solution would use NextAuth.js or similar to manage sessions.
+    const authorId = 'placeholder-user-id'; // This needs to be replaced with actual user ID from session
     
     const title = formData.get('title') as string;
     const details = formData.get('details') as string;
@@ -50,11 +54,12 @@ export async function submitQuestion(formData: FormData) {
             authorId: authorId, // This is redundant with nesting but good for denormalization
             title,
             body: details,
-            tags: tags,
+            tags: tags.map(t => ({id: t, name: t})), // Store as objects
             createdAt: serverTimestamp(),
             votes: 0,
             answersCount: 0,
             views: 0,
+            answers: [],
         });
 
         revalidatePath('/forum');
@@ -64,5 +69,3 @@ export async function submitQuestion(formData: FormData) {
         return { success: false, message: error.message || "Failed to submit question." };
     }
 }
-
-    
