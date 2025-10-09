@@ -4,7 +4,7 @@ import { initializeFirebaseAdmin } from '@/firebase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Ensure the Firebase Admin SDK is initialized
-initializeFirebaseAdmin();
+const { auth: adminAuth } = initializeFirebaseAdmin();
 
 // Handles POST requests to create a session
 export async function POST(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
   try {
-    const sessionCookie = await getAuth().createSessionCookie(idToken, { expiresIn });
+    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
     
     // Set cookie policy for session cookie.
     cookies().set('session', sessionCookie, {

@@ -36,7 +36,7 @@ export default function LoginPage() {
     try {
       // The onIdTokenChanged listener in AuthProvider will handle session creation.
       await signInWithEmailAndPassword(auth, email, password);
-      // The listener will be triggered, and upon successful session creation,
+      // The listener will trigger, and upon successful session creation,
       // the user will be authenticated for server actions. We can now redirect.
       router.push(redirect);
 

@@ -1,16 +1,13 @@
-import { initializeApp, getApps, getApp, App, credential } from 'firebase-admin/app';
+import { initializeApp, getApps, App, credential } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+// This prevents re-initializing the app on every hot-reload in development
 function getFirebaseAdminApp(): App {
     if (getApps().length > 0) {
-        // Return the default app if it already exists
-        return getApp();
+        return getApps()[0];
     }
 
-    // This block will only run once, on the first server-side execution.
-    // It reads the environment variables to configure the Firebase Admin SDK.
     const serviceAccount = {
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
@@ -19,12 +16,7 @@ function getFirebaseAdminApp(): App {
     };
 
     if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-        console.error('Firebase Admin SDK is not configured. Missing environment variables.');
-        // Fallback to application default credentials if available,
-        // otherwise it will fail, which is expected if not configured.
-        return initializeApp({
-            credential: credential.applicationDefault(),
-        });
+        throw new Error('Firebase Admin SDK is not configured. Missing environment variables.');
     }
 
     return initializeApp({

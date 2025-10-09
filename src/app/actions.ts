@@ -34,7 +34,7 @@ export async function submitQuestion(formData: FormData) {
     
     // --- START DEBUGGING ---
     console.log('--- Server Action Triggered ---');
-    const { firestore } = initializeFirebaseAdmin();
+    const { firestore, auth: adminAuth } = initializeFirebaseAdmin();
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('session')?.value || '';
 
@@ -48,7 +48,7 @@ export async function submitQuestion(formData: FormData) {
     
     let decodedClaims;
     try {
-        decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true /** checkRevoked */);
+        decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true /** checkRevoked */);
         console.log(`SUCCESS: Cookie verified for user UID: ${decodedClaims.uid}`);
     } catch (error) {
         console.log('SERVER ACTION ERROR: Cookie verification failed!');
