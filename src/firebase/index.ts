@@ -14,34 +14,22 @@ type FirebaseServices = {
   storage: FirebaseStorage;
 };
 
-let firebaseServices: FirebaseServices | null = null;
-
 // This is the core function to initialize Firebase and get the SDKs.
 // It's designed to be idempotent - it will only initialize the app once.
 export function initializeFirebase(): FirebaseServices {
-  // If the services have already been initialized, just return them.
-  if (firebaseServices) {
-    return firebaseServices;
-  }
-
-  // Check if a Firebase app has already been initialized.
-  // This is the standard pattern to prevent re-initialization.
   const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
   // Initialize the services we need.
   const auth = getAuth(app);
   const firestore = getFirestore(app);
   const storage = getStorage(app);
-
-  // Store the initialized services in our local variable.
-  firebaseServices = {
+  
+  return {
     firebaseApp: app,
     auth,
     firestore,
     storage,
   };
-  
-  return firebaseServices;
 }
 
 

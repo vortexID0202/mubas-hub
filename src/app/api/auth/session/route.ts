@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       maxAge: expiresIn / 1000, // maxAge is in seconds
       path: '/',
+      sameSite: 'lax',
     });
 
     return NextResponse.json({ status: 'success' }, { status: 200 });
