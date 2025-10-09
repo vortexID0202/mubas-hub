@@ -1,7 +1,7 @@
 
 'use client';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ArrowBigUp, Eye, MessageCircle, User as UserIcon, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -58,11 +58,9 @@ function QuestionPageSkeleton() {
     )
 }
 
-export default function QuestionPage({
-  params: { id }
-}: {
-  params: { id: string };
-}) {
+export default function QuestionPage() {
+  const params = useParams();
+  const id = params.id as string;
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
@@ -285,5 +283,3 @@ export default function QuestionPage({
     </>
   );
 }
-
-    
