@@ -33,21 +33,20 @@ export async function submitQuestion(formData: FormData) {
     'use server';
     
     const { firestore } = initializeFirebaseAdmin();
-    const sessionCookie = cookies().get('session')?.value;
+    const sessionCookie = cookies().get('session')?.value || '';
 
-    if (!sessionCookie) {
+    // 1. Verify the session cookie
+    let decodedClaims;
+    try {
+        decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true /** checkRevoked */);
+    } catch (error) {
+        // Session cookie is invalid or expired.
+        console.error('Error verifying session cookie:', error);
         return { success: false, message: 'You must be logged in to post a question.' };
     }
-
-    let decodedToken;
-    try {
-        decodedToken = await getAuth().verifySessionCookie(sessionCookie, true);
-    } catch (error) {
-        console.error('Error verifying session cookie:', error);
-        return { success: false, message: 'Your session is invalid. Please log in again.' };
-    }
-
-    const authorId = decodedToken.uid;
+    
+    // 2. We are now authenticated! The user's UID is in decodedClaims.uid
+    const authorId = decodedClaims.uid;
     
     const title = formData.get('title') as string;
     const details = formData.get('details') as string;
@@ -76,7 +75,9 @@ export async function submitQuestion(formData: FormData) {
         // Save the question in a top-level `questions` collection
         // and also in the user's sub-collection for easy retrieval of user's questions
         const userQuestionRef = await addDoc(collection(firestore, `users/${authorId}/questions`), { ...questionData, authorId });
-        await addDoc(collection(firestore, 'questions'), { ...questionData, authorId: authorId, id: userQuestionRef.id });
+        // Let's use the ID from the user's subcollection as the main ID
+        const mainQuestionRef = collection(firestore, 'questions');
+        await addDoc(mainQuestionRef, { ...questionData, authorId: authorId, id: userQuestionRef.id });
 
 
         revalidatePath('/forum');

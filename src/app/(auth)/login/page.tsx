@@ -34,23 +34,13 @@ export default function LoginPage() {
       return;
     }
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await userCredential.user.getIdToken();
-
-      // Create the session cookie by calling the API route
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (res.ok) {
-        router.push(redirect);
-      } else {
-        throw new Error('Failed to create session.');
-      }
+      // The onIdTokenChanged listener in SessionManager will handle
+      // creating the session cookie automatically.
+      await signInWithEmailAndPassword(auth, email, password);
+      
+      // Once signed in, the SessionManager syncs the session,
+      // so we can now safely redirect.
+      router.push(redirect);
 
     } catch (err: any) {
       if (

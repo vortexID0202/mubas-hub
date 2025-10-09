@@ -26,9 +26,9 @@ export function UserProfileNav() {
 
   const handleLogout = async () => {
     if (!auth) return;
+    // This will trigger the onIdTokenChanged listener in SessionManager,
+    // which will then call the DELETE /api/auth/session route.
     await signOut(auth);
-    // The onIdTokenChanged listener in SessionManager will handle clearing the cookie
-    // by calling the /api/auth/logout endpoint.
     router.push('/login');
   };
 
