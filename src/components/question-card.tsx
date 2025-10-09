@@ -1,4 +1,5 @@
 
+
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -96,11 +97,11 @@ export default function QuestionCard({ question, author }: QuestionCardProps) {
         </div>
       </CardHeader>
       <CardContent className="flex-grow">
-        <Link href={`/questions/${question.id}`} className="block">
+        <a href={`/questions/${question.id}`} className="block">
           <CardTitle className="text-lg font-semibold leading-snug transition-colors hover:text-primary">
             {question.title}
           </CardTitle>
-        </Link>
+        </a>
         <CardDescription className="mt-2 line-clamp-2 text-sm">
           {question.body}
         </CardDescription>
@@ -156,11 +157,11 @@ export default function QuestionCard({ question, author }: QuestionCardProps) {
               <span>{question.answersCount}</span>
             </div>
           </div>
-          <Link href={`/questions/${question.id}#answer-form`}>
-            <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/questions/${question.id}#answer-form`}>
               Answer
-            </Button>
-          </Link>
+            </a>
+          </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           Asked{' '}
