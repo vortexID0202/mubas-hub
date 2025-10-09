@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, User, Mail, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
@@ -13,6 +13,7 @@ import Logo from '@/components/logo';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 const SignUpPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -24,9 +25,24 @@ const SignUpPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const [passwordValidations, setPasswordValidations] = useState({
+    length: false,
+    uppercase: false,
+    number: false,
+  });
+
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
+  
+  useEffect(() => {
+    setPasswordValidations({
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      number: /\d/.test(password),
+    });
+  }, [password]);
+
 
   const handleManualSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,9 +196,20 @@ const SignUpPage: React.FC = () => {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                8+ characters, 1 uppercase, 1 number.
-              </p>
+              <div className="mt-2 space-y-1 text-xs">
+                <div className={cn("flex items-center gap-2", passwordValidations.length ? "text-green-600" : "text-muted-foreground")}>
+                  {passwordValidations.length ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                  <span>At least 8 characters long</span>
+                </div>
+                 <div className={cn("flex items-center gap-2", passwordValidations.uppercase ? "text-green-600" : "text-muted-foreground")}>
+                  {passwordValidations.uppercase ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                  <span>Contains an uppercase letter</span>
+                </div>
+                 <div className={cn("flex items-center gap-2", passwordValidations.number ? "text-green-600" : "text-muted-foreground")}>
+                  {passwordValidations.number ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                  <span>Contains a number</span>
+                </div>
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="confirm-password">Confirm Password</Label>
