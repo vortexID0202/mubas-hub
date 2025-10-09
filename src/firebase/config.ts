@@ -1,5 +1,4 @@
 
-
 // This object holds the Firebase configuration.
 // It reads environment variables and is used to initialize the Firebase app.
 export const firebaseConfig = {

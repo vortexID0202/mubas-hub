@@ -16,13 +16,19 @@ type FirebaseServices = {
 
 let firebaseApp: FirebaseApp;
 
+// This check ensures we only initialize the app once,
+// which is crucial in a Next.js environment with hot-reloading.
 if (firebaseConfig.apiKey) {
-    firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    if (!getApps().length) {
+        firebaseApp = initializeApp(firebaseConfig);
+    } else {
+        firebaseApp = getApp();
+    }
 } else {
     console.error("Firebase config is not available. Please check your environment variables.");
-    // We create a dummy app to avoid crashing the app, but Firebase services will not work.
-    // @ts-ignore
-    firebaseApp = {}; 
+    // We create a dummy app to avoid crashing the app if config is missing.
+    // Firebase services will not work in this case.
+    firebaseApp = {} as FirebaseApp; 
 }
 
 
@@ -49,3 +55,4 @@ export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 export * from './errors';
 export * from './error-emitter';
+export * from './auth-provider';
