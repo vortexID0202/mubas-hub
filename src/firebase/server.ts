@@ -5,7 +5,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 function getFirebaseAdminApp(): App {
     if (getApps().length > 0) {
-        return getApp();
+        // Return the default app if it already exists
+        return getApps()[0];
     }
 
     // This block will only run once, on the first server-side execution.
