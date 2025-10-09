@@ -2,7 +2,7 @@
 import * as admin from 'firebase-admin';
 import { getApps, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase/firestore';
 import 'dotenv/config';
 
 
@@ -12,20 +12,21 @@ function getFirebaseAdminApp(): App {
         return getApps()[0];
     }
 
-    const serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // The private key must have newline characters correctly replaced.
-        privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-    };
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
-    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
-        throw new Error('Firebase Admin SDK is not configured. Missing environment variables.');
+    if (!serviceAccountJson) {
+        throw new Error('Firebase Admin SDK is not configured. Missing FIREBASE_SERVICE_ACCOUNT_JSON environment variable.');
     }
+    
+    try {
+        const serviceAccount = JSON.parse(serviceAccountJson);
 
-    return admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-    });
+        return admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+        });
+    } catch (error: any) {
+        throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: ${error.message}`);
+    }
 }
 
 export function initializeFirebaseAdmin() {
