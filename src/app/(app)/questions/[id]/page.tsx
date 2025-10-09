@@ -24,6 +24,8 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 
+export const dynamic = 'force-dynamic';
+
 const answerSchema = z.object({
   answer: z.string().min(20, 'Answer must be at least 20 characters long.'),
 });
