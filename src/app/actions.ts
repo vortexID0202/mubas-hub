@@ -11,7 +11,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getFirestore } from 'firebase/firestore';
 import { initializeFirebaseAdmin } from '@/firebase/server';
 import { CommunityQuestion, Tag } from '@/lib/types';
 
@@ -32,27 +32,19 @@ export async function getRankedAnswers(input: RankAnswersInput) {
 export async function submitQuestion(formData: FormData) {
     'use server';
     
-    // --- START DEBUGGING ---
-    console.log('--- Server Action Triggered ---');
     const { firestore, auth: adminAuth } = initializeFirebaseAdmin();
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('session')?.value || '';
 
     if (!sessionCookie) {
-        console.log('SERVER ACTION ERROR: No session cookie found!');
         return { success: false, message: 'You must be logged in to post a question. (Reason: No cookie)' };
     }
-
-    console.log('Session cookie found. Attempting to verify...');
-    // --- END DEBUGGING ---
     
     let decodedClaims;
     try {
         decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true /** checkRevoked */);
-        console.log(`SUCCESS: Cookie verified for user UID: ${decodedClaims.uid}`);
     } catch (error) {
-        console.log('SERVER ACTION ERROR: Cookie verification failed!');
-        console.error(error); // Log the actual error object
+        console.error("Server Action Error: Cookie verification failed!", error);
         return { success: false, message: 'You must be logged in to post a question. (Reason: Invalid cookie)' };
     }
     
