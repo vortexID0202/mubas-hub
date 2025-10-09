@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -26,6 +27,7 @@ import {
 } from './ui/tooltip';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
+import { Timestamp } from 'firebase/firestore';
 
 interface QuestionCardProps {
   question: CommunityQuestion;
@@ -36,6 +38,16 @@ export default function QuestionCard({ question, author }: QuestionCardProps) {
   const displayAuthor = author || question.author;
   const topAnswer = question.answers?.sort((a, b) => b.votes - a.votes)[0];
   const isVerified = topAnswer?.isVerified;
+
+  const getCreatedAtDate = () => {
+    if (!question.createdAt) {
+        return new Date(); // Or some default/fallback date
+    }
+    if (question.createdAt instanceof Timestamp) {
+        return question.createdAt.toDate();
+    }
+    return new Date(question.createdAt as string);
+  };
 
   return (
     <Card
@@ -147,7 +159,7 @@ export default function QuestionCard({ question, author }: QuestionCardProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           Asked{' '}
-          {formatDistanceToNow(new Date(question.createdAt as string), {
+          {formatDistanceToNow(getCreatedAtDate(), {
             addSuffix: true,
           })}
         </p>
