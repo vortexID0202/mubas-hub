@@ -1,3 +1,4 @@
+
 'use server';
 
 import {
@@ -32,8 +33,7 @@ export async function getRankedAnswers(input: RankAnswersInput) {
 export async function submitQuestion(formData: FormData) {
     'use server';
     
-    const { auth: adminAuth } = initializeFirebaseAdmin();
-    const firestore = getFirestore();
+    const { auth: adminAuth, firestore: adminFirestore } = initializeFirebaseAdmin();
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('session')?.value || '';
 
@@ -75,8 +75,8 @@ export async function submitQuestion(formData: FormData) {
             views: 0,
         };
         
-        const userQuestionRef = await addDoc(collection(firestore, `users/${authorId}/questions`), { ...questionData, authorId });
-        const mainQuestionRef = collection(firestore, 'questions');
+        const userQuestionRef = await addDoc(collection(adminFirestore, `users/${authorId}/questions`), { ...questionData, authorId });
+        const mainQuestionRef = collection(adminFirestore, 'questions');
         await addDoc(mainQuestionRef, { ...questionData, authorId: authorId, id: userQuestionRef.id });
 
 

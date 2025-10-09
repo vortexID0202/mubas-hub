@@ -1,38 +1,36 @@
 
 import * as admin from 'firebase-admin';
-import { getApps, App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore'; // Correct import for Admin SDK
 import 'dotenv/config';
 
-
 // This prevents re-initializing the app on every hot-reload in development
-function getFirebaseAdminApp(): App {
-    if (getApps().length > 0) {
-        return getApps()[0];
-    }
-
-    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-
-    if (!serviceAccountJson) {
-        throw new Error('Firebase Admin SDK is not configured. Missing FIREBASE_SERVICE_ACCOUNT_JSON environment variable.');
+function getFirebaseAdminApp(): admin.App {
+    if (admin.apps.length > 0) {
+        return admin.apps[0];
     }
     
-    try {
-        const serviceAccount = JSON.parse(serviceAccountJson);
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+        throw new Error('Firebase Admin SDK is not configured. Missing required environment variables.');
+    }
+
+    try {
         return admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
+            credential: admin.credential.cert({
+                projectId: process.env.FIREBASE_PROJECT_ID,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: privateKey,
+            }),
         });
     } catch (error: any) {
-        throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON: ${error.message}`);
+        throw new Error(`Failed to initialize Firebase Admin SDK: ${error.message}`);
     }
 }
 
 export function initializeFirebaseAdmin() {
   const app = getFirebaseAdminApp();
   return {
-    auth: getAuth(app),
-    firestore: getFirestore(app),
+    auth: admin.auth(app),
+    firestore: admin.firestore(app),
   };
 }
