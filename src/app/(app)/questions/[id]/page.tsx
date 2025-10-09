@@ -13,7 +13,7 @@ import AnswerSection from '@/components/answer-section';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, updateDoc, increment, runTransaction, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, increment, runTransaction, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { CommunityQuestion, QuestionAnswer, UserProfile } from '@/lib/types';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -22,6 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const answerSchema = z.object({
   answer: z.string().min(20, 'Answer must be at least 20 characters long.'),
@@ -31,25 +32,25 @@ function QuestionPageSkeleton() {
     return (
         <div className="container mx-auto max-w-4xl py-12">
             <div className="animate-pulse space-y-4">
-                <div className="h-10 w-3/4 rounded bg-muted"></div>
-                <div className="h-5 w-1/2 rounded bg-muted"></div>
+                <Skeleton className="h-10 w-3/4 rounded bg-muted" />
+                <Skeleton className="h-5 w-1/2 rounded bg-muted" />
                 <div className="flex gap-2">
-                    <div className="h-6 w-20 rounded-full bg-muted"></div>
-                    <div className="h-6 w-20 rounded-full bg-muted"></div>
+                    <Skeleton className="h-6 w-20 rounded-full bg-muted" />
+                    <Skeleton className="h-6 w-20 rounded-full bg-muted" />
                 </div>
                 <Separator className="my-8" />
                 <div className="space-y-4">
-                    <div className="h-5 w-full rounded bg-muted"></div>
-                    <div className="h-5 w-5/6 rounded bg-muted"></div>
-                    <div className="h-5 w-3/4 rounded bg-muted"></div>
+                    <Skeleton className="h-5 w-full rounded bg-muted" />
+                    <Skeleton className="h-5 w-5/6 rounded bg-muted" />
+                    <Skeleton className="h-5 w-3/4 rounded bg-muted" />
                 </div>
                  <div className="mt-8 flex items-center justify-between">
-                    <div className="h-9 w-32 rounded-md bg-muted"></div>
+                    <Skeleton className="h-9 w-32 rounded-md bg-muted" />
                     <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
-                        <div className="h-12 w-12 rounded-full bg-muted-foreground/20"></div>
+                        <Skeleton className="h-12 w-12 rounded-full bg-muted-foreground/20" />
                         <div className='space-y-2'>
-                           <div className="h-4 w-24 rounded bg-muted-foreground/20"></div>
-                           <div className="h-5 w-16 rounded bg-muted-foreground/20"></div>
+                           <Skeleton className="h-4 w-24 rounded bg-muted-foreground/20" />
+                           <Skeleton className="h-5 w-16 rounded bg-muted-foreground/20" />
                         </div>
                     </div>
                 </div>
@@ -190,7 +191,7 @@ export default function QuestionPage() {
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span>
-                Asked on {format(question.createdAt instanceof Date ? question.createdAt : (question.createdAt as any).toDate(), 'MMM d, yyyy')}
+                Asked on {format(question.createdAt instanceof Timestamp ? question.createdAt.toDate() : new Date(question.createdAt as string), 'MMM d, yyyy')}
               </span>
               <div className="flex items-center gap-1">
                 <Eye className="h-4 w-4" />
@@ -283,5 +284,3 @@ export default function QuestionPage() {
     </>
   );
 }
-
-    
