@@ -80,6 +80,7 @@ export default function ForumPage() {
   const [visibleQuestionsCount, setVisibleQuestionsCount] = useState(
     QUESTIONS_PER_PAGE
   );
+  const [activeFilter, setActiveFilter] = useState('recent');
   const firestore = useFirestore();
 
   const questionsQuery = useMemoFirebase(() => 
@@ -87,13 +88,55 @@ export default function ForumPage() {
   , [firestore]);
   const { data: questions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
   
+  const filteredQuestions = useMemo(() => {
+    if (!questions) return [];
+    let sorted = [...questions];
+    if (activeFilter === 'popular') {
+      sorted.sort((a, b) => b.votes - a.votes);
+    } else if (activeFilter === 'unanswered') {
+      sorted = sorted.filter(q => q.answersCount === 0);
+    }
+    // 'recent' is the default from the query, no extra sorting needed.
+    return sorted;
+  }, [questions, activeFilter]);
+
   const loadMore = () => {
     setVisibleQuestionsCount((prev) => prev + QUESTIONS_PER_PAGE);
   };
 
-  const questionsToShow = questions?.slice(0, visibleQuestionsCount) || [];
+  const questionsToShow = filteredQuestions.slice(0, visibleQuestionsCount);
 
   const isLoading = isLoadingQuestions;
+  
+  const renderContent = () => {
+    if (questionsToShow.length > 0) {
+      return (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {questionsToShow.map((question) => (
+            <QuestionCard key={question.id} question={question} />
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+        <Frown className="h-16 w-16 text-muted-foreground" />
+        <h2 className="mt-6 text-xl font-semibold">
+          {activeFilter === 'unanswered' ? 'No unanswered questions.' : 'No Questions Yet'}
+        </h2>
+        <p className="mt-2 text-center text-muted-foreground">
+          {activeFilter === 'unanswered' 
+              ? "It looks like the community has answered everything!"
+              : "Be the first to ask a question and get help from the community."}
+        </p>
+        {activeFilter !== 'unanswered' && (
+          <Button asChild className="mt-6">
+            <Link href="/ask">Ask a Question</Link>
+          </Button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -118,7 +161,7 @@ export default function ForumPage() {
             </Button>
           </div>
 
-          <Tabs defaultValue="recent" className="w-full mt-8">
+          <Tabs defaultValue="recent" className="w-full mt-8" onValueChange={setActiveFilter}>
             <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
               <TabsList className="grid w-full grid-cols-3 md:w-auto">
                 <TabsTrigger value="recent">Recent</TabsTrigger>
@@ -142,60 +185,25 @@ export default function ForumPage() {
               </DropdownMenu>
             </div>
             <TabsContent value="recent" className="mt-8">
-              {questionsToShow.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                  {questionsToShow.map((question) => (
-                    <QuestionCard key={question.id} question={question} />
-                  ))}
-                </div>
-              ) : (
-                <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                  <Frown className="h-16 w-16 text-muted-foreground" />
-                  <h2 className="mt-6 text-xl font-semibold">
-                    No Questions Yet
-                  </h2>
-                  <p className="mt-2 text-center text-muted-foreground">
-                    Be the first to ask a question and get help from the
-                    community.
-                  </p>
-                  <Button asChild className="mt-6">
-                    <Link href="/ask">Ask a Question</Link>
-                  </Button>
-                </div>
-              )}
-              {visibleQuestionsCount < (questions?.length || 0) && (
-                <div className="mt-10 text-center">
-                  <Button onClick={loadMore} size="lg" variant="outline" disabled={isLoading}>
-                    {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Loading...</> : 'Load More Questions'}
-                  </Button>
-                </div>
-              )}
+              {renderContent()}
             </TabsContent>
 
             <TabsContent value="popular" className="mt-8">
-              <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                <Frown className="h-16 w-16 text-muted-foreground" />
-                <h2 className="mt-6 text-xl font-semibold">
-                  No popular questions at the moment.
-                </h2>
-                <p className="mt-2 text-center text-muted-foreground">
-                  Upvote questions you find helpful to make them popular.
-                </p>
-              </div>
+              {renderContent()}
             </TabsContent>
 
             <TabsContent value="unanswered" className="mt-8">
-              <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                <Frown className="h-16 w-16 text-muted-foreground" />
-                <h2 className="mt-6 text-xl font-semibold">
-                  No unanswered questions.
-                </h2>
-                <p className="mt-2 text-center text-muted-foreground">
-                  It looks like the community has answered everything!
-                </p>
-              </div>
+              {renderContent()}
             </TabsContent>
           </Tabs>
+
+           {visibleQuestionsCount < (filteredQuestions?.length || 0) && (
+            <div className="mt-10 text-center">
+              <Button onClick={loadMore} size="lg" variant="outline" disabled={isLoading}>
+                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Loading...</> : 'Load More Questions'}
+              </Button>
+            </div>
+          )}
         </div>
         )}
       </main>
