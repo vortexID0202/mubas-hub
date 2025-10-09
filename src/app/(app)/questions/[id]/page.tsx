@@ -1,7 +1,8 @@
+
 'use client';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ArrowBigUp, Eye, MessageCircle, User as UserIcon, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,7 +13,7 @@ import AnswerSection from '@/components/answer-section';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, updateDoc, increment, addDoc, collection, serverTimestamp, runTransaction } from 'firebase/firestore';
+import { doc, updateDoc, increment, runTransaction, collection, serverTimestamp } from 'firebase/firestore';
 import { CommunityQuestion, QuestionAnswer, UserProfile } from '@/lib/types';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -58,7 +59,7 @@ function QuestionPageSkeleton() {
 }
 
 export default function QuestionPage({
-  params,
+  params: { id }
 }: {
   params: { id: string };
 }) {
@@ -67,7 +68,7 @@ export default function QuestionPage({
   const { toast } = useToast();
   const router = useRouter();
 
-  const questionRef = useMemoFirebase(() => firestore ? doc(firestore, 'questions', params.id) : null, [firestore, params.id]);
+  const questionRef = useMemoFirebase(() => firestore ? doc(firestore, 'questions', id) : null, [firestore, id]);
   const { data: question, isLoading: isQuestionLoading, error } = useDoc<CommunityQuestion>(questionRef);
   
   const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
@@ -81,19 +82,18 @@ export default function QuestionPage({
   });
 
   useEffect(() => {
-    if (!isQuestionLoading && !question) {
-        // Increment view count only when question is loaded and exists
-        const incrementViewCount = async () => {
-            if(firestore && params.id) {
-                const questionDocRef = doc(firestore, 'questions', params.id);
-                await updateDoc(questionDocRef, {
-                    views: increment(1)
-                });
-            }
-        };
-        incrementViewCount().catch(console.error); // Best-effort
-    }
-  }, [isQuestionLoading, question, params.id, firestore]);
+    if (isQuestionLoading) return;
+    
+    const incrementViewCount = async () => {
+        if(firestore && id) {
+            const questionDocRef = doc(firestore, 'questions', id);
+            await updateDoc(questionDocRef, {
+                views: increment(1)
+            });
+        }
+    };
+    incrementViewCount().catch(console.error); // Best-effort
+  }, [isQuestionLoading, question, id, firestore]);
 
   async function handleUpvote() {
     if (!firestore || !user) {
@@ -270,7 +270,7 @@ export default function QuestionPage({
                       </Button>
                       {!user && !isUserLoading && (
                         <p className="text-center text-sm text-muted-foreground">
-                            You must be <Link href={`/login?redirect=/questions/${params.id}`} className="underline text-primary">logged in</Link> to post an answer.
+                            You must be <Link href={`/login?redirect=/questions/${id}`} className="underline text-primary">logged in</Link> to post an answer.
                         </p>
                       )}
                     </form>
@@ -285,3 +285,5 @@ export default function QuestionPage({
     </>
   );
 }
+
+    
