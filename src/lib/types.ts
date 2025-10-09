@@ -6,6 +6,7 @@ export type UserProfile = {
   email: string;
   avatarUrl: string;
   reputation: number;
+  createdAt: FieldValue;
 };
 
 export type User = {
@@ -25,14 +26,14 @@ export type CommunityQuestion = {
   title: string;
   body: string;
   authorId: string; // Storing author ID for ownership and fetching
-  author: User; // Author data can be denormalized or fetched separately
+  author?: User; // Author data can be denormalized or fetched separately
   createdAt: FieldValue | string;
   updatedAt?: FieldValue | string;
   tags: Tag[];
   votes: number;
   answersCount: number;
   views: number;
-  answers: QuestionAnswer[];
+  answers?: QuestionAnswer[];
 };
 
 export type QuestionAnswer = {

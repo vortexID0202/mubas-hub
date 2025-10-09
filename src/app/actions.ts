@@ -9,7 +9,7 @@ import {
   RankAnswersInput,
 } from '@/ai/flows/community-forum-answer-ranker';
 import { revalidatePath } from 'next/cache';
-import { headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { initializeFirebaseAdmin } from '@/firebase/server';
@@ -33,7 +33,8 @@ export async function submitQuestion(formData: FormData) {
     'use server';
     
     const { firestore } = initializeFirebaseAdmin();
-    const sessionCookie = headers().get('x-session-cookie');
+    const sessionCookie = cookies().get('session')?.value;
+
     if (!sessionCookie) {
         return { success: false, message: 'You must be logged in to post a question.' };
     }
@@ -61,8 +62,7 @@ export async function submitQuestion(formData: FormData) {
         : [];
     
     try {
-        const questionData: Omit<CommunityQuestion, 'id' | 'author' | 'answers'> = {
-            authorId: authorId,
+        const questionData: Omit<CommunityQuestion, 'id' | 'author' | 'answers' | 'authorId'> = {
             title: title,
             body: details,
             tags: tags,
@@ -73,7 +73,11 @@ export async function submitQuestion(formData: FormData) {
             views: 0,
         };
         
-        await addDoc(collection(firestore, `users/${authorId}/questions`), questionData);
+        // Save the question in a top-level `questions` collection
+        // and also in the user's sub-collection for easy retrieval of user's questions
+        const userQuestionRef = await addDoc(collection(firestore, `users/${authorId}/questions`), { ...questionData, authorId });
+        await addDoc(collection(firestore, 'questions'), { ...questionData, authorId: authorId, id: userQuestionRef.id });
+
 
         revalidatePath('/forum');
         revalidatePath(`/profile`);
