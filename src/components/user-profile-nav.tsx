@@ -20,17 +20,19 @@ import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
 
 export function UserProfileNav() {
-  const { user, loading } = useUser();
+  const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
     if (!auth) return;
     await signOut(auth);
+    // The onIdTokenChanged listener in SessionManager will handle clearing the cookie
+    // by calling the /api/auth/logout endpoint.
     router.push('/login');
   };
 
-  if (loading) {
+  if (isUserLoading) {
     return <Skeleton className="h-9 w-9 rounded-full" />;
   }
 

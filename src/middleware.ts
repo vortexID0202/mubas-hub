@@ -1,15 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  const session = request.cookies.get('session');
-  const response = NextResponse.next();
-
-  // Pass the session cookie to server actions via headers
-  if (session) {
-    response.headers.set('x-session-cookie', session.value);
-  }
-
-  return response;
+  // We don't need to manually pass the session cookie via headers anymore.
+  // The cookie is automatically sent by the browser on subsequent requests to the server.
+  return NextResponse.next();
 }
 
 export const config = {
