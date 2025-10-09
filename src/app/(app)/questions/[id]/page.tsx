@@ -217,23 +217,37 @@ export default function QuestionPage() {
                     </Button>
                   </div>
                   <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage
-                        src={question.author.avatarUrl}
-                        alt={question.author.name}
-                      />
-                      <AvatarFallback>{question.author.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Asked by</p>
-                      <Link
-                        href="/profile"
-                        className="font-semibold text-primary hover:underline"
-                      >
-                        {question.author.name}
-                      </Link>
+                    {question.author ? (
+                        <>
+                            <Avatar className="h-12 w-12">
+                                <AvatarImage
+                                    src={question.author.avatarUrl}
+                                    alt={question.author.name}
+                                />
+                                <AvatarFallback>{question.author.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Asked by</p>
+                                <Link
+                                    href={`/profile?userId=${question.author.id}`}
+                                    className="font-semibold text-primary hover:underline"
+                                >
+                                    {question.author.name}
+                                </Link>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <Avatar className="h-12 w-12">
+                                <AvatarFallback>?</AvatarFallback>
+                            </Avatar>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Asked by</p>
+                                <p className="font-semibold">Unknown User</p>
+                            </div>
+                        </>
+                    )}
                     </div>
-                  </div>
                 </div>
                 
                 <AnswerSection question={question} />
@@ -281,5 +295,3 @@ export default function QuestionPage() {
     </>
   );
 }
-
-    
