@@ -60,9 +60,9 @@ export default function LoginPage() {
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2 text-center">
-            <div className="flex justify-center mb-4">
-              <Logo />
-            </div>
+            <Link href="/" className="flex justify-center mb-4">
+                <Logo />
+            </Link>
             <h1 className="text-3xl font-bold">Welcome Back</h1>
             <p className="text-balance text-muted-foreground">
               Enter your credentials to access your account
