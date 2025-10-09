@@ -26,9 +26,14 @@ export function UserProfileNav() {
 
   const handleLogout = async () => {
     if (!auth) return;
-    // This will trigger the onIdTokenChanged listener in SessionManager,
-    // which will then call the DELETE /api/auth/session route.
+    
+    // Clear the server-side session
+    await fetch('/api/auth/session', { method: 'DELETE' });
+
+    // Sign out from the client
     await signOut(auth);
+
+    // Redirect to login page
     router.push('/login');
   };
 
