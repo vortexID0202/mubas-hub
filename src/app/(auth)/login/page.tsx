@@ -34,12 +34,25 @@ export default function LoginPage() {
       return;
     }
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push(redirect);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await userCredential.user.getIdToken();
+
+      // Create the session cookie by calling the API route
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: idToken,
+      });
+
+      if (res.ok) {
+        router.push(redirect);
+      } else {
+        throw new Error('Failed to create session.');
+      }
+
     } catch (err: any) {
-      // Common codes for invalid credentials are:
-      // auth/invalid-credential, auth/wrong-password, auth/user-not-found
-      // We can catch them all and show a generic message.
       if (
         err.code === 'auth/invalid-credential' ||
         err.code === 'auth/wrong-password' ||
@@ -48,7 +61,7 @@ export default function LoginPage() {
         setError('Invalid email or password. Please try again.');
       } else {
         console.error('Manual Sign-In error:', err);
-        setError('An unexpected error occurred. Please try again later.');
+        setError(err.message || 'An unexpected error occurred. Please try again later.');
       }
     } finally {
       setLoading(false);

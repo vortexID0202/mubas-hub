@@ -17,10 +17,11 @@ export async function POST(request: NextRequest) {
       value: sessionCookie,
       maxAge: expiresIn,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
     };
 
-    const response = NextResponse.json({ status: 'success' });
+    const response = NextResponse.json({ status: 'success' }, { status: 200 });
     response.cookies.set(options);
 
     return response;
