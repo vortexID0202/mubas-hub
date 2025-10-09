@@ -11,7 +11,7 @@ import {
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
-import { collection, addDoc, serverTimestamp, getFirestore } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getFirestore } from 'firebase-admin/firestore';
 import { initializeFirebaseAdmin } from '@/firebase/server';
 import { CommunityQuestion, Tag } from '@/lib/types';
 
@@ -32,7 +32,8 @@ export async function getRankedAnswers(input: RankAnswersInput) {
 export async function submitQuestion(formData: FormData) {
     'use server';
     
-    const { firestore, auth: adminAuth } = initializeFirebaseAdmin();
+    const { auth: adminAuth } = initializeFirebaseAdmin();
+    const firestore = getFirestore();
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('session')?.value || '';
 
