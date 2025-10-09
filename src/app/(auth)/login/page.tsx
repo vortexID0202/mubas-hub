@@ -34,27 +34,11 @@ export default function LoginPage() {
       return;
     }
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // Get the Firebase ID token
-      const idToken = await user.getIdToken();
-
-      // Create session on server
-      const res = await fetch("/api/auth/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (res.ok) {
-        // Only redirect if the session was created successfully
-        router.push(redirect);
-      } else {
-        const errorText = await res.text();
-        console.error("Failed to create session:", errorText);
-        setError("Failed to create a server session. Please try again.");
-      }
+      // The onIdTokenChanged listener in AuthProvider will handle session creation.
+      await signInWithEmailAndPassword(auth, email, password);
+      // The listener will be triggered, and upon successful session creation,
+      // the user will be authenticated for server actions. We can now redirect.
+      router.push(redirect);
 
     } catch (err: any) {
       if (

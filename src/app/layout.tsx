@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme-provider';
 import { FirebaseClientProvider } from '@/firebase';
+import { AuthProvider } from '@/firebase/auth-provider';
 
 
 export const metadata: Metadata = {
@@ -33,8 +34,10 @@ export default function RootLayout({
             disableTransitionOnChange
         >
           <FirebaseClientProvider>
+            <AuthProvider>
               {children}
-              <Toaster />
+            </AuthProvider>
+            <Toaster />
           </FirebaseClientProvider>
         </ThemeProvider>
       </body>
