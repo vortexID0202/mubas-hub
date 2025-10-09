@@ -35,6 +35,11 @@ interface QuestionCardProps {
 }
 
 export default function QuestionCard({ question, author }: QuestionCardProps) {
+  // Safeguard: Do not render the card if the question or its ID is missing.
+  if (!question || !question.id) {
+    return null;
+  }
+
   const displayAuthor = author || question.author;
   const topAnswer = question.answers?.sort((a, b) => b.votes - a.votes)[0];
   const isVerified = question.isVerified;
