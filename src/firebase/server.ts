@@ -1,4 +1,4 @@
-import { initializeApp, getApps, App, credential } from 'firebase-admin/app';
+import { initializeApp, getApps, getApp, App, credential } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -6,7 +6,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 function getFirebaseAdminApp(): App {
     if (getApps().length > 0) {
         // Return the default app if it already exists
-        return getApps()[0];
+        return getApp();
     }
 
     // This block will only run once, on the first server-side execution.
