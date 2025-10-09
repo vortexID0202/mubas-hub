@@ -33,7 +33,6 @@ export type CommunityQuestion = {
   votes: number;
   answersCount: number;
   views: number;
-  answers?: QuestionAnswer[];
   isVerified?: boolean;
 };
 
@@ -41,7 +40,9 @@ export type QuestionAnswer = {
   id:string;
   body: string;
   author: User;
-  createdAt: string;
+  authorId: string;
+  questionId: string;
+  createdAt: FieldValue | string;
   votes: number;
   comments: AnswerComment[];
   isVerified?: boolean;
