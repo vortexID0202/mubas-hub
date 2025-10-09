@@ -174,7 +174,7 @@ export default function ProfilePage() {
             title: 'Profile Picture Updated',
             description: 'Your new picture has been saved.',
         });
-        // Refresh the page to show the new picture
+        
         router.refresh();
 
     } catch (error) {
