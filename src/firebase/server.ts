@@ -1,11 +1,11 @@
 
 import * as admin from 'firebase-admin';
-import 'dotenv/config';
 
 // This prevents re-initializing the app on every hot-reload in development
 function getFirebaseAdminApp(): admin.App {
     if (admin.apps.length > 0) {
-        return admin.apps[0];
+        // This is the an already initialized app instance.
+        return admin.apps[0] as admin.App;
     }
     
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
