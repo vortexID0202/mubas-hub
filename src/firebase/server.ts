@@ -1,4 +1,6 @@
-import { initializeApp, getApps, App, credential } from 'firebase-admin/app';
+
+import * as admin from 'firebase-admin';
+import { getApps, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -19,8 +21,8 @@ function getFirebaseAdminApp(): App {
         throw new Error('Firebase Admin SDK is not configured. Missing environment variables.');
     }
 
-    return initializeApp({
-        credential: credential.cert(serviceAccount),
+    return admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
     });
 }
 
