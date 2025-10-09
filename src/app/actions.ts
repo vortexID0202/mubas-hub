@@ -11,7 +11,7 @@ import {
 } from '@/ai/flows/community-forum-answer-ranker';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { collection, addDoc, serverTimestamp } from 'firebase-admin/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { CommunityQuestion, Tag } from '@/lib/types';
 
