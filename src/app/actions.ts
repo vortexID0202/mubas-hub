@@ -32,20 +32,30 @@ export async function getRankedAnswers(input: RankAnswersInput) {
 export async function submitQuestion(formData: FormData) {
     'use server';
     
+    // --- START DEBUGGING ---
+    console.log('--- Server Action Triggered ---');
     const { firestore } = initializeFirebaseAdmin();
-    const sessionCookie = cookies().get('session')?.value || '';
+    const cookieStore = cookies();
+    const sessionCookie = cookieStore.get('session')?.value || '';
 
-    // 1. Verify the session cookie
+    if (!sessionCookie) {
+        console.log('SERVER ACTION ERROR: No session cookie found!');
+        return { success: false, message: 'You must be logged in to post a question. (Reason: No cookie)' };
+    }
+
+    console.log('Session cookie found. Attempting to verify...');
+    // --- END DEBUGGING ---
+    
     let decodedClaims;
     try {
         decodedClaims = await getAuth().verifySessionCookie(sessionCookie, true /** checkRevoked */);
+        console.log(`SUCCESS: Cookie verified for user UID: ${decodedClaims.uid}`);
     } catch (error) {
-        // Session cookie is invalid or expired.
-        console.error('Error verifying session cookie:', error);
-        return { success: false, message: 'You must be logged in to post a question.' };
+        console.log('SERVER ACTION ERROR: Cookie verification failed!');
+        console.error(error); // Log the actual error object
+        return { success: false, message: 'You must be logged in to post a question. (Reason: Invalid cookie)' };
     }
     
-    // 2. We are now authenticated! The user's UID is in decodedClaims.uid
     const authorId = decodedClaims.uid;
     
     const title = formData.get('title') as string;
@@ -72,10 +82,7 @@ export async function submitQuestion(formData: FormData) {
             views: 0,
         };
         
-        // Save the question in a top-level `questions` collection
-        // and also in the user's sub-collection for easy retrieval of user's questions
         const userQuestionRef = await addDoc(collection(firestore, `users/${authorId}/questions`), { ...questionData, authorId });
-        // Let's use the ID from the user's subcollection as the main ID
         const mainQuestionRef = collection(firestore, 'questions');
         await addDoc(mainQuestionRef, { ...questionData, authorId: authorId, id: userQuestionRef.id });
 
@@ -84,7 +91,7 @@ export async function submitQuestion(formData: FormData) {
         revalidatePath(`/profile`);
         return { success: true };
     } catch (error: any) {
-        console.error("Error submitting question:", error);
+        console.error("Error submitting question to Firestore:", error);
         return { success: false, message: error.message || "Failed to submit question." };
     }
 }

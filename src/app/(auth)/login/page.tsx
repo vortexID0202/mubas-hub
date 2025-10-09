@@ -34,13 +34,27 @@ export default function LoginPage() {
       return;
     }
     try {
-      // The onIdTokenChanged listener in SessionManager will handle
-      // creating the session cookie automatically.
-      await signInWithEmailAndPassword(auth, email, password);
-      
-      // Once signed in, the SessionManager syncs the session,
-      // so we can now safely redirect.
-      router.push(redirect);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Get the Firebase ID token
+      const idToken = await user.getIdToken();
+
+      // Create session on server
+      const res = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      if (res.ok) {
+        // Only redirect if the session was created successfully
+        router.push(redirect);
+      } else {
+        const errorText = await res.text();
+        console.error("Failed to create session:", errorText);
+        setError("Failed to create a server session. Please try again.");
+      }
 
     } catch (err: any) {
       if (
@@ -62,10 +76,10 @@ export default function LoginPage() {
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:min-h-screen">
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[400px] gap-6">
+          <Link href="/" className="flex justify-center mb-4">
+              <Logo />
+          </Link>
           <div className="grid gap-2 text-center">
-            <Link href="/" className="flex justify-center mb-4">
-                <Logo />
-            </Link>
             <h1 className="text-3xl font-bold">Welcome Back</h1>
             <p className="text-balance text-muted-foreground">
               Enter your credentials to access your account
