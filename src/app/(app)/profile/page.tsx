@@ -21,7 +21,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Pen, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, where, updateDoc } from 'firebase/firestore';
 import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
@@ -81,7 +81,10 @@ export default function ProfilePage() {
   const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const userQuestionsQuery = useMemoFirebase(() => (firestore && user?.uid) ? collection(firestore, 'users', user.uid, 'questions') : null, [firestore, user?.uid]);
+  const userQuestionsQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return query(collection(firestore, 'questions'), where('authorId', '==', user.uid));
+  }, [firestore, user?.uid]);
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
   
   const [userAnswersCount, setUserAnswersCount] = useState(0);
