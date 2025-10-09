@@ -1,11 +1,11 @@
 
 // This object holds the Firebase configuration.
-// It reads environment variables and is used to initialize the Firebase app.
+// It is automatically generated and should not be modified manually.
 export const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "YOUR_AUTH_DOMAIN_HERE",
-  projectId: "YOUR_PROJECT_ID_HERE",
-  storageBucket: "YOUR_STORAGE_BUCKET_HERE",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE",
-  appId: "YOUR_APP_ID_HERE",
+  "projectId": "mubas-community-47645290-bc530",
+  "appId": "1:776805638483:web:821d2bfcce6e8c7101c1a6",
+  "apiKey": "AIzaSyBs1nbw6qvV39KHd5jce7euWzKNhQzB4Xg",
+  "authDomain": "mubas-community-47645290-bc530.firebaseapp.com",
+  "measurementId": "",
+  "messagingSenderId": "776805638483"
 };
