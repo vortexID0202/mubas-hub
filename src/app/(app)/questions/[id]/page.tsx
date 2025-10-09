@@ -20,7 +20,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 const answerSchema = z.object({
@@ -65,6 +65,7 @@ export default function QuestionPage() {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
+  const viewIncrementedRef = useRef(false);
 
   const questionRef = useMemoFirebase(() => firestore ? doc(firestore, 'questions', id) : null, [firestore, id]);
   const { data: question, isLoading: isQuestionLoading, error } = useDoc<CommunityQuestion>(questionRef);
@@ -80,18 +81,17 @@ export default function QuestionPage() {
   });
 
   useEffect(() => {
-    if (isQuestionLoading) return;
-    
-    const incrementViewCount = async () => {
-        if(firestore && id) {
+    if (firestore && id && !isQuestionLoading && !viewIncrementedRef.current) {
+        const incrementViewCount = async () => {
             const questionDocRef = doc(firestore, 'questions', id);
             await updateDoc(questionDocRef, {
                 views: increment(1)
             });
-        }
-    };
-    incrementViewCount().catch(console.error); // Best-effort
-  }, [isQuestionLoading, question, id, firestore]);
+        };
+        incrementViewCount().catch(console.error); // Best-effort
+        viewIncrementedRef.current = true; // Set flag to prevent future increments
+    }
+  }, [id, firestore, isQuestionLoading]);
 
   async function handleUpvote() {
     if (!firestore || !user) {
@@ -283,3 +283,5 @@ export default function QuestionPage() {
     </>
   );
 }
+
+    
