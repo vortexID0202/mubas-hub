@@ -82,7 +82,7 @@ export default function QuestionPage() {
   });
 
   useEffect(() => {
-    if (firestore && id && !isQuestionLoading && !viewIncrementedRef.current) {
+    if (firestore && id && !isQuestionLoading && question && !viewIncrementedRef.current) {
         const incrementViewCount = async () => {
             const questionDocRef = doc(firestore, 'questions', id);
             await updateDoc(questionDocRef, {
@@ -92,7 +92,7 @@ export default function QuestionPage() {
         incrementViewCount().catch(console.error); // Best-effort
         viewIncrementedRef.current = true; // Set flag to prevent future increments
     }
-  }, [id, firestore, isQuestionLoading]);
+  }, [id, firestore, isQuestionLoading, question]);
 
   async function handleUpvote() {
     if (!firestore || !user) {
@@ -164,19 +164,13 @@ export default function QuestionPage() {
   
   const isLoading = isQuestionLoading || isUserLoading || isProfileLoading;
 
-  if (isLoading) {
-    return (
-     <>
-      <Header />
-      <main className="flex-1">
-          <QuestionPageSkeleton />
-      </main>
-      <Footer />
-     </>
-    )
+  if (error) {
+    // Handle error state, maybe show an error message
+    notFound();
   }
 
-  if (!question) {
+  // Fallback to notFound if loading is finished but there's no question
+  if (!isLoading && !question) {
     notFound();
   }
 
@@ -184,101 +178,105 @@ export default function QuestionPage() {
     <>
       <Header />
       <main className="flex-1">
-        <div className="container mx-auto max-w-4xl py-12">
-          <div className="space-y-4">
-            <h1 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl">
-              {question.title}
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              <span>
-                Asked on {format(question.createdAt instanceof Timestamp ? question.createdAt.toDate() : new Date(question.createdAt as string), 'MMM d, yyyy')}
-              </span>
-              <div className="flex items-center gap-1">
-                <Eye className="h-4 w-4" />
-                <span>{question.views} views</span>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {question.tags.map((tag) => (
-                <Badge key={tag.id} variant="secondary">
-                  {tag.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <Separator className="my-8" />
-
-          <div className="grid grid-cols-1 gap-12">
-            <div>
-              <div className="prose prose-lg dark:prose-invert max-w-none">
-                <p>{question.body}</p>
-              </div>
-              <div className="mt-8 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={handleUpvote} disabled={!user}>
-                    <ArrowBigUp className="mr-2 h-4 w-4" /> Upvote ({question.votes})
-                  </Button>
+        {isLoading || !question ? (
+          <QuestionPageSkeleton />
+        ) : (
+          <div className="container mx-auto max-w-4xl py-12">
+            <div className="space-y-4">
+              <h1 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl">
+                {question.title}
+              </h1>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <span>
+                  Asked on {format(question.createdAt instanceof Timestamp ? question.createdAt.toDate() : new Date(question.createdAt as string), 'MMM d, yyyy')}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Eye className="h-4 w-4" />
+                  <span>{question.views} views</span>
                 </div>
-                <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage
-                      src={question.author.avatarUrl}
-                      alt={question.author.name}
-                    />
-                    <AvatarFallback>{question.author.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Asked by</p>
-                    <Link
-                      href="/profile"
-                      className="font-semibold text-primary hover:underline"
-                    >
-                      {question.author.name}
-                    </Link>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {question.tags.map((tag) => (
+                  <Badge key={tag.id} variant="secondary">
+                    {tag.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <Separator className="my-8" />
+
+            <div className="grid grid-cols-1 gap-12">
+              <div>
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  <p>{question.body}</p>
+                </div>
+                <div className="mt-8 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={handleUpvote} disabled={!user}>
+                      <ArrowBigUp className="mr-2 h-4 w-4" /> Upvote ({question.votes})
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-lg bg-muted p-3">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage
+                        src={question.author.avatarUrl}
+                        alt={question.author.name}
+                      />
+                      <AvatarFallback>{question.author.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Asked by</p>
+                      <Link
+                        href="/profile"
+                        className="font-semibold text-primary hover:underline"
+                      >
+                        {question.author.name}
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <AnswerSection question={question} />
+                
+                <AnswerSection question={question} />
 
-              <aside className="mt-12 space-y-6" id="answer-form">
-                <div className="rounded-lg bg-primary/5 p-6">
-                  <h3 className="text-xl font-semibold text-primary">Post Your Answer</h3>
-                  <Form {...form}>
-                    <form onSubmit={form.handleSubmit(handleAnswerSubmit)} className="mt-4 space-y-4">
-                       <FormField
-                          control={form.control}
-                          name="answer"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Textarea
-                                  placeholder="Type your answer here..."
-                                  className="min-h-[150px] bg-background"
-                                  {...field}
-                                  disabled={form.formState.isSubmitting}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !user}>
-                         {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Submitting...</> : "Submit Answer"}
-                      </Button>
-                      {!user && !isUserLoading && (
-                        <p className="text-center text-sm text-muted-foreground">
-                            You must be <Link href={`/login?redirect=/questions/${id}`} className="underline text-primary">logged in</Link> to post an answer.
-                        </p>
-                      )}
-                    </form>
-                  </Form>
-                </div>
-              </aside>
+                <aside className="mt-12 space-y-6" id="answer-form">
+                  <div className="rounded-lg bg-primary/5 p-6">
+                    <h3 className="text-xl font-semibold text-primary">Post Your Answer</h3>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(handleAnswerSubmit)} className="mt-4 space-y-4">
+                         <FormField
+                            control={form.control}
+                            name="answer"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Type your answer here..."
+                                    className="min-h-[150px] bg-background"
+                                    {...field}
+                                    disabled={form.formState.isSubmitting}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !user}>
+                           {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Submitting...</> : "Submit Answer"}
+                        </Button>
+                        {!user && !isUserLoading && (
+                          <p className="text-center text-sm text-muted-foreground">
+                              You must be <Link href={`/login?redirect=/questions/${id}`} className="underline text-primary">logged in</Link> to post an answer.
+                          </p>
+                        )}
+                      </form>
+                    </Form>
+                  </div>
+                </aside>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
       <Footer />
     </>
