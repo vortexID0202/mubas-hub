@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Card,
   CardContent,
@@ -14,11 +16,27 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { communityQuestions, users, liveUpdates } from '@/lib/data';
+import { users, liveUpdates } from '@/lib/data';
 import { Activity, ArrowUpRight, BookOpen, Users, ShieldAlert, FileText, Download, Shield } from 'lucide-react';
 import Link from 'next/link';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { CommunityQuestion } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function AdminDashboardPage() {
+  const firestore = useFirestore();
+
+  const questionsQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(5)) : null
+  , [firestore]);
+  const { data: communityQuestions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
+
+  const totalQuestionsQuery = useMemoFirebase(() =>
+    firestore ? collection(firestore, 'questions') : null
+  , [firestore]);
+  const { data: allQuestions } = useCollection(totalQuestionsQuery);
+
   const overviewCards = [
     {
       title: 'Total Users',
@@ -30,7 +48,7 @@ export default function AdminDashboardPage() {
     {
       title: 'Total Questions',
       icon: BookOpen,
-      value: communityQuestions.length,
+      value: allQuestions?.length ?? '...',
       change: '+12.2% from last month',
       href: '/forum'
     },
@@ -137,7 +155,19 @@ export default function AdminDashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {communityQuestions.slice(0, 5).map((q) => (
+                {isLoadingQuestions && (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-5 w-24" />
+                        <Skeleton className="h-4 w-32 mt-1" />
+                      </TableCell>
+                      <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                      <TableCell className="text-right"><Skeleton className="h-5 w-20 ml-auto" /></TableCell>
+                    </TableRow>
+                  ))
+                )}
+                {communityQuestions?.map((q) => (
                   <TableRow key={q.id}>
                     <TableCell>
                       <div className="font-medium">{q.author.name}</div>
@@ -151,7 +181,7 @@ export default function AdminDashboardPage() {
                         </Link>
                     </TableCell>
                     <TableCell className="text-right">
-                        {new Date(q.createdAt).toLocaleDateString()}
+                        {new Date(q.createdAt as string).toLocaleDateString()}
                     </TableCell>
                   </TableRow>
                 ))}

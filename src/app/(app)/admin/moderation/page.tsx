@@ -1,4 +1,6 @@
 
+'use client';
+
 import {
   Card,
   CardContent,
@@ -15,35 +17,37 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { communityQuestions } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
+import { useMemo } from 'react';
 
+// Note: This is now static data. In a real app, this would be fetched from a 'flags' collection in Firestore.
 const flaggedContent = [
     {
         id: 'q-1',
         type: 'Question',
         content: 'This is not a serious question, just spam.',
-        author: communityQuestions[0].author.name,
+        author: 'Student 1',
         date: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
     },
     {
         id: 'a-1',
         type: 'Answer',
         content: 'This answer is incorrect and misleading.',
-        author: communityQuestions[1].answers[0].author.name,
+        author: 'Student 2',
         date: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
     },
     {
         id: 'c-1',
         type: 'Comment',
         content: 'This comment contains inappropriate language.',
-        author: communityQuestions[0].answers[1].comments[0].author.name,
+        author: 'Student 3',
         date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
     }
 ]
 
 export default function AdminModerationPage() {
+
   return (
     <>
       <div className="flex items-center">
