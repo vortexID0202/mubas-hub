@@ -21,13 +21,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useUser } from '@/firebase';
-import React from 'react';
+import React, { useEffect } from 'react';
 
 export default function AskQuestionPage() {
-  const { user, loading } = useUser();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   const [error, setError] = React.useState<string | null>(null);
   const [formLoading, setFormLoading] = React.useState(false);
+
+  useEffect(() => {
+    // Redirect if the user is not logged in and the loading is complete.
+    if (!isUserLoading && !user) {
+      router.push('/login?redirect=/ask');
+    }
+  }, [user, isUserLoading, router]);
 
   async function handleFormSubmit(formData: FormData) {
     setFormLoading(true);
@@ -41,17 +48,13 @@ export default function AskQuestionPage() {
     setFormLoading(false);
   }
 
-  if (loading) {
+  // While loading or before redirecting, show a loading state or nothing.
+  if (isUserLoading || !user) {
     return (
         <div className="flex items-center justify-center h-screen">
             <p>Loading...</p>
         </div>
     )
-  }
-
-  if (!user) {
-    router.push('/login?redirect=/ask');
-    return null;
   }
 
   return (
