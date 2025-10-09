@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LayoutDashboard, LogOut, Settings, User, Loader2 } from 'lucide-react';
+import { LayoutDashboard, LogOut, Settings, User } from 'lucide-react';
 import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 
@@ -17,7 +17,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
-import { ThemeToggle } from './theme-toggle';
 import { Skeleton } from './ui/skeleton';
 
 export function UserProfileNav() {
@@ -26,6 +25,7 @@ export function UserProfileNav() {
   const router = useRouter();
 
   const handleLogout = async () => {
+    if (!auth) return;
     await signOut(auth);
     router.push('/login');
   };
@@ -82,13 +82,6 @@ export function UserProfileNav() {
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-         <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-            <div className="flex items-center justify-between w-full">
-                <span>Theme</span>
-                <ThemeToggle />
-            </div>
-         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />

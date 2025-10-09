@@ -8,6 +8,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from 
 import SearchBar from '../search-bar';
 import { MobileNav } from './mobile-nav';
 import { useState } from 'react';
+import { ThemeToggle } from '../theme-toggle';
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -75,6 +76,7 @@ export function Header() {
             <Bell className="h-5 w-5" />
             <span className="sr-only">Notifications</span>
           </Button>
+          <ThemeToggle />
           <UserProfileNav />
         </div>
       </div>
