@@ -17,14 +17,7 @@ type FirebaseServices = {
 // This is the core function to initialize Firebase and get the SDKs.
 // It's designed to be idempotent - it will only initialize the app once.
 export function initializeFirebase(): FirebaseServices {
-  const app = getApps().length ? getApp() : initializeApp({
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
-  });
+  const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
   // Initialize the services we need.
   const auth = getAuth(app);
