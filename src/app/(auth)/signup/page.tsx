@@ -44,7 +44,7 @@ const SignUpPage: React.FC = () => {
       return;
     }
     if (!email.endsWith('@mubas.ac.mw')) {
-      setErrorMessage('Please use a valid MUBAS email address (ending in @mubas.ac.mw).');
+      setErrorMessage('Please use a valid MUBAS email address.');
       return;
     }
 
