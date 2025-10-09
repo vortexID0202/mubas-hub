@@ -84,17 +84,14 @@ export default function QuestionPage() {
   });
 
   useEffect(() => {
-    if (firestore && id && !isQuestionLoading && question && !viewIncrementedRef.current) {
-        const incrementViewCount = async () => {
-            const questionDocRef = doc(firestore, 'questions', id);
-            await updateDoc(questionDocRef, {
-                views: increment(1)
-            });
-        };
-        incrementViewCount().catch(console.error); // Best-effort
-        viewIncrementedRef.current = true; // Set flag to prevent future increments
+    if (firestore && id && !viewIncrementedRef.current) {
+        const questionDocRef = doc(firestore, 'questions', id);
+        updateDoc(questionDocRef, {
+            views: increment(1)
+        }).catch(console.error); // Best-effort, non-blocking
+        viewIncrementedRef.current = true; // Set flag to prevent future increments in this session
     }
-  }, [id, firestore, isQuestionLoading, question]);
+  }, [id, firestore]);
 
   async function handleUpvote() {
     if (!firestore || !user) {
@@ -284,3 +281,5 @@ export default function QuestionPage() {
     </>
   );
 }
+
+    

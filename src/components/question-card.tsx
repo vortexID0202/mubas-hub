@@ -58,7 +58,7 @@ export default function QuestionCard({ question, author }: QuestionCardProps) {
   return (
     <Card
       className={cn(
-        'flex h-full flex-col transition-all duration-300 hover:scale-[1.02] hover:shadow-lg border-l-4',
+        'flex h-full flex-col transition-all duration-300 hover:shadow-lg border-l-4',
         isVerified ? 'border-green-500' : 'border-primary'
       )}
     >
@@ -157,7 +157,7 @@ export default function QuestionCard({ question, author }: QuestionCardProps) {
               <span>{question.answersCount}</span>
             </div>
           </div>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="lg" asChild>
             <a href={`/questions/${question.id}#answer-form`}>
               Answer
             </a>
@@ -173,3 +173,5 @@ export default function QuestionCard({ question, author }: QuestionCardProps) {
     </Card>
   );
 }
+
+    
