@@ -43,7 +43,7 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: idToken,
+        body: JSON.stringify({ idToken }),
       });
 
       if (res.ok) {
