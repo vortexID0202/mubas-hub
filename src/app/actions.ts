@@ -9,12 +9,6 @@ import {
   rankAnswers as rankAnswersAI,
   RankAnswersInput,
 } from '@/ai/flows/community-forum-answer-ranker';
-import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
-import { CommunityQuestion, Tag } from '@/lib/types';
-
 
 export async function getSearchSuggestions(
   input: HybridSearchSuggestionsInput
@@ -27,64 +21,4 @@ export async function getRankedAnswers(input: RankAnswersInput) {
   const rankedAnswers = await rankAnswersAI(input);
   // Sort by rank
   return rankedAnswers.sort((a, b) => a.rank - b.rank);
-}
-
-export async function submitQuestion(formData: FormData) {
-    'use server';
-    
-    const adminAuth = getAdminAuth();
-    const adminFirestore = getAdminDb();
-    const cookieStore = cookies();
-    const sessionCookie = cookieStore.get('session')?.value || '';
-
-    if (!sessionCookie) {
-        return { success: false, message: 'You must be logged in to post a question. (Reason: No cookie)' };
-    }
-    
-    let decodedClaims;
-    try {
-        decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true /** checkRevoked */);
-    } catch (error) {
-        console.error("Server Action Error: Cookie verification failed!", error);
-        return { success: false, message: 'You must be logged in to post a question. (Reason: Invalid cookie)' };
-    }
-    
-    const authorId = decodedClaims.uid;
-    
-    const title = formData.get('title') as string;
-    const details = formData.get('details') as string;
-    const tagsString = formData.get('tags') as string;
-
-    if (!title || !details) {
-        return { success: false, message: 'Title and details are required.' };
-    }
-    
-    const tags: Tag[] = tagsString 
-        ? tagsString.split(',').map(tag => ({ id: tag.trim(), name: tag.trim() }))
-        : [];
-    
-    try {
-        const questionData: Omit<CommunityQuestion, 'id' | 'author' | 'answers' | 'authorId'> = {
-            title: title,
-            body: details,
-            tags: tags,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            votes: 0,
-            answersCount: 0,
-            views: 0,
-        };
-        
-        const userQuestionRef = await addDoc(collection(adminFirestore, `users/${authorId}/questions`), { ...questionData, authorId });
-        const mainQuestionRef = collection(adminFirestore, 'questions');
-        await addDoc(mainQuestionRef, { ...questionData, authorId: authorId, id: userQuestionRef.id });
-
-
-        revalidatePath('/forum');
-        revalidatePath(`/profile`);
-        return { success: true };
-    } catch (error: any) {
-        console.error("Error submitting question to Firestore:", error);
-        return { success: false, message: error.message || "Failed to submit question." };
-    }
 }

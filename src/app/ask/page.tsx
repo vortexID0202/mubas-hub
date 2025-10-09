@@ -1,0 +1,245 @@
+
+'use client';
+
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Info, Send, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
+import { useUser, useFirestore } from '@/firebase';
+import { CommunityQuestion, Tag } from '@/lib/types';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useToast } from '@/hooks/use-toast';
+
+const questionSchema = z.object({
+  title: z.string().min(10, 'Title must be at least 10 characters long.'),
+  details: z.string().min(20, 'Details must be at least 20 characters long.'),
+  tags: z.string().refine(value => {
+    const tags = value.split(',').map(t => t.trim()).filter(Boolean);
+    return tags.length > 0 && tags.length <= 5;
+  }, 'Please provide 1 to 5 tags, separated by commas.'),
+});
+
+
+export default function AskQuestionPage() {
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof questionSchema>>({
+    resolver: zodResolver(questionSchema),
+    defaultValues: {
+      title: '',
+      details: '',
+      tags: '',
+    },
+  });
+  
+  const { isSubmitting } = form.formState;
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/login?redirect=/ask');
+    }
+  }, [user, isUserLoading, router]);
+
+  async function handleFormSubmit(values: z.infer<typeof questionSchema>) {
+    if (!firestore || !user) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "You must be logged in to post a question.",
+        });
+        return;
+    }
+    
+    const tags: Tag[] = values.tags 
+        ? values.tags.split(',').map(tag => ({ id: tag.trim(), name: tag.trim() }))
+        : [];
+        
+    try {
+        const questionData: Omit<CommunityQuestion, 'id' | 'author' > = {
+            title: values.title,
+            body: values.details,
+            authorId: user.uid,
+            tags: tags,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            votes: 0,
+            answersCount: 0,
+            views: 0,
+        };
+        
+        // This is now a client-side operation
+        await addDoc(collection(firestore, `questions`), questionData);
+
+        toast({
+            title: "Question Posted!",
+            description: "Your question is now live in the community forum.",
+        });
+
+        router.push('/forum');
+
+    } catch (error: any) {
+        console.error("Error submitting question to Firestore:", error);
+        toast({
+            variant: "destructive",
+            title: "Submission Failed",
+            description: error.message || "Failed to submit question. Please try again.",
+        });
+    }
+  }
+
+  if (isUserLoading || !user) {
+    return (
+        <div className="flex items-center justify-center h-screen">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    )
+  }
+
+  return (
+    <>
+      <Header />
+      <main className="flex-1">
+        <div className="container mx-auto max-w-4xl py-12 md:py-16">
+          <div className="space-y-2 text-center">
+            <h1 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl">
+              Ask a Public Question
+            </h1>
+            <p className="text-muted-foreground">
+              Get help from the MUBAS community.
+            </p>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-3">
+            <div className="md:col-span-2">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleFormSubmit)}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Your Question</CardTitle>
+                    <CardDescription>
+                      Focus on a specific problem and provide enough details for
+                      others to help you.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Title</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. Is there a way to connect to campus Wi-Fi on Linux?"
+                              {...field}
+                              disabled={isSubmitting}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            Be specific and imagine you’re asking a question to another person.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="details"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Details</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Include all the information someone would need to answer your question."
+                              className="min-h-[200px]"
+                              {...field}
+                              disabled={isSubmitting}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="tags"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tags</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. smis, wifi, fees, exams"
+                              {...field}
+                              disabled={isSubmitting}
+                            />
+                          </FormControl>
+                           <FormDescription className="text-xs">
+                             Add up to 5 tags to describe what your question is about.
+                             Use commas to separate tags.
+                           </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                  <CardFooter className="justify-end">
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Posting...</>
+                      ) : (
+                        <><Send className="mr-2 h-4 w-4" /> Post Your Question</>
+                      )}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </form>
+            </Form>
+            </div>
+
+            <div className="space-y-6">
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Writing a good question</AlertTitle>
+                <AlertDescription>
+                  <ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
+                    <li>Summarize your problem in a one-line title.</li>
+                    <li>Describe your problem in more detail.</li>
+                    <li>Describe what you tried and what you expected to happen.</li>
+                    <li>Review your question and post it to the site.</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+              <Button variant="outline" asChild className="w-full">
+                <Link href="/">Cancel</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}
