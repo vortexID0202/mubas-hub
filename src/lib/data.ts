@@ -3,6 +3,7 @@ import {
   KnowledgeBaseArticle,
   LiveUpdate,
   User,
+  Tag
 } from '@/lib/types';
 
 export const users: User[] = Array.from({ length: 10 }, (_, i) => ({
@@ -12,7 +13,7 @@ export const users: User[] = Array.from({ length: 10 }, (_, i) => ({
   reputation: Math.floor(Math.random() * 500) + 50,
 }));
 
-const sampleTags = [
+export const sampleTags: Tag[] = [
   { id: '1', name: 'smis' },
   { id: '2', name: 'wifi' },
   { id: '3', name: 'fees' },

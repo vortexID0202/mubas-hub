@@ -34,6 +34,7 @@ export type CommunityQuestion = {
   answersCount: number;
   views: number;
   answers?: QuestionAnswer[];
+  isVerified?: boolean;
 };
 
 export type QuestionAnswer = {

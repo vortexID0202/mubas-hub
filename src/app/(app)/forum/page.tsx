@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useMemo } from 'react';
-import { Frown, MessageSquare, Filter, Loader2 } from 'lucide-react';
+import { Frown, MessageSquare, Filter, Loader2, CheckCircle } from 'lucide-react';
 import QuestionCard from '@/components/question-card';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,9 +20,10 @@ import {
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { CommunityQuestion } from '@/lib/types';
+import { CommunityQuestion, Tag } from '@/lib/types';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { sampleTags } from '@/lib/data';
 
 const QUESTIONS_PER_PAGE = 6;
 
@@ -44,7 +45,7 @@ function ForumPageSkeleton() {
             </Button>
           </div>
           <div className="mt-8">
-            <Skeleton className="h-10 w-64 mb-8" />
+            <Skeleton className="h-10 w-full md:w-96 mb-8" />
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <CardSkeleton key={i} />
@@ -81,6 +82,7 @@ export default function ForumPage() {
     QUESTIONS_PER_PAGE
   );
   const [activeFilter, setActiveFilter] = useState('recent');
+  const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const firestore = useFirestore();
 
   const questionsQuery = useMemoFirebase(() => 
@@ -90,18 +92,40 @@ export default function ForumPage() {
   
   const filteredQuestions = useMemo(() => {
     if (!questions) return [];
-    let sorted = [...questions];
-    if (activeFilter === 'popular') {
-      sorted.sort((a, b) => b.votes - a.votes);
-    } else if (activeFilter === 'unanswered') {
-      sorted = sorted.filter(q => q.answersCount === 0);
+    let processedQuestions = [...questions];
+
+    // Filter by tag first
+    if (selectedTag) {
+      processedQuestions = processedQuestions.filter(q => q.tags.some(t => t.name === selectedTag.name));
     }
-    // 'recent' is the default from the query, no extra sorting needed.
-    return sorted;
-  }, [questions, activeFilter]);
+    
+    // Then sort/filter by the active tab
+    switch (activeFilter) {
+      case 'popular':
+        processedQuestions.sort((a, b) => b.votes - a.votes);
+        break;
+      case 'unanswered':
+        processedQuestions = processedQuestions.filter(q => q.answersCount === 0);
+        break;
+      case 'verified':
+        processedQuestions = processedQuestions.filter(q => q.isVerified);
+        break;
+      case 'recent':
+      default:
+        // Already sorted by date from the query
+        break;
+    }
+
+    return processedQuestions;
+  }, [questions, activeFilter, selectedTag]);
 
   const loadMore = () => {
     setVisibleQuestionsCount((prev) => prev + QUESTIONS_PER_PAGE);
+  };
+
+  const handleTagSelect = (tag: Tag | null) => {
+    setSelectedTag(tag);
+    setVisibleQuestionsCount(QUESTIONS_PER_PAGE); // Reset pagination
   };
 
   const questionsToShow = filteredQuestions.slice(0, visibleQuestionsCount);
@@ -122,18 +146,14 @@ export default function ForumPage() {
       <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
         <Frown className="h-16 w-16 text-muted-foreground" />
         <h2 className="mt-6 text-xl font-semibold">
-          {activeFilter === 'unanswered' ? 'No unanswered questions.' : 'No Questions Yet'}
+          No questions found.
         </h2>
         <p className="mt-2 text-center text-muted-foreground">
-          {activeFilter === 'unanswered' 
-              ? "It looks like the community has answered everything!"
-              : "Be the first to ask a question and get help from the community."}
+          Try adjusting your filters or be the first to ask a question!
         </p>
-        {activeFilter !== 'unanswered' && (
-          <Button asChild className="mt-6">
+         <Button asChild className="mt-6">
             <Link href="/ask">Ask a Question</Link>
           </Button>
-        )}
       </div>
     );
   };
@@ -163,36 +183,43 @@ export default function ForumPage() {
 
           <Tabs defaultValue="recent" className="w-full mt-8" onValueChange={setActiveFilter}>
             <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-              <TabsList className="grid w-full grid-cols-3 md:w-auto">
+              <TabsList className="grid w-full grid-cols-4 md:w-auto">
                 <TabsTrigger value="recent">Recent</TabsTrigger>
                 <TabsTrigger value="popular">Popular</TabsTrigger>
                 <TabsTrigger value="unanswered">Unanswered</TabsTrigger>
+                <TabsTrigger value="verified">Verified</TabsTrigger>
               </TabsList>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
-                    <Filter className="mr-2 h-4 w-4" />
-                    Filter by Tag
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem>smis</DropdownMenuItem>
-                  <DropdownMenuItem>wifi</DropdownMenuItem>
-                  <DropdownMenuItem>fees</DropdownMenuItem>
-                  <DropdownMenuItem>exams</DropdownMenuItem>
-                  <DropdownMenuItem>academics</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <Filter className="mr-2 h-4 w-4" />
+                      {selectedTag ? `Tag: ${selectedTag.name}` : 'Filter by Tag'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onSelect={() => handleTagSelect(null)}>
+                      All Tags
+                    </DropdownMenuItem>
+                    {sampleTags.map(tag => (
+                      <DropdownMenuItem key={tag.id} onSelect={() => handleTagSelect(tag)}>
+                        {tag.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
             <TabsContent value="recent" className="mt-8">
               {renderContent()}
             </TabsContent>
-
             <TabsContent value="popular" className="mt-8">
               {renderContent()}
             </TabsContent>
-
             <TabsContent value="unanswered" className="mt-8">
+              {renderContent()}
+            </TabsContent>
+            <TabsContent value="verified" className="mt-8">
               {renderContent()}
             </TabsContent>
           </Tabs>

@@ -37,7 +37,7 @@ interface QuestionCardProps {
 export default function QuestionCard({ question, author }: QuestionCardProps) {
   const displayAuthor = author || question.author;
   const topAnswer = question.answers?.sort((a, b) => b.votes - a.votes)[0];
-  const isVerified = topAnswer?.isVerified;
+  const isVerified = question.isVerified;
 
   const getCreatedAtDate = () => {
     if (!question.createdAt) {
