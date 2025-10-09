@@ -11,9 +11,8 @@ import {
 } from '@/ai/flows/community-forum-answer-ranker';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { getAuth } from 'firebase-admin/auth';
-import { collection, addDoc, serverTimestamp, getFirestore } from 'firebase-admin/firestore';
-import { initializeFirebaseAdmin } from '@/firebase/server';
+import { collection, addDoc, serverTimestamp } from 'firebase-admin/firestore';
+import { getAdminAuth, getAdminDb } from '@/lib/firebase-admin';
 import { CommunityQuestion, Tag } from '@/lib/types';
 
 
@@ -33,7 +32,8 @@ export async function getRankedAnswers(input: RankAnswersInput) {
 export async function submitQuestion(formData: FormData) {
     'use server';
     
-    const { auth: adminAuth, firestore: adminFirestore } = initializeFirebaseAdmin();
+    const adminAuth = getAdminAuth();
+    const adminFirestore = getAdminDb();
     const cookieStore = cookies();
     const sessionCookie = cookieStore.get('session')?.value || '';
 

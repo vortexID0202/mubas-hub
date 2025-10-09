@@ -1,10 +1,23 @@
 import { cookies } from 'next/headers';
-import { getAuth } from 'firebase-admin/auth';
-import { initializeFirebaseAdmin } from '@/firebase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getAdminAuth } from '@/lib/firebase-admin';
 
-// Ensure the Firebase Admin SDK is initialized
-const { auth: adminAuth } = initializeFirebaseAdmin();
+// Handles GET requests to check a session
+export async function GET(request: NextRequest) {
+  const sessionCookie = cookies().get('session')?.value;
+  if (!sessionCookie) {
+    return NextResponse.json({ authenticated: false, error: 'No session cookie found.' }, { status: 401 });
+  }
+
+  try {
+    const adminAuth = getAdminAuth();
+    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true /** checkRevoked */);
+    return NextResponse.json({ authenticated: true, user: decodedToken }, { status: 200 });
+  } catch (error) {
+    console.error('Session verification error:', error);
+    return NextResponse.json({ authenticated: false, error: 'Invalid or expired session cookie.' }, { status: 401 });
+  }
+}
 
 // Handles POST requests to create a session
 export async function POST(request: NextRequest) {
@@ -18,13 +31,13 @@ export async function POST(request: NextRequest) {
   const expiresIn = 60 * 60 * 24 * 5 * 1000;
 
   try {
+    const adminAuth = getAdminAuth();
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
     
-    // Set cookie policy for session cookie.
     cookies().set('session', sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: expiresIn / 1000, // maxAge is in seconds
+      maxAge: expiresIn / 1000,
       path: '/',
       sameSite: 'lax',
     });
