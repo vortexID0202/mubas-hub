@@ -38,9 +38,13 @@ const SignUpPage: React.FC = () => {
       setErrorMessage('Passwords do not match.');
       return;
     }
-     const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(password)) {
       setErrorMessage('Password must be at least 8 characters long, contain one uppercase letter, and one number.');
+      return;
+    }
+    if (!email.endsWith('@mubas.ac.mw')) {
+      setErrorMessage('Please use a valid MUBAS email address (ending in @mubas.ac.mw).');
       return;
     }
 
@@ -104,9 +108,9 @@ const SignUpPage: React.FC = () => {
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[400px] gap-6">
           <div className="grid gap-2 text-center">
-            <div className="flex justify-center mb-4">
+            <Link href="/" className="flex justify-center mb-4">
               <Logo />
-            </div>
+            </Link>
             <h1 className="text-3xl font-bold">Sign Up</h1>
             <p className="text-balance text-muted-foreground">
               Enter your information to create an account
@@ -142,7 +146,7 @@ const SignUpPage: React.FC = () => {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder="you@mubas.ac.mw"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
