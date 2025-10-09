@@ -1,6 +1,5 @@
 'use client';
 import { useState, useTransition } from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import { Bot, Sparkles, ThumbsUp } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, increment } from 'firebase/firestore';
 
@@ -10,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Timestamp } from 'firebase/firestore';
+import ClientOnlyDate from './client-only-date';
 
 type AnswerSectionProps = {
   question: CommunityQuestion;
@@ -103,10 +102,7 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
                 <div className="flex items-center justify-between">
                     <div className="font-semibold">{answer.author.name}</div>
                     <div className="text-sm text-muted-foreground">
-                    Answered{' '}
-                    {formatDistanceToNow(answer.createdAt instanceof Timestamp ? answer.createdAt.toDate() : new Date(answer.createdAt as string), {
-                        addSuffix: true,
-                    })}
+                      Answered <ClientOnlyDate date={answer.createdAt} formatType="formatDistanceToNow" />
                     </div>
                 </div>
                 <div className="prose prose-sm mt-2 max-w-none dark:prose-invert">

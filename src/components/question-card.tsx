@@ -1,7 +1,6 @@
 
 
 import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
 import {
   ArrowBigUp,
   MessageCircle,
@@ -28,7 +27,7 @@ import {
 } from './ui/tooltip';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
-import { Timestamp } from 'firebase/firestore';
+import ClientOnlyDate from './client-only-date';
 
 interface QuestionCardProps {
   question: CommunityQuestion;
@@ -44,16 +43,6 @@ export default function QuestionCard({ question, author }: QuestionCardProps) {
   const displayAuthor = author || question.author;
   const topAnswer = question.answers?.sort((a, b) => b.votes - a.votes)[0];
   const isVerified = question.isVerified;
-
-  const getCreatedAtDate = () => {
-    if (!question.createdAt) {
-        return new Date(); // Or some default/fallback date
-    }
-    if (question.createdAt instanceof Timestamp) {
-        return question.createdAt.toDate();
-    }
-    return new Date(question.createdAt as string);
-  };
 
   return (
     <Card
@@ -165,9 +154,7 @@ export default function QuestionCard({ question, author }: QuestionCardProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           Asked{' '}
-          {formatDistanceToNow(getCreatedAtDate(), {
-            addSuffix: true,
-          })}
+          <ClientOnlyDate date={question.createdAt} formatType="formatDistanceToNow" />
         </p>
       </CardFooter>
     </Card>

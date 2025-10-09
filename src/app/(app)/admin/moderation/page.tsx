@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
 import { useMemo } from 'react';
+import ClientOnlyDate from '@/components/client-only-date';
 
 // Note: This is now static data. In a real app, this would be fetched from a 'flags' collection in Firestore.
 const flaggedContent = [
@@ -79,7 +80,7 @@ export default function AdminModerationPage() {
                     <Badge variant="outline">{item.type}</Badge>
                   </TableCell>
                   <TableCell>{item.author}</TableCell>
-                  <TableCell>{new Date(item.date).toLocaleString()}</TableCell>
+                  <TableCell><ClientOnlyDate date={item.date} formatString="Pp" /></TableCell>
                   <TableCell className="text-right">
                     <Button variant="outline" size="icon" className="mr-2 h-8 w-8">
                         <Check className="h-4 w-4 text-green-500" />

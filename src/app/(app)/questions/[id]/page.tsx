@@ -2,7 +2,6 @@
 'use client';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { format, formatDistanceToNow } from 'date-fns';
 import { ArrowBigUp, Eye, MessageCircle, User as UserIcon, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -23,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import ClientOnlyDate from '@/components/client-only-date';
 
 export const dynamic = 'force-dynamic';
 
@@ -187,7 +187,7 @@ export default function QuestionPage() {
               </h1>
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                 <span>
-                  Asked on {format(question.createdAt instanceof Timestamp ? question.createdAt.toDate() : new Date(question.createdAt as string), 'MMM d, yyyy')}
+                  Asked on <ClientOnlyDate date={question.createdAt} formatString="MMM d, yyyy" />
                 </span>
                 <div className="flex items-center gap-1">
                   <Eye className="h-4 w-4" />

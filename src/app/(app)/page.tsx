@@ -14,8 +14,6 @@ import {
   Pencil,
   BarChart,
 } from 'lucide-react';
-import { format } from 'date-fns';
-
 import {
   knowledgeBaseArticles,
   users,
@@ -53,6 +51,7 @@ import { Footer } from '@/components/layout/footer';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { CommunityQuestion } from '@/lib/types';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
+import ClientOnlyDate from '@/components/client-only-date';
 
 const browseItems = [
   {
@@ -361,9 +360,7 @@ export default function Home() {
                         >
                           {update.category}
                         </Badge>
-                        <span>
-                          {format(new Date(update.createdAt), 'MMM d, yyyy')}
-                        </span>
+                        <ClientOnlyDate date={update.createdAt} />
                       </div>
                     </CardHeader>
                     <CardContent>

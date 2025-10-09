@@ -23,6 +23,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { CommunityQuestion } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import ClientOnlyDate from '@/components/client-only-date';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
@@ -181,7 +182,7 @@ export default function AdminDashboardPage() {
                         </Link>
                     </TableCell>
                     <TableCell className="text-right">
-                        {new Date(q.createdAt as string).toLocaleDateString()}
+                       <ClientOnlyDate date={q.createdAt as string} formatString="P" />
                     </TableCell>
                   </TableRow>
                 ))}

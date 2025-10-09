@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import { format } from 'date-fns';
 import {
   BookOpen,
   CheckCircle2,
@@ -21,6 +20,7 @@ import {
 } from '@/components/ui/card';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import ClientOnlyDate from '@/components/client-only-date';
 
 const iconMap: { [key: string]: React.FC<LucideProps> } = {
   Wifi: Wifi,
@@ -68,7 +68,7 @@ export default function KnowledgeBaseArticlePage({
                 <CardDescription className="flex flex-wrap items-center gap-4 pt-2 text-sm">
                   <span>
                     Published on{' '}
-                    {format(new Date(article.createdAt), 'MMMM d, yyyy')}
+                    <ClientOnlyDate date={article.createdAt} formatString="MMMM d, yyyy" />
                   </span>
                   <div className="flex items-center text-green-600">
                     <CheckCircle2 className="mr-1 h-4 w-4" />

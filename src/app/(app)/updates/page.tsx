@@ -8,9 +8,9 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Rss } from 'lucide-react';
-import { format } from 'date-fns';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import ClientOnlyDate from '@/components/client-only-date';
 
 export default function UpdatesPage() {
   const sortedUpdates = [...liveUpdates].sort(
@@ -48,9 +48,7 @@ export default function UpdatesPage() {
                     >
                       {update.category}
                     </Badge>
-                    <span>
-                      {format(new Date(update.createdAt), 'MMMM d, yyyy')}
-                    </span>
+                    <ClientOnlyDate date={update.createdAt} formatString="MMMM d, yyyy" />
                   </div>
                 </CardHeader>
                 <CardContent>

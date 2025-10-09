@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
+import ClientOnlyDate from '@/components/client-only-date';
 
 export default function AdminContentPage() {
   return (
@@ -91,7 +92,7 @@ export default function AdminContentPage() {
                         <Badge variant="outline">{article.category}</Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(article.createdAt).toLocaleDateString()}
+                        <ClientOnlyDate date={article.createdAt} formatString="P" />
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -157,7 +158,7 @@ export default function AdminContentPage() {
                           </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(update.createdAt).toLocaleDateString()}
+                        <ClientOnlyDate date={update.createdAt} formatString="P" />
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
