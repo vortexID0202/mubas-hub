@@ -2,7 +2,7 @@
 import * as admin from 'firebase-admin';
 import { getApps, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore } from 'firebase-admin/firestore'; // Correct import for Admin SDK
 import 'dotenv/config';
 
 
