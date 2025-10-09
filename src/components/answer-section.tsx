@@ -7,7 +7,7 @@ import { getRankedAnswers } from '@/app/actions';
 import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import ClientOnlyDate from './client-only-date';
 
@@ -61,7 +61,19 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
         return;
     }
     const answerRef = doc(firestore, `questions/${question.id}/answers`, answerId);
-    await updateDoc(answerRef, { votes: increment(1) });
+    
+    const updateData = { votes: increment(1) };
+    updateDoc(answerRef, updateData)
+        .catch(error => {
+            const permissionError = new FirestorePermissionError({
+                path: answerRef.path,
+                operation: 'update',
+                requestResourceData: {
+                    votes: `increment(1)`
+                },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
   }
 
   const displayAnswers = sortedAnswers || answers;

@@ -2,7 +2,7 @@
 'use client';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { ArrowBigUp, Eye, MessageCircle, User as UserIcon, Loader2 } from 'lucide-react';
+import { ArrowBigUp, Eye, MessageCircle, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AnswerSection from '@/components/answer-section';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { doc, updateDoc, increment, runTransaction, collection, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { CommunityQuestion, QuestionAnswer, UserProfile } from '@/lib/types';
 import { z } from 'zod';
@@ -20,7 +20,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import ClientOnlyDate from '@/components/client-only-date';
 
@@ -67,7 +66,6 @@ export default function QuestionPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
-  const router = useRouter();
   const viewIncrementedRef = useRef(false);
 
   const questionRef = useMemoFirebase(() => firestore ? doc(firestore, 'questions', id) : null, [firestore, id]);
@@ -103,7 +101,22 @@ export default function QuestionPage() {
         return;
     }
     if (!questionRef) return;
-    await updateDoc(questionRef, { votes: increment(1) });
+    
+    const updateData = { votes: increment(1) };
+    updateDoc(questionRef, updateData)
+        .catch(error => {
+            const permissionError = new FirestorePermissionError({
+                path: questionRef.path,
+                operation: 'update',
+                requestResourceData: {
+                    // This is a partial update. In a real scenario, you might fetch the document
+                    // before updating to provide the full "before" state, but for debugging
+                    // the attempted change is often sufficient.
+                    votes: `increment(1)` 
+                },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
   }
 
   async function handleAnswerSubmit(values: z.infer<typeof answerSchema>) {
@@ -134,8 +147,9 @@ export default function QuestionPage() {
     
     try {
         await runTransaction(firestore, async (transaction) => {
-            const answerColRef = collection(firestore, `questions/${question.id}/answers`);
-            transaction.set(doc(answerColRef), {
+            const newAnswerRef = doc(collection(firestore, `questions/${question.id}/answers`));
+            
+            transaction.set(newAnswerRef, {
                 ...answerData,
                 createdAt: serverTimestamp()
             });
@@ -153,11 +167,20 @@ export default function QuestionPage() {
         form.reset();
 
     } catch (error: any) {
-        toast({
-            variant: "destructive",
-            title: "Submission Failed",
-            description: error.message || "Could not submit your answer.",
-        });
+        if (error.code === 'permission-denied') {
+             const permissionError = new FirestorePermissionError({
+                path: `questions/${question.id}/answers`,
+                operation: 'create',
+                requestResourceData: answerData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Submission Failed",
+                description: error.message || "Could not submit your answer.",
+            });
+        }
     }
   }
   
@@ -228,12 +251,12 @@ export default function QuestionPage() {
                             </Avatar>
                             <div>
                                 <p className="text-sm text-muted-foreground">Asked by</p>
-                                <Link
+                                <a
                                     href={`/profile?userId=${question.author.id}`}
                                     className="font-semibold text-primary hover:underline"
                                 >
                                     {question.author.name}
-                                </Link>
+                                </a>
                             </div>
                         </>
                     ) : (
@@ -279,7 +302,7 @@ export default function QuestionPage() {
                         </Button>
                         {!user && !isUserLoading && (
                           <p className="text-center text-sm text-muted-foreground">
-                              You must be <Link href={`/login?redirect=/questions/${id}`} className="underline text-primary">logged in</Link> to post an answer.
+                              You must be <a href={`/login?redirect=/questions/${id}`} className="underline text-primary">logged in</a> to post an answer.
                           </p>
                         )}
                       </form>
