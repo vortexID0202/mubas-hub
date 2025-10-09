@@ -1,3 +1,5 @@
+import { FieldValue } from 'firebase/firestore';
+
 export type UserProfile = {
   id: string;
   fullName: string;
@@ -22,8 +24,10 @@ export type CommunityQuestion = {
   id: string;
   title: string;
   body: string;
-  author: User;
-  createdAt: string;
+  authorId: string; // Storing author ID for ownership and fetching
+  author: User; // Author data can be denormalized or fetched separately
+  createdAt: FieldValue | string;
+  updatedAt?: FieldValue | string;
   tags: Tag[];
   votes: number;
   answersCount: number;

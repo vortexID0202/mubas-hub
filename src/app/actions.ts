@@ -11,8 +11,9 @@ import {
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { getAuth } from 'firebase-admin/auth';
-import { collection, addDoc, getFirestore, serverTimestamp } from 'firebase/firestore';
-import { initializeFirebase } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { initializeFirebaseAdmin } from '@/firebase/server';
+import { CommunityQuestion, Tag } from '@/lib/types';
 
 
 export async function getSearchSuggestions(
@@ -31,38 +32,51 @@ export async function getRankedAnswers(input: RankAnswersInput) {
 export async function submitQuestion(formData: FormData) {
     'use server';
     
-    // In a real app, you would get the current user from the session
-    // This is a placeholder as we cannot get the currently logged-in user
-    // in a server action without more complex setup with session management.
-    // For this example, let's assume we can get the user ID.
-    // A more robust solution would use NextAuth.js or similar to manage sessions.
-    const authorId = 'placeholder-user-id'; // This needs to be replaced with actual user ID from session
+    const { firestore } = initializeFirebaseAdmin();
+    const sessionCookie = headers().get('x-session-cookie');
+    if (!sessionCookie) {
+        return { success: false, message: 'You must be logged in to post a question.' };
+    }
+
+    let decodedToken;
+    try {
+        decodedToken = await getAuth().verifySessionCookie(sessionCookie, true);
+    } catch (error) {
+        console.error('Error verifying session cookie:', error);
+        return { success: false, message: 'Your session is invalid. Please log in again.' };
+    }
+
+    const authorId = decodedToken.uid;
     
     const title = formData.get('title') as string;
     const details = formData.get('details') as string;
-    const tags = (formData.get('tags') as string).split(',').map(tag => tag.trim());
+    const tagsString = formData.get('tags') as string;
 
     if (!title || !details) {
         return { success: false, message: 'Title and details are required.' };
     }
     
+    const tags: Tag[] = tagsString 
+        ? tagsString.split(',').map(tag => ({ id: tag.trim(), name: tag.trim() }))
+        : [];
+    
     try {
-        // This is a simplified example. In a real app, you'd get the db instance differently.
-        const { firestore } = initializeFirebase(); 
-        
-        await addDoc(collection(firestore, `users/${authorId}/questions`), {
-            authorId: authorId, // This is redundant with nesting but good for denormalization
-            title,
+        const questionData: Omit<CommunityQuestion, 'id' | 'author' | 'answers'> = {
+            authorId: authorId,
+            title: title,
             body: details,
-            tags: tags.map(t => ({id: t, name: t})), // Store as objects
+            tags: tags,
             createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
             votes: 0,
             answersCount: 0,
             views: 0,
-            answers: [],
-        });
+        };
+        
+        await addDoc(collection(firestore, `users/${authorId}/questions`), questionData);
 
         revalidatePath('/forum');
+        revalidatePath(`/profile`);
         return { success: true };
     } catch (error: any) {
         console.error("Error submitting question:", error);
