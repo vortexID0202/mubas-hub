@@ -1,4 +1,4 @@
-
+'use client';
 import Link from 'next/link';
 import {
   BookOpen,
@@ -17,7 +17,6 @@ import {
 import { format } from 'date-fns';
 
 import {
-  communityQuestions,
   knowledgeBaseArticles,
   users,
   liveUpdates,
@@ -51,6 +50,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { CommunityQuestion } from '@/lib/types';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 const browseItems = [
   {
@@ -81,14 +83,21 @@ const browseItems = [
     title: 'Top Contributors',
     description: 'See the most helpful members of the community.',
     href: '#contributors',
-icon: BarChart,
+    icon: BarChart,
   },
 ];
 
-export default async function Home() {
+export default function Home() {
+  const firestore = useFirestore();
   const sortedUsers = [...users].sort((a, b) => b.reputation - a.reputation);
   const topThree = sortedUsers.slice(0, 3);
   const restUsers = sortedUsers.slice(3, 10);
+  
+  const questionsQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3)) : null
+  , [firestore]);
+  const { data: communityQuestions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
+
 
   return (
     <>
@@ -186,9 +195,9 @@ export default async function Home() {
                   </DropdownMenu>
                 </div>
                 <TabsContent value="forum" className="mt-8">
-                  {communityQuestions.length > 0 ? (
+                  {communityQuestions && communityQuestions.length > 0 ? (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {communityQuestions.slice(0, 3).map((question) => (
+                      {communityQuestions.map((question) => (
                         <QuestionCard key={question.id} question={question} />
                       ))}
                     </div>
