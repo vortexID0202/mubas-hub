@@ -3,6 +3,8 @@ import * as admin from 'firebase-admin';
 import { getApps, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import 'dotenv/config';
+
 
 // This prevents re-initializing the app on every hot-reload in development
 function getFirebaseAdminApp(): App {
