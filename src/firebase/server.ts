@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp, App, credential } from 'firebase-admin/app';
+import { initializeApp, getApps, App, credential } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -8,17 +8,26 @@ function getFirebaseAdminApp(): App {
         return getApp();
     }
 
-    // In a deployed App Hosting environment, the GOOGLE_APPLICATION_CREDENTIALS
-    // environment variable is automatically set. at run-time, the authentication
-    // library will use this environment variable to authenticate.
-    //
-    // For local development, you can download a service account key from the
-    // Firebase console and set the GOOGLE_APPLICATION_CREDENTIALS environment
-    // variable to the path of the downloaded key.
-    // NOTE: This fallback to an empty credential is for demonstration and might
-    // not work in all local setups. A service account key is recommended.
+    // This block will only run once, on the first server-side execution.
+    // It reads the environment variables to configure the Firebase Admin SDK.
+    const serviceAccount = {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        // The private key must have newline characters correctly replaced.
+        privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+    };
+
+    if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+        console.error('Firebase Admin SDK is not configured. Missing environment variables.');
+        // Fallback to application default credentials if available,
+        // otherwise it will fail, which is expected if not configured.
+        return initializeApp({
+            credential: credential.applicationDefault(),
+        });
+    }
+
     return initializeApp({
-        credential: credential.applicationDefault(),
+        credential: credential.cert(serviceAccount),
     });
 }
 
