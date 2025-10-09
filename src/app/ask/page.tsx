@@ -25,10 +25,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { useUser, useFirestore } from '@/firebase';
-import { CommunityQuestion, Tag } from '@/lib/types';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { CommunityQuestion, Tag, UserProfile } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
+import { doc } from 'firebase/firestore';
 
 const questionSchema = z.object({
   title: z.string().min(10, 'Title must be at least 10 characters long.'),
@@ -45,6 +46,9 @@ export default function AskQuestionPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+
+  const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const form = useForm<z.infer<typeof questionSchema>>({
     resolver: zodResolver(questionSchema),
@@ -64,11 +68,11 @@ export default function AskQuestionPage() {
   }, [user, isUserLoading, router]);
 
   async function handleFormSubmit(values: z.infer<typeof questionSchema>) {
-    if (!firestore || !user) {
+    if (!firestore || !user || !userProfile) {
         toast({
             variant: "destructive",
             title: "Error",
-            description: "You must be logged in to post a question.",
+            description: "You must be logged in and have a user profile to post a question.",
         });
         return;
     }
@@ -78,10 +82,16 @@ export default function AskQuestionPage() {
         : [];
         
     try {
-        const questionData: Omit<CommunityQuestion, 'id' | 'author' > = {
+        const questionData: Omit<CommunityQuestion, 'id'> = {
             title: values.title,
             body: values.details,
             authorId: user.uid,
+            author: { // Denormalize author data
+              id: user.uid,
+              name: userProfile.fullName,
+              avatarUrl: userProfile.avatarUrl,
+              reputation: userProfile.reputation
+            },
             tags: tags,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
@@ -110,7 +120,7 @@ export default function AskQuestionPage() {
     }
   }
 
-  if (isUserLoading || !user) {
+  if (isUserLoading || isProfileLoading) {
     return (
         <div className="flex items-center justify-center h-screen">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

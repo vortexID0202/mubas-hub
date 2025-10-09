@@ -20,7 +20,7 @@ import {
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { CommunityQuestion, UserProfile } from '@/lib/types';
+import { CommunityQuestion } from '@/lib/types';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -87,43 +87,19 @@ export default function ForumPage() {
   , [firestore]);
   const { data: questions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
   
-  const usersQuery = useMemoFirebase(() => 
-    firestore ? collection(firestore, 'users') : null
-  , [firestore]);
-  const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
-  
-  const usersMap = useMemo(() => {
-    if (!users) return new Map();
-    return new Map(users.map(u => [u.id, u]));
-  }, [users]);
-  
-  const enrichedQuestions = useMemo(() => {
-    if (!questions || !usersMap.size) return [];
-    return questions.map(q => ({
-      ...q,
-      author: {
-        id: q.authorId,
-        name: usersMap.get(q.authorId)?.fullName || 'Unknown User',
-        avatarUrl: usersMap.get(q.authorId)?.avatarUrl || '',
-        reputation: usersMap.get(q.authorId)?.reputation || 0,
-      }
-    }));
-  }, [questions, usersMap]);
-
-
   const loadMore = () => {
     setVisibleQuestionsCount((prev) => prev + QUESTIONS_PER_PAGE);
   };
 
-  const questionsToShow = enrichedQuestions.slice(0, visibleQuestionsCount);
+  const questionsToShow = questions?.slice(0, visibleQuestionsCount) || [];
 
-  const isLoading = isLoadingQuestions || isLoadingUsers;
+  const isLoading = isLoadingQuestions;
 
   return (
     <>
       <Header />
       <main className="flex-1">
-        {isLoading ? (
+        {isLoading && !questions ? (
             <ForumPageSkeleton />
         ) : (
         <div className="container mx-auto py-12">

@@ -25,8 +25,8 @@ export type CommunityQuestion = {
   id: string;
   title: string;
   body: string;
-  authorId: string; // Storing author ID for ownership and fetching
-  author?: User; // Author data can be denormalized or fetched separately
+  authorId: string;
+  author: User; // Author data is now denormalized and required
   createdAt: FieldValue | string;
   updatedAt?: FieldValue | string;
   tags: Tag[];
