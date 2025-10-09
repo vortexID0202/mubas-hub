@@ -7,7 +7,7 @@ import {
   Award,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { CommunityQuestion } from '@/lib/types';
+import type { CommunityQuestion, User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -29,9 +29,11 @@ import { Separator } from './ui/separator';
 
 interface QuestionCardProps {
   question: CommunityQuestion;
+  author?: User; // Make author optional
 }
 
-export default function QuestionCard({ question }: QuestionCardProps) {
+export default function QuestionCard({ question, author }: QuestionCardProps) {
+  const displayAuthor = author || question.author;
   const topAnswer = question.answers?.sort((a, b) => b.votes - a.votes)[0];
   const isVerified = topAnswer?.isVerified;
 
@@ -44,26 +46,28 @@ export default function QuestionCard({ question }: QuestionCardProps) {
     >
       <CardHeader>
         <div className="flex items-start justify-between">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/profile" className="z-10">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage
-                      src={question.author.avatarUrl}
-                      alt={question.author.name}
-                    />
-                    <AvatarFallback>
-                      {question.author.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{question.author.name}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          {displayAuthor && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/profile" className="z-10">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage
+                        src={displayAuthor.avatarUrl}
+                        alt={displayAuthor.name}
+                      />
+                      <AvatarFallback>
+                        {displayAuthor.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{displayAuthor.name}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           <div className="flex flex-wrap gap-2">
             {question.tags.map((tag) => (
@@ -143,7 +147,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
         </div>
         <p className="text-xs text-muted-foreground">
           Asked{' '}
-          {formatDistanceToNow(new Date(question.createdAt), {
+          {formatDistanceToNow(new Date(question.createdAt as string), {
             addSuffix: true,
           })}
         </p>

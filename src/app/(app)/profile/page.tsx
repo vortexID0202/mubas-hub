@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { CommunityQuestion, UserProfile } from '@/lib/types';
+import { CommunityQuestion, User, UserProfile } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -246,6 +246,13 @@ export default function ProfilePage() {
   
   if (!userProfile || !user) return <ProfilePageSkeleton />;
 
+  const author: User = {
+    id: user.uid,
+    name: userProfile.fullName,
+    avatarUrl: userProfile.avatarUrl,
+    reputation: userProfile.reputation
+  };
+
   return (
     <>
       <Header />
@@ -305,7 +312,7 @@ export default function ProfilePage() {
                       {userQuestions && userQuestions.length > 0 ? (
                         <div className="grid gap-4 md:grid-cols-2">
                           {userQuestions.map((q) => (
-                            <QuestionCard key={q.id} question={q} />
+                            <QuestionCard key={q.id} question={q} author={author} />
                           ))}
                         </div>
                       ) : (
