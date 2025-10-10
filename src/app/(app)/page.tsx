@@ -103,13 +103,17 @@ export default function Home() {
       <Header />
       <main className="flex-1">
         <div className="flex w-full flex-col">
-          <section className="w-full bg-primary/5 py-16 md:py-24 lg:py-32">
-            <div className="container px-4 md:px-6">
+          <section
+            className="relative w-full bg-cover bg-center py-16 text-white md:py-24 lg:py-32"
+            style={{ backgroundImage: "url('/slide5.jpg')" }}
+          >
+            <div className="absolute inset-0 bg-black/60" />
+            <div className="container relative px-4 md:px-6">
               <div className="mx-auto grid max-w-3xl items-center justify-center gap-4 text-center">
-                <h1 className="font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl">
+                <h1 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                   Welcome to the MUBAS Community Hub
                 </h1>
-                <p className="text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                <p className="text-gray-200 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Search for solutions, articles, or ask a question to the
                   community. We are here to help you succeed.
                 </p>
