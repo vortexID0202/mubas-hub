@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -99,27 +100,40 @@ export default function ProfilePage() {
         };
 
         setAreAnswersLoading(true);
-        // This is a simplified approach. A more robust solution for fetching all answers
-        // across all questions might involve a collectionGroup query with proper rules,
-        // or denormalizing answers into a top-level collection.
-        // For now, we query the 'answers' subcollection of the questions we already have.
-        if (userQuestions) {
+        try {
+            const answersQuery = query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid));
+            const querySnapshot = await getDocs(answersQuery);
             const allAnswers: QuestionAnswer[] = [];
-            for (const question of userQuestions) {
-                const answersRef = collection(firestore, 'questions', question.id, 'answers');
-                const q = query(answersRef, where('authorId', '==', user.uid));
-                const querySnapshot = await getDocs(q);
-                querySnapshot.forEach((doc) => {
-                    allAnswers.push({ id: doc.id, ...doc.data() } as QuestionAnswer);
-                });
-            }
+            querySnapshot.forEach((doc) => {
+                allAnswers.push({ id: doc.id, ...doc.data() } as QuestionAnswer);
+            });
             setUserAnswers(allAnswers);
+        } catch (error) {
+            console.error("Error fetching user answers with collectionGroup:", error);
+            // Fallback for environments where collectionGroup queries might fail without a specific index.
+            // This part is a safety net.
+            if (userQuestions) {
+                const allAnswers: QuestionAnswer[] = [];
+                for (const question of userQuestions) {
+                    const answersRef = collection(firestore, 'questions', question.id, 'answers');
+                    const q = query(answersRef, where('authorId', '==', user.uid));
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach((doc) => {
+                        allAnswers.push({ id: doc.id, ...doc.data() } as QuestionAnswer);
+                    });
+                }
+                setUserAnswers(allAnswers);
+            }
         }
         setAreAnswersLoading(false);
     }
 
-    fetchUserAnswers();
-  }, [firestore, user, userQuestions]);
+    if (user?.uid) {
+      fetchUserAnswers();
+    } else if (!isUserLoading) {
+      setAreAnswersLoading(false);
+    }
+  }, [firestore, user, userQuestions, isUserLoading]);
 
 
   const profileForm = useForm<z.infer<typeof profileSchema>>({
@@ -374,9 +388,9 @@ export default function ProfilePage() {
                                    <p className="text-muted-foreground">{answer.body}</p>
                                    <div className="mt-2 text-sm text-muted-foreground">
                                      <span>Answered in response to: </span>
-                                     <Link href={`/questions/${answer.questionId}`} className="text-primary hover:underline">
+                                     <a href={`/questions/${answer.questionId}`} className="text-primary hover:underline">
                                        View Question
-                                     </Link>
+                                     </a>
                                    </div>
                                  </div>
                                ))}
