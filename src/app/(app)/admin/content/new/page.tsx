@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -75,43 +75,15 @@ export default function AdminNewContentPage() {
         icon: data.category === 'Wi-Fi' ? 'Wifi' : data.category === 'Fees' ? 'Landmark' : 'BookOpen',
     };
     
+    let articleDocRefId: string | null = null;
+
+    // Step 1: Try to publish the knowledge base article
     try {
         const kbCollection = collection(firestore, 'knowledge_base_articles');
         const docRef = await addDoc(kbCollection, kbData);
-
-        // If successful and postAsLiveUpdate is true, then add the live update
-        if (data.postAsLiveUpdate) {
-            const updateData = {
-                title: data.title,
-                content: `A new knowledge base article has been published: "${data.title}"`,
-                category: 'Announcement', 
-                authorId: user.uid,
-                createdAt: serverTimestamp(),
-                relatedArticleId: docRef.id,
-            };
-
-            try {
-                const updatesCollection = collection(firestore, 'live_updates');
-                await addDoc(updatesCollection, updateData);
-            } catch (liveUpdateError: any) {
-                 if (liveUpdateError.code === 'permission-denied') {
-                    const permissionError = new FirestorePermissionError({
-                        path: 'live_updates',
-                        operation: 'create',
-                        requestResourceData: updateData,
-                    });
-                    errorEmitter.emit('permission-error', permissionError);
-                } else {
-                    toast({ variant: 'destructive', title: 'Live Update Failed', description: 'The article was published, but the live update could not be posted. Please try creating it manually.' });
-                }
-                // We still redirect as the primary action was successful.
-                router.push('/admin/content');
-                return;
-            }
-        }
+        articleDocRefId = docRef.id; // Save the new article ID
         
-        toast({ title: 'Content Published', description: 'The new article has been added to the knowledge base.'});
-        router.push('/admin/content');
+        toast({ title: 'Article Published', description: 'The new article has been added to the knowledge base.'});
 
     } catch (error: any) {
         if (error.code === 'permission-denied') {
@@ -122,9 +94,42 @@ export default function AdminNewContentPage() {
             });
             errorEmitter.emit('permission-error', permissionError);
         } else {
-             toast({ variant: 'destructive', title: 'Publishing Failed', description: error.message || 'Could not save the new content.' });
+             toast({ variant: 'destructive', title: 'Article Publishing Failed', description: error.message || 'Could not save the new content.' });
+        }
+        return; // Stop execution if the primary action fails
+    }
+
+    // Step 2: If successful and postAsLiveUpdate is true, create the live update
+    if (data.postAsLiveUpdate && articleDocRefId) {
+        const updateData = {
+            title: `New Article: ${data.title}`,
+            content: `A new knowledge base article has been published: "${data.title}"`,
+            category: 'Announcement', 
+            authorId: user.uid,
+            createdAt: serverTimestamp(),
+            relatedArticleId: articleDocRefId,
+        };
+
+        try {
+            const updatesCollection = collection(firestore, 'live_updates');
+            await addDoc(updatesCollection, updateData);
+            toast({ title: 'Live Update Posted', description: 'The live update has been published.' });
+        } catch (liveUpdateError: any) {
+             if (liveUpdateError.code === 'permission-denied') {
+                const permissionError = new FirestorePermissionError({
+                    path: 'live_updates',
+                    operation: 'create',
+                    requestResourceData: updateData,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            } else {
+                toast({ variant: 'destructive', title: 'Live Update Failed', description: 'The article was published, but the live update could not be posted. Please try creating it manually.' });
+            }
         }
     }
+    
+    // Step 3: Redirect after all operations are complete
+    router.push('/admin/content');
   };
 
   return (
