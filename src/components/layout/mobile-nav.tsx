@@ -40,8 +40,8 @@ export function MobileNav({setOpen}: MobileNavProps) {
                     key={item.href}
                     href={item.href}
                     className={cn(
-                        'rounded-md p-2 transition-colors hover:bg-muted',
-                        pathname === item.href ? 'text-foreground bg-muted' : 'text-foreground/60'
+                        'rounded-md p-2 text-lg font-medium transition-colors hover:bg-muted',
+                        pathname === item.href ? 'bg-muted text-foreground' : 'text-muted-foreground'
                     )}
                     onClick={() => setOpen(false)}
                     >
