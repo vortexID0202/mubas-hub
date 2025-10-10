@@ -65,29 +65,29 @@ export default function AdminNewContentPage() {
         return;
     }
 
+    const kbData = {
+        title: data.title,
+        category: data.category,
+        body: data.content,
+        authorId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        // Assuming a default icon for simplicity, this could be extended
+        icon: data.category === 'Wi-Fi' ? 'Wifi' : data.category === 'Fees' ? 'Landmark' : 'BookOpen',
+    };
+    
+    const updateData = {
+        title: data.title,
+        content: `A new knowledge base article has been published: "${data.title}"`,
+        category: 'Announcement', // Or derive from article category
+        createdAt: serverTimestamp(),
+    };
+    
     try {
-        // 1. Add to knowledge_base_articles collection
-        const kbData = {
-            title: data.title,
-            category: data.category,
-            body: data.content,
-            authorId: user.uid,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            // Assuming a default icon for simplicity, this could be extended
-            icon: data.category === 'Wi-Fi' ? 'Wifi' : data.category === 'Fees' ? 'Landmark' : 'BookOpen',
-        };
         const kbCollection = collection(firestore, 'knowledge_base_articles');
         await addDoc(kbCollection, kbData);
 
-        // 2. Conditionally add to live_updates collection
         if (data.postAsLiveUpdate) {
-            const updateData = {
-                title: data.title,
-                content: `A new knowledge base article has been published: "${data.title}"`,
-                category: 'Announcement', // Or derive from article category
-                createdAt: serverTimestamp(),
-            };
             const updatesCollection = collection(firestore, 'live_updates');
             await addDoc(updatesCollection, updateData);
         }
@@ -97,10 +97,11 @@ export default function AdminNewContentPage() {
 
     } catch (error: any) {
         if (error.code === 'permission-denied') {
+            const isLiveUpdate = data.postAsLiveUpdate;
             const permissionError = new FirestorePermissionError({
-                path: 'knowledge_base_articles or live_updates', // Generic path
+                path: isLiveUpdate ? 'live_updates' : 'knowledge_base_articles',
                 operation: 'create',
-                requestResourceData: data,
+                requestResourceData: isLiveUpdate ? updateData : kbData,
             });
             errorEmitter.emit('permission-error', permissionError);
         } else {
