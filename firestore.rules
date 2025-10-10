@@ -2,39 +2,30 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users Collection: Users can only read/update their own profile.
-    match /users/{userId} {
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-      allow create: if request.auth != null;
-    }
 
-    // Questions Collection: Anyone can read, but only logged-in users can create.
+    // Allow public read access (get, list) to questions and their answers.
+    // Write access (create, update, delete) requires authentication.
     match /questions/{questionId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null && (request.auth.uid == resource.data.authorId || get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data != null);
+      allow write: if request.auth != null;
 
-      // Answers Subcollection: Anyone can read, but only logged-in users can create.
       match /answers/{answerId} {
         allow read: if true;
-        allow create, update, delete: if request.auth != null && (request.auth.uid == resource.data.authorId || get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data != null);
+        allow write: if request.auth != null;
       }
     }
 
-    // Knowledge Base: Anyone can read, only admins can write.
-    match /knowledge_base_articles/{articleId} {
-      allow read: if true;
-      allow write: if get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data != null;
-    }
-
-    // Tags: Anyone can read, only admins can write.
-    match /tags/{tagId} {
-      allow read: if true;
-      allow write: if get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data != null;
+    // Users can only read and write their own profile.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Admin Roles: Only readable/writable by other admins (or server-side).
-    match /roles_admin/{uid} {
-      allow read, write: if get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data != null;
+    // Knowledge base is public, but nobody can write to it directly.
+    match /knowledge_base_articles/{articleId} {
+      allow read: if true;
+      allow write: if false; // Typically managed by admins via a backend function
     }
+
+    // Deny all other reads/writes by default
   }
 }
