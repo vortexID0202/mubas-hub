@@ -65,14 +65,22 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
     const updateData = { votes: increment(1) };
     updateDoc(answerRef, updateData)
         .catch(error => {
-            const permissionError = new FirestorePermissionError({
-                path: answerRef.path,
-                operation: 'update',
-                requestResourceData: {
-                    votes: `increment(1)`
-                },
-            });
-            errorEmitter.emit('permission-error', permissionError);
+            if (error.code === 'permission-denied') {
+                const permissionError = new FirestorePermissionError({
+                    path: answerRef.path,
+                    operation: 'update',
+                    requestResourceData: {
+                        votes: `increment(1)`
+                    },
+                });
+                errorEmitter.emit('permission-error', permissionError);
+            } else {
+                 toast({
+                    variant: "destructive",
+                    title: "Upvote Failed",
+                    description: error.message || "Could not upvote this answer.",
+                });
+            }
         });
   }
 
