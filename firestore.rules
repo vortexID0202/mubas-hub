@@ -1,53 +1,53 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check for admin role
-    function isAdmin(userId) {
-      return exists(/databases/$(database)/documents/roles_admin/$(userId));
+
+    function isUserAuthenticated() {
+      return request.auth != null;
     }
 
-    // Users: Public read, only owner can write.
+    function isOwner(userId) {
+      return isUserAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isUserAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+    
     match /users/{userId} {
       allow read: if true;
-      allow write: if request.auth.uid == userId;
-    }
+      allow create: if isOwner(userId);
+      allow update, delete: if isOwner(userId) || isAdmin();
 
-    // Questions: Public read, authenticated users can create/update.
-    match /questions/{questionId} {
-      allow read: if true;
-      allow create, update: if request.auth != null;
-      allow delete: if request.auth.uid == resource.data.authorId || isAdmin(request.auth.uid);
-
-      // Answers Subcollection: Public read, authenticated can write.
-      match /answers/{answerId} {
-        allow read: if true;
-        allow create, update: if request.auth != null;
-        allow delete: if request.auth.uid == resource.data.authorId || isAdmin(request.auth.uid);
+      match /notifications/{notificationId} {
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
-    
-    // Knowledge Base: Public read, admin-only write.
-    match /knowledge_base_articles/{articleId} {
-      allow read: if true;
-      allow write: if isAdmin(request.auth.uid);
-    }
-    
-    // Tags: Public read, admin-only write.
-    match /tags/{tagId} {
-        allow read: if true;
-        allow write: if isAdmin(request.auth.uid);
+
+    match /questions/{questionId} {
+      allow list, read: if true; // Allow anyone to read and list questions
+      allow create: if isUserAuthenticated();
+      allow update, delete: if (isOwner(resource.data.authorId) || isAdmin());
+
+      match /answers/{answerId} {
+        allow read, list: if true;
+        allow create: if isUserAuthenticated();
+        allow update, delete: if (isOwner(resource.data.authorId) || isAdmin());
+      }
     }
 
-    // Notifications: Private to the user.
-    match /users/{userId}/notifications/{notificationId} {
-      allow read, write: if request.auth.uid == userId;
+    match /knowledge_base_articles/{articleId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
-    
-    // Admin Roles: Read/write only for admins.
-    match /roles_admin/{userId} {
-        allow read, write: if isAdmin(request.auth.uid);
+
+    match /tags/{tagId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /roles_admin/{uid} {
+        allow read, write: if isAdmin();
     }
   }
 }
