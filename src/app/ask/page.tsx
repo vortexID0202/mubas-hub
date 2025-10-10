@@ -64,7 +64,7 @@ export default function AskQuestionPage() {
     },
   });
   
-  const { isSubmitting, watch } = form.formState;
+  const { formState: { isSubmitting }, watch } = form;
   const titleValue = watch('title');
 
   const debouncedGetSuggestions = useCallback(
