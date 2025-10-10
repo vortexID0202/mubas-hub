@@ -21,7 +21,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Pen, Loader2, MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, doc, query, where, updateDoc, collectionGroup } from 'firebase/firestore';
+import { collection, doc, query, where, updateDoc, collectionGroup, getDocs } from 'firebase/firestore';
 import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
@@ -88,12 +88,39 @@ export default function ProfilePage() {
   }, [firestore, user?.uid]);
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
 
-  const userAnswersQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
-    // Use a collection group query to get all answers by this user across all questions
-    return query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid));
-  }, [firestore, user?.uid]);
-  const { data: userAnswers, isLoading: areAnswersLoading } = useCollection<QuestionAnswer>(userAnswersQuery);
+  const [userAnswers, setUserAnswers] = useState<QuestionAnswer[]>([]);
+  const [areAnswersLoading, setAreAnswersLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchUserAnswers() {
+        if (!firestore || !user?.uid) {
+            setAreAnswersLoading(false);
+            return;
+        };
+
+        setAreAnswersLoading(true);
+        // This is a simplified approach. A more robust solution for fetching all answers
+        // across all questions might involve a collectionGroup query with proper rules,
+        // or denormalizing answers into a top-level collection.
+        // For now, we query the 'answers' subcollection of the questions we already have.
+        if (userQuestions) {
+            const allAnswers: QuestionAnswer[] = [];
+            for (const question of userQuestions) {
+                const answersRef = collection(firestore, 'questions', question.id, 'answers');
+                const q = query(answersRef, where('authorId', '==', user.uid));
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach((doc) => {
+                    allAnswers.push({ id: doc.id, ...doc.data() } as QuestionAnswer);
+                });
+            }
+            setUserAnswers(allAnswers);
+        }
+        setAreAnswersLoading(false);
+    }
+
+    fetchUserAnswers();
+  }, [firestore, user, userQuestions]);
+
 
   const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
