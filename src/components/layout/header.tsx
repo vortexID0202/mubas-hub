@@ -71,16 +71,16 @@ export function Header() {
             </div>
         </div>
 
-        <div className="flex flex-none items-center justify-end space-x-2 pl-10 md:space-x-4">
+        <div className="flex flex-none items-center justify-end space-x-2 pl-4 md:space-x-4">
           {isAdmin ? (
-            <Button asChild size="sm">
+            <Button asChild size="sm" className="hidden md:inline-flex">
               <Link href="/admin/content/new">
                  <PlusSquare className="mr-2 h-4 w-4" />
                 Post Content
               </Link>
             </Button>
           ) : (
-            <Button asChild size="sm">
+            <Button asChild size="sm" className="hidden md:inline-flex">
               <Link href="/ask">Ask Question</Link>
             </Button>
           )}
