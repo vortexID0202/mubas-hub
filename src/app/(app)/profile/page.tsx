@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { CommunityQuestion, User, UserProfile } from '@/lib/types';
+import { CommunityQuestion, User, UserProfile, QuestionAnswer } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,13 +19,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { Pen, Loader2 } from 'lucide-react';
+import { Pen, Loader2, MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, doc, query, where, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, where, updateDoc, collectionGroup } from 'firebase/firestore';
 import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import Link from 'next/link';
 
 
 function ProfilePageSkeleton() {
@@ -86,8 +87,13 @@ export default function ProfilePage() {
     return query(collection(firestore, 'questions'), where('authorId', '==', user.uid));
   }, [firestore, user?.uid]);
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
-  
-  const [userAnswersCount, setUserAnswersCount] = useState(0);
+
+  const userAnswersQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    // Use a collection group query to get all answers by this user across all questions
+    return query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid));
+  }, [firestore, user?.uid]);
+  const { data: userAnswers, isLoading: areAnswersLoading } = useCollection<QuestionAnswer>(userAnswersQuery);
 
   const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -223,7 +229,7 @@ export default function ProfilePage() {
     }
   };
 
-  const isLoading = isUserLoading || isProfileLoading || areQuestionsLoading;
+  const isLoading = isUserLoading || isProfileLoading || areQuestionsLoading || areAnswersLoading;
   
   if (isLoading) {
     return <ProfilePageSkeleton />;
@@ -295,7 +301,7 @@ export default function ProfilePage() {
                           <p className="text-xs text-muted-foreground">Questions</p>
                       </div>
                       <div>
-                          <p className="font-bold text-lg">{userAnswersCount}</p>
+                          <p className="font-bold text-lg">{userAnswers?.length || 0}</p>
                           <p className="text-xs text-muted-foreground">Answers</p>
                       </div>
                   </div>
@@ -304,7 +310,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="md:col-span-3">
-              <Tabs defaultValue="settings">
+              <Tabs defaultValue="questions">
                 <TabsList className="mb-4">
                   <TabsTrigger value="questions">My Questions</TabsTrigger>
                   <TabsTrigger value="answers">My Answers</TabsTrigger>
@@ -334,7 +340,23 @@ export default function ProfilePage() {
                             <CardTitle>Answers you've provided</CardTitle>
                         </CardHeader> 
                         <CardContent>
-                            <p>You haven't answered any questions yet.</p>
+                           {userAnswers && userAnswers.length > 0 ? (
+                             <div className="space-y-4">
+                               {userAnswers.map(answer => (
+                                 <div key={answer.id} className="rounded-lg border p-4">
+                                   <p className="text-muted-foreground">{answer.body}</p>
+                                   <div className="mt-2 text-sm text-muted-foreground">
+                                     <span>Answered in response to: </span>
+                                     <Link href={`/questions/${answer.questionId}`} className="text-primary hover:underline">
+                                       View Question
+                                     </Link>
+                                   </div>
+                                 </div>
+                               ))}
+                             </div>
+                           ) : (
+                             <p>You haven't answered any questions yet.</p>
+                           )}
                         </CardContent>
                     </Card>
                 </TabsContent>
