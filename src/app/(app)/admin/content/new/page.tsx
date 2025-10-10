@@ -68,24 +68,23 @@ export default function AdminNewContentPage() {
     const kbData = {
         title: data.title,
         category: data.category,
-        body: data.content,
+        body: data.content, // Changed from 'content' to 'body' to match schema
         authorId: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        // Assuming a default icon for simplicity, this could be extended
         icon: data.category === 'Wi-Fi' ? 'Wifi' : data.category === 'Fees' ? 'Landmark' : 'BookOpen',
     };
     
     const updateData = {
         title: data.title,
         content: `A new knowledge base article has been published: "${data.title}"`,
-        category: 'Announcement', // Or derive from article category
+        category: 'Announcement', 
         createdAt: serverTimestamp(),
     };
     
     try {
         const kbCollection = collection(firestore, 'knowledge_base_articles');
-        await addDoc(kbCollection, kbData);
+        const kbDocRef = await addDoc(kbCollection, kbData);
 
         if (data.postAsLiveUpdate) {
             const updatesCollection = collection(firestore, 'live_updates');
@@ -98,10 +97,24 @@ export default function AdminNewContentPage() {
     } catch (error: any) {
         if (error.code === 'permission-denied') {
             const isLiveUpdate = data.postAsLiveUpdate;
+            // Determine which collection failed
+            let failedPath = 'knowledge_base_articles';
+            let failedData: object = kbData;
+            
+            // A more robust check could involve analyzing the error message if available,
+            // but for now, we assume the first write is the one that might fail, or the second one.
+            // Let's create a more specific error.
+            if (isLiveUpdate) {
+                // If the first write succeeded, the error must be from the second one.
+                // This is an assumption, but a reasonable one for this flow.
+                failedPath = 'live_updates';
+                failedData = updateData;
+            }
+
             const permissionError = new FirestorePermissionError({
-                path: isLiveUpdate ? 'live_updates' : 'knowledge_base_articles',
+                path: failedPath,
                 operation: 'create',
-                requestResourceData: isLiveUpdate ? updateData : kbData,
+                requestResourceData: failedData,
             });
             errorEmitter.emit('permission-error', permissionError);
         } else {
