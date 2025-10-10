@@ -86,6 +86,7 @@ export default function AdminNewContentPage() {
                 title: data.title,
                 content: `A new knowledge base article has been published: "${data.title}"`,
                 category: 'Announcement', 
+                authorId: user.uid,
                 createdAt: serverTimestamp(),
                 relatedArticleId: docRef.id,
             };
@@ -107,7 +108,6 @@ export default function AdminNewContentPage() {
 
     } catch (error: any) {
         if (error.code === 'permission-denied') {
-            // This error is for the knowledge_base_articles collection
             const permissionError = new FirestorePermissionError({
                 path: 'knowledge_base_articles',
                 operation: 'create',
