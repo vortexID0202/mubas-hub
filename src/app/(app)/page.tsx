@@ -107,7 +107,7 @@ export default function Home() {
             className="relative w-full bg-cover bg-center py-16 text-white md:py-24 lg:py-32"
             style={{ backgroundImage: "url('/slide5.jpg')" }}
           >
-            <div className="absolute inset-0 bg-black/60" />
+            <div className="absolute inset-0 bg-black/35" />
             <div className="container relative px-4 md:px-6">
               <div className="mx-auto grid max-w-3xl items-center justify-center gap-4 text-center">
                 <h1 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
