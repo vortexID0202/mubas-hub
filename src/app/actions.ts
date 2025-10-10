@@ -9,6 +9,10 @@ import {
   rankAnswers as rankAnswersAI,
   RankAnswersInput,
 } from '@/ai/flows/community-forum-answer-ranker';
+import {
+  suggestKnowledgeBaseArticles as suggestKnowledgeBaseArticlesAI,
+  KnowledgeBaseSuggesterInput,
+} from '@/ai/flows/knowledge-base-suggester';
 
 export async function getSearchSuggestions(
   input: HybridSearchSuggestionsInput
@@ -21,4 +25,10 @@ export async function getRankedAnswers(input: RankAnswersInput) {
   const rankedAnswers = await rankAnswersAI(input);
   // Sort by rank
   return rankedAnswers.sort((a, b) => a.rank - b.rank);
+}
+
+export async function getKnowledgeBaseSuggestions(
+  input: KnowledgeBaseSuggesterInput
+) {
+  return suggestKnowledgeBaseArticlesAI(input);
 }
