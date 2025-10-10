@@ -9,9 +9,12 @@ import SearchBar from '../search-bar';
 import { MobileNav } from './mobile-nav';
 import { useState } from 'react';
 import { ThemeToggle } from '../theme-toggle';
+import { useUser } from '@/firebase';
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const { user, isUserLoading } = useUser();
+  const isAdmin = user?.email === 'dante@gmail.com';
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -69,7 +72,7 @@ export function Header() {
         </div>
 
         <div className="flex flex-none items-center justify-end space-x-2 md:space-x-4">
-          <Button asChild className="hidden sm:inline-flex">
+          <Button asChild size="sm" className="hidden sm:inline-flex">
             <Link href="/ask">Ask Question</Link>
           </Button>
           <Button variant="ghost" size="icon">
