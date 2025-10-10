@@ -24,6 +24,9 @@ export function UserProfileNav() {
   const auth = useAuth();
   const router = useRouter();
 
+  // Temporary check for admin role. In a real app, this would come from a custom claim or Firestore.
+  const isAdmin = user?.email === 'dante@gmail.com';
+
   const handleLogout = async () => {
     if (!auth) return;
     
@@ -76,12 +79,14 @@ export function UserProfileNav() {
               <span>Profile</span>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/admin">
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              <span>Dashboard</span>
-            </Link>
-          </DropdownMenuItem>
+          {isAdmin && (
+            <DropdownMenuItem asChild>
+              <Link href="/admin">
+                <LayoutDashboard className="mr-2 h-4 w-4" />
+                <span>Dashboard</span>
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link href="/profile">
               <Settings className="mr-2 h-4 w-4" />

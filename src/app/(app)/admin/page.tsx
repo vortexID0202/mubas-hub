@@ -171,9 +171,9 @@ export default function AdminDashboardPage() {
                 {communityQuestions?.map((q) => (
                   <TableRow key={q.id}>
                     <TableCell>
-                      <div className="font-medium">{q.author.name}</div>
+                      <div className="font-medium">{q.author?.name || 'Unknown User'}</div>
                       <div className="hidden text-sm text-muted-foreground md:inline">
-                        {q.author.id}@mubas.ac.mw
+                        {q.author?.id ? `${q.author.id}@mubas.ac.mw` : 'N/A'}
                       </div>
                     </TableCell>
                     <TableCell>
