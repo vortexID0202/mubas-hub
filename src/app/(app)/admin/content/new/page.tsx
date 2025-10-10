@@ -75,20 +75,31 @@ export default function AdminNewContentPage() {
         icon: data.category === 'Wi-Fi' ? 'Wifi' : data.category === 'Fees' ? 'Landmark' : 'BookOpen',
     };
     
-    const updateData = {
-        title: data.title,
-        content: `A new knowledge base article has been published: "${data.title}"`,
-        category: 'Announcement', 
-        createdAt: serverTimestamp(),
-    };
-    
+    // First, try to add the main knowledge base article
     try {
         const kbCollection = collection(firestore, 'knowledge_base_articles');
-        await addDoc(kbCollection, kbData);
+        const docRef = await addDoc(kbCollection, kbData);
 
+        // If successful and postAsLiveUpdate is true, then add the live update
         if (data.postAsLiveUpdate) {
-            const updatesCollection = collection(firestore, 'live_updates');
-            await addDoc(updatesCollection, updateData);
+            const updateData = {
+                title: data.title,
+                content: `A new knowledge base article has been published: "${data.title}"`,
+                category: 'Announcement', 
+                createdAt: serverTimestamp(),
+                relatedArticleId: docRef.id,
+            };
+
+            try {
+                const updatesCollection = collection(firestore, 'live_updates');
+                await addDoc(updatesCollection, updateData);
+            } catch (liveUpdateError: any) {
+                // If live update fails, inform the user but the main article was still posted.
+                toast({ variant: 'destructive', title: 'Live Update Failed', description: 'The article was published, but the live update could not be posted. Please try creating it manually.' });
+                // We still redirect as the primary action was successful.
+                router.push('/admin/content');
+                return; // Stop further execution
+            }
         }
         
         toast({ title: 'Content Published', description: 'The new article has been added to the knowledge base.'});
@@ -96,47 +107,11 @@ export default function AdminNewContentPage() {
 
     } catch (error: any) {
         if (error.code === 'permission-denied') {
-            // Determine which collection failed for more accurate error reporting
-            let failedPath = 'knowledge_base_articles';
-            let failedData: object = kbData;
-            
-            // This is a simplified check. A robust way would be to perform writes in a transaction
-            // and see which one fails, but for this UI, we can infer based on the form state.
-            // Let's assume if postAsLiveUpdate is true, the error *might* be on the second write,
-            // but the most likely failure is the first one. We'll default to kb_articles.
-            // To be more precise, we can check the error message if available, but for the
-            // purpose of the LLM context, a clear path is most important.
-            
-            // A more advanced try-catch could wrap each `addDoc` to know exactly which one failed.
-            // For now, let's create the most likely error.
-            if (data.postAsLiveUpdate) {
-                // If we want to be more specific, we can try to infer. But let's check which write failed.
-                // We'll simulate by trying to write again, but that's not good practice.
-                // Best to report the most likely one, or make the error generic.
-                // In this case, the error is most likely on 'knowledge_base_articles' since it's first.
-                // If we wanted to check the second, we'd need more complex logic.
-                
-                // Let's assume the first write is the issue unless we have evidence otherwise.
-                // If the app required distinguishing, we'd need separate try/catch blocks.
-                // For the purpose of providing a clear error to the LLM, we'll focus on the primary action.
-                
-                // Let's refine this to be more specific based on what is likely to happen.
-                // The first write is the one that would fail first.
-                 failedPath = 'knowledge_base_articles';
-                 failedData = kbData;
-
-                // Let's check if the error message can give us a hint, although it's not reliable.
-                if (error.message.includes('live_updates')) {
-                     failedPath = 'live_updates';
-                     failedData = updateData;
-                }
-            }
-
-
+            // This error is for the knowledge_base_articles collection
             const permissionError = new FirestorePermissionError({
-                path: failedPath,
+                path: 'knowledge_base_articles',
                 operation: 'create',
-                requestResourceData: failedData,
+                requestResourceData: kbData,
             });
             errorEmitter.emit('permission-error', permissionError);
         } else {
