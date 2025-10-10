@@ -1,10 +1,20 @@
-import { GraduationCap } from 'lucide-react';
+import Image from 'next/image';
 
 const Logo = () => {
   return (
-    <div className="flex items-center space-x-2">
-      <GraduationCap className="h-6 w-6 text-primary" />
-      <span className="font-bold text-lg font-headline">MUBAS Hub</span>
+    <div className="flex items-center gap-2">
+      <div className="relative h-10 w-10 flex-shrink-0">
+        <Image 
+          src="/mubas-logo.jpg" 
+          alt="MUBAS Logo" 
+          fill
+          className="object-contain rounded"
+          priority
+        />
+      </div>
+      <span className="font-bold text-lg font-headline whitespace-nowrap">
+        MUBAS Hub
+      </span>
     </div>
   );
 };

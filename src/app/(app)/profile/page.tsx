@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { CommunityQuestion, User, UserProfile } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -123,33 +123,31 @@ export default function ProfilePage() {
     if (!user || !firestore) return;
     
     const newFullName = data.fullName;
+    const userDocRef = doc(firestore, 'users', user.uid);
+    const updateData = { fullName: newFullName };
 
     profileForm.formState.isSubmitting;
-    try {
-      // Update Firebase Auth profile
-      await updateProfile(user, {
-        displayName: newFullName,
+    
+    // Non-blocking update to Firestore
+    updateDoc(userDocRef, updateData)
+      .then(async () => {
+        // Only update Auth profile and show toast on successful Firestore write
+        await updateProfile(user, { displayName: newFullName });
+        toast({
+          title: "Profile Updated",
+          description: "Your information has been successfully saved.",
+        });
+        router.refresh();
+      })
+      .catch(error => {
+        // Emit contextual error for Firestore permission issues
+        const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      
-      // Update Firestore document
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await updateDoc(userDocRef, {
-        fullName: newFullName,
-      });
-
-      toast({
-        title: "Profile Updated",
-        description: "Your information has been successfully saved.",
-      });
-      router.refresh();
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: "Could not update your profile. Please try again.",
-      });
-    }
   };
   
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,21 +162,30 @@ export default function ProfilePage() {
 
     const storage = getStorage();
     const imageRef = storageRef(storage, `profile_pictures/${user.uid}`);
+    const userDocRef = doc(firestore, 'users', user.uid);
 
     try {
         await uploadBytes(imageRef, file);
         const downloadURL = await getDownloadURL(imageRef);
-        
-        await updateProfile(user, { photoURL: downloadURL });
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await updateDoc(userDocRef, { avatarUrl: downloadURL });
+        const updateData = { avatarUrl: downloadURL };
 
-        toast({
-            title: 'Profile Picture Updated',
-            description: 'Your new picture has been saved.',
-        });
-        
-        router.refresh();
+        updateDoc(userDocRef, updateData)
+          .then(async () => {
+            await updateProfile(user, { photoURL: downloadURL });
+            toast({
+                title: 'Profile Picture Updated',
+                description: 'Your new picture has been saved.',
+            });
+            router.refresh();
+          })
+          .catch(error => {
+             const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'update',
+                requestResourceData: updateData
+            });
+            errorEmitter.emit('permission-error', permissionError);
+          })
 
     } catch (error) {
         console.error("Error uploading image:", error);
