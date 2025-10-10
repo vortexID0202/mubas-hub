@@ -1,53 +1,38 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isUserAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isUserAuthenticated() && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return isUserAuthenticated() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-    
+    // Rules for the 'users' collection
     match /users/{userId} {
-      allow read: if true;
-      allow create: if isOwner(userId);
-      allow update, delete: if isOwner(userId) || isAdmin();
-
-      match /notifications/{notificationId} {
-        allow read, write: if isOwner(userId) || isAdmin();
-      }
+      // Users can only read, update, or delete their own profile
+      allow read, update, delete: if request.auth.uid == userId;
+      // Any authenticated user can create a user document (for their own profile)
+      allow create: if request.auth.uid != null;
     }
 
+    // Rules for the 'questions' collection as a whole
+    match /questions {
+      // Allow anyone to list (read) the entire collection of questions
+      allow list: if true;
+      // Allow any authenticated user to create a new question
+      allow create: if request.auth != null;
+    }
+
+    // Rules for a single document within the 'questions' collection
     match /questions/{questionId} {
-      allow list, read: if true; // Allow anyone to read and list questions
-      allow create: if isUserAuthenticated();
-      allow update, delete: if (isOwner(resource.data.authorId) || isAdmin());
-
-      match /answers/{answerId} {
-        allow read, list: if true;
-        allow create: if isUserAuthenticated();
-        allow update, delete: if (isOwner(resource.data.authorId) || isAdmin());
-      }
+      // Allow anyone to get (read) a single question
+      allow get: if true;
+      // Allow authenticated users to update or delete questions
+      allow update, delete: if request.auth != null; // Further rules could restrict this to authors/admins
     }
 
-    match /knowledge_base_articles/{articleId} {
+    // Rules for the 'answers' subcollection
+    match /questions/{questionId}/answers/{answerId} {
+      // Allow anyone to read answers
       allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /tags/{tagId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    match /roles_admin/{uid} {
-        allow read, write: if isAdmin();
+      // Only allow authenticated users to write answers
+      allow write: if request.auth != null;
     }
   }
 }
