@@ -2,9 +2,11 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import Logo from '../logo';
 import { ThemeToggle } from '../theme-toggle';
 import { useUser } from '@/firebase';
+import { cn } from '@/lib/utils';
 
 interface MobileNavProps {
     setOpen: (open: boolean) => void;
@@ -13,6 +15,16 @@ interface MobileNavProps {
 export function MobileNav({setOpen}: MobileNavProps) {
   const { user } = useUser();
   const isAdmin = user?.email === 'dante@gmail.com';
+  const pathname = usePathname();
+
+  const navItems = [
+    { href: '/', label: 'Home' },
+    { href: '/kb', label: 'Knowledge Base' },
+    { href: '/forum', label: 'Forum' },
+    isAdmin 
+      ? { href: '/admin/content/new', label: 'Post Content' }
+      : { href: '/ask', label: 'Ask a Question' }
+  ];
 
   return (
     <div className="flex h-full flex-col">
@@ -23,44 +35,19 @@ export function MobileNav({setOpen}: MobileNavProps) {
             <ThemeToggle />
         </div>
         <nav className="mt-8 flex flex-col space-y-4 pr-6">
-            <Link
-              href="/"
-              className="rounded-md p-2 text-foreground transition-colors hover:bg-muted"
-              onClick={() => setOpen(false)}
-            >
-              Home
-            </Link>
-            <Link
-              href="/kb"
-              className="rounded-md p-2 text-foreground/60 transition-colors hover:bg-muted"
-              onClick={() => setOpen(false)}
-            >
-              Knowledge Base
-            </Link>
-            <Link
-              href="/forum"
-              className="rounded-md p-2 text-foreground/60 transition-colors hover:bg-muted"
-              onClick={() => setOpen(false)}
-            >
-              Forum
-            </Link>
-             {isAdmin ? (
-                <Link
-                  href="/admin/content/new"
-                  className="rounded-md p-2 text-foreground/60 transition-colors hover:bg-muted"
-                  onClick={() => setOpen(false)}
-                >
-                  Post Content
-                </Link>
-             ) : (
-                <Link
-                  href="/ask"
-                  className="rounded-md p-2 text-foreground/60 transition-colors hover:bg-muted"
-                  onClick={() => setOpen(false)}
-                >
-                  Ask a Question
-                </Link>
-             )}
+            {navItems.map((item) => (
+                 <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                        'rounded-md p-2 transition-colors hover:bg-muted',
+                        pathname === item.href ? 'text-foreground bg-muted' : 'text-foreground/60'
+                    )}
+                    onClick={() => setOpen(false)}
+                    >
+                    {item.label}
+                 </Link>
+            ))}
         </nav>
     </div>
   );
