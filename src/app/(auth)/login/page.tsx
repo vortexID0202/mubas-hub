@@ -146,9 +146,10 @@ export default function LoginPage() {
           width="1920"
           height="1080"
           data-ai-hint="university campus"
-          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+          className="h-full w-full object-cover dark:brightness-[0.5] dark:grayscale"
         />
       </div>
     </div>
   );
 }
+// 

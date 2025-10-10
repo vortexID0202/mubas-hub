@@ -249,16 +249,16 @@ const SignUpPage: React.FC = () => {
           </div>
         </div>
       </div>
-      <div className="hidden bg-muted lg:block">
-        <Image
-          src="https://picsum.photos/seed/mubas-signup/1920/1080"
-          alt="Image"
-          width="1920"
-          height="1080"
-          data-ai-hint="students collaborating"
-          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-        />
-      </div>
+       <div className="hidden bg-muted lg:block">
+              <Image
+                src="/unipod.jpg"
+                alt="Image"
+                width="1920"
+                height="1080"
+                data-ai-hint="university campus"
+                className="h-full w-full object-cover dark:brightness-[0.5] dark:grayscale"
+              />
+        </div>
     </div>
   );
 };
