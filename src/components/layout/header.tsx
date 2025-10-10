@@ -71,7 +71,7 @@ export function Header() {
             </div>
         </div>
 
-        <div className="flex flex-none items-center justify-end space-x-2 md:space-x-4">
+        <div className="flex flex-none items-center justify-end space-x-2 pl-[10px] md:space-x-4">
           <Button asChild size="sm" className="hidden sm:inline-flex">
             <Link href="/ask">Ask Question</Link>
           </Button>
