@@ -1,121 +1,131 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a role-based access control system for the MUBAS Community Hub, with a strong emphasis on user-ownership and admin privileges.
+ * @file Firebase Security Rules for the MUBAS Community Hub.
+ * @description This ruleset enforces a role-based access control model with ownership where appropriate.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles, accessible only to the user themselves and admins.
- * - /questions/{questionId}: Stores questions, publicly readable but writable only by the author and admins. The 'authorId' field is denormalized.
- * - /questions/{questionId}/answers/{answerId}: Stores answers, publicly readable but writable only by the author and admins. The 'authorId' and 'questionId' fields are denormalized.
- * - /knowledge_base_articles/{articleId}: Stores knowledge base articles, publicly readable but writable only by admins.
- * - /tags/{tagId}: Stores tags, publicly readable but writable only by admins.
- * - /users/{userId}/notifications/{notificationId}: Stores user-specific notifications, accessible only to the user themselves and admins.
- * - /roles_admin/{uid}: Indicates admin status. The existence of a document for a given UID grants admin privileges.
+ * - /users/{userId}: User profiles, accessible only to the user and admins.
+ * - /questions/{questionId}: Community forum questions, readable by all, writable by the author and admins.
+ * - /questions/{questionId}/answers/{answerId}: Answers to questions, readable by all, writable by the author and admins.
+ * - /knowledge_base_articles/{articleId}: Knowledge base articles, readable by all, writable only by admins.
+ * - /tags/{tagId}: Tags for questions and articles, readable by all, writable only by admins.
+ * - /users/{userId}/notifications/{notificationId}: Notifications for users, accessible only to the user and admins.
+ * - /roles_admin/{uid}: Indicates admin status. Document existence grants admin privileges.
  *
  * Key Security Decisions:
- * - User data is strictly private, accessible only to the user and admins.
- * - Questions, answers, knowledge base articles, and tags are publicly readable to foster community engagement.
- * - Only admins can manage knowledge base articles and tags.
- * - Notifications are private and only accessible to the user and admins.
- * - Admin status is determined by the existence of a document in the `/roles_admin/{uid}` collection.
- * - Strict ownership is enforced for updates and deletes, preventing unauthorized data modification.
+ * - Admin privileges are determined by the presence of a document in the /roles_admin/{uid} collection.
+ * - User listing is implicitly denied.
+ * - Read access is generally open unless specifically restricted.
+ *
+ * Denormalization for Authorization:
+ * - The `authorId` field is denormalized in the `Question` and `Answer` entities to simplify ownership checks.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
+     * @description Checks if the current user is signed in.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user's ID matches the provided user ID.
-     * @param {string} userId - The user ID to compare against the authenticated user's ID.
+     * @description Checks if the current user's ID matches the provided user ID.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user is an admin by verifying the existence of a document in the /roles_admin/{uid} collection.
+     * @description Checks if the current user is an admin.
+     * @details Admin status is determined by the existence of a document in the /roles_admin/{uid} collection.
      */
     function isAdmin() {
-      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
     /**
-     * @description Checks if the user is the owner of an existing document.
-     * @param {string} userId - The user ID to compare against the authenticated user's ID.
+     * @description Checks if the current user is the existing owner of a document.
+     * @details Combines the ownership check with a document existence check for safer updates and deletes.
      */
     function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+        return isOwner(userId) && resource != null;
     }
 
     /**
      * @description Rules for user profiles.
      * @path /users/{userId}
-     * @allow (create) - A user can create their own profile if the userId matches their auth UID.
-     * @allow (get, list) - A user can read their own profile or an admin can read any profile.
-     * @allow (update, delete) - A user can update or delete their own profile or an admin can update or delete any profile.
-     * @deny (create) - A user cannot create a profile with a userId that doesn't match their auth UID.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     * @allow (create) User with ID 'user123' can create their profile.
+     *   request.auth.uid == 'user123'
+     * @allow (get) User with ID 'user123' can read their profile.
+     *   request.auth.uid == 'user123'
+     * @deny (update) User with ID 'user456' cannot update user 'user123' profile.
+     *   request.auth.uid != 'user123'
+     * @principle Enforces document ownership for writes, restricts read access to owner or admin.
      */
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if false;
-
-      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
+      allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId) || isAdmin();
-      allow delete: if isExistingOwner(userId) || isAdmin();
+      allow delete: if false; // User deletion should be handled carefully, likely via admin function
+
     }
 
     /**
-     * @description Rules for questions in the community forum.
+     * @description Rules for community forum questions.
      * @path /questions/{questionId}
-     * @allow (get, list) - Anyone can read questions.
-     * @allow (create) - A user can create a question if the authorId matches their auth UID.
-     * @allow (update, delete) - Only the author of the question or an admin can update or delete it.
-     * @deny (create) - A user cannot create a question with an authorId that doesn't match their auth UID.
-     * @principle Enforces document ownership for writes while allowing public read access.
+     * @allow (create) User with ID 'user123' can create a question with authorId 'user123'.
+     *   request.auth.uid == 'user123'
+     * @allow (get) Anyone can read a question.
+     * @allow (update) User with ID 'user123' can update a question if they are the author (authorId == 'user123').
+     *   request.auth.uid == 'user123'
+     * @deny (update) User with ID 'user456' cannot update a question authored by 'user123'.
+     *   request.auth.uid != 'user123'
+     * @principle Enforces document ownership for writes, allows public reads.
      */
     match /questions/{questionId} {
-      allow get, list: if true;
-
+      allow get: if true;
+      allow list: if true;
       allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()) && resource != null;
-      allow delete: if isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()) && resource != null;
+      allow update: if isExistingOwner(resource.data.authorId) || isAdmin();
+      allow delete: if isExistingOwner(resource.data.authorId) || isAdmin();
     }
 
     /**
-     * @description Rules for answers to questions in the community forum.
+     * @description Rules for answers to questions.
      * @path /questions/{questionId}/answers/{answerId}
-     * @allow (get, list) - Anyone can read answers to a question.
-     * @allow (create) - A user can create an answer if the authorId matches their auth UID. The questionId must match the parent question.
-     * @allow (update, delete) - Only the author of the answer or an admin can update or delete it.
-     * @deny (create) - A user cannot create an answer with an authorId that doesn't match their auth UID.
-     * @principle Enforces document ownership for writes while allowing public read access. Validates relational integrity.
+     * @allow (create) User with ID 'user123' can create an answer with authorId 'user123'.
+     *   request.auth.uid == 'user123'
+     * @allow (get) Anyone can read an answer.
+     * @allow (update) User with ID 'user123' can update an answer if they are the author (authorId == 'user123').
+     *   request.auth.uid == 'user123'
+     * @deny (update) User with ID 'user456' cannot update an answer authored by 'user123'.
+     *   request.auth.uid != 'user123'
+     * @principle Enforces document ownership for writes, allows public reads.
      */
     match /questions/{questionId}/answers/{answerId} {
-      allow get, list: if true;
-
-      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid && request.resource.data.questionId == questionId;
-      allow update: if isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()) && resource != null;
-      allow delete: if isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()) && resource != null;
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      allow update: if isExistingOwner(resource.data.authorId) || isAdmin();
+      allow delete: if isExistingOwner(resource.data.authorId) || isAdmin();
     }
 
     /**
      * @description Rules for knowledge base articles.
      * @path /knowledge_base_articles/{articleId}
-     * @allow (get, list) - Anyone can read knowledge base articles.
-     * @allow (create, update, delete) - Only admins can create, update, or delete knowledge base articles.
-     * @principle Restricts write access to admins while allowing public read access.
+     * @allow (get) Anyone can read a knowledge base article.
+     * @allow (create) Only admins can create knowledge base articles.
+     * @deny (create) Non-admin user tries to create a knowledge base article.
+     *   request.auth.uid == 'user123'
+     * @principle Restricts write access to admins, allows public reads.
      */
     match /knowledge_base_articles/{articleId} {
-      allow get, list: if true;
-
-      allow create: if isAdmin();
+      allow get: if true;
+      allow list: if true;
+      allow create: if isAdmin() && request.resource.data.authorId == request.auth.uid; // Enforce the authorId to be the admin creating the article
       allow update: if isAdmin() && resource != null;
       allow delete: if isAdmin() && resource != null;
     }
@@ -123,50 +133,51 @@ service cloud.firestore {
     /**
      * @description Rules for tags.
      * @path /tags/{tagId}
-     * @allow (get, list) - Anyone can read tags.
-     * @allow (create, update, delete) - Only admins can create, update, or delete tags.
-     * @principle Restricts write access to admins while allowing public read access.
+     * @allow (get) Anyone can read a tag.
+     * @allow (create) Only admins can create tags.
+     * @deny (create) Non-admin user tries to create a tag.
+     *   request.auth.uid == 'user123'
+     * @principle Restricts write access to admins, allows public reads.
      */
     match /tags/{tagId} {
-      allow get, list: if true;
-
+      allow get: if true;
+      allow list: if true;
       allow create: if isAdmin();
       allow update: if isAdmin() && resource != null;
       allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Rules for user-specific notifications.
+     * @description Rules for notifications for a specific user.
      * @path /users/{userId}/notifications/{notificationId}
-     * @allow (get) - A user can read their own notifications or an admin can read any notification.
-     * @allow (list) - A user can list their own notifications.
-     * @allow (create) - A user or admin can create a notification for a user.
-     * @allow (update, delete) - Only the user or an admin can update or delete the notification.
-     * @deny (create) - A user cannot create a notification for a userId that doesn't match their auth UID, unless they are an admin.
-     * @principle Enforces document ownership for writes and restricts access to a user's own notifications.
+     * @allow (get) User with ID 'user123' can read their notification.
+     *   request.auth.uid == 'user123'
+     * @deny (update) User with ID 'user456' cannot update user 'user123' notification.
+     *   request.auth.uid != 'user123'
+     * @principle Enforces document ownership for writes, restricts read access to owner or admin.
      */
     match /users/{userId}/notifications/{notificationId} {
       allow get: if isOwner(userId) || isAdmin();
-      allow list: if isOwner(userId);
-
-      allow create: if (isOwner(userId) || isAdmin()) && request.resource.data.userId == userId;
-      allow update: if (isOwner(userId) || isAdmin()) && resource != null;
-      allow delete: if (isOwner(userId) || isAdmin()) && resource != null;
+      allow list: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) ;
+      allow update: if isExistingOwner(userId) || isAdmin();
+      allow delete: if isExistingOwner(userId) || isAdmin();
     }
 
-     /**
-      * @description Rules for admin role management.
-      * @path /roles_admin/{uid}
-      * @allow (get, list) - Only admins can read the list of admin uids.
-      * @allow (create) - Only admins can grant admin permissions
-      * @allow (update, delete) - Only admins can revoke admin permissions.
-      * @principle Database-Based Access Control (DBAC)
-      */
-     match /roles_admin/{uid} {
-        allow get, list: if isAdmin();
-        allow create: if isAdmin();
-        allow update: if isAdmin() && resource != null;
-        allow delete: if isAdmin() && resource != null;
-     }
+    /**
+     * @description Rules for admin roles.
+     * @path /roles_admin/{uid}
+     * @allow (create) Anyone can create a role, existence grants admin privilege.
+     *   request.auth.uid == 'admin123'
+     * @principle DBAC: Document existence confers admin privileges.
+     */
+    match /roles_admin/{uid} {
+        //This path serves as a flag, its existence grants Admin rights
+      allow get: if isAdmin();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
   }
 }
