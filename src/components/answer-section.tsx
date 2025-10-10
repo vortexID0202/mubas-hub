@@ -51,38 +51,39 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
     });
   };
 
-  const handleAnswerUpvote = async (answerId: string) => {
-     if (!firestore || !user) {
-        toast({
-            variant: "destructive",
-            title: "Not logged in",
-            description: "You must be logged in to vote.",
-        });
-        return;
+  const handleAnswerUpvote = (answerId: string) => {
+    if (!firestore || !user) {
+      toast({
+        variant: 'destructive',
+        title: 'Not logged in',
+        description: 'You must be logged in to vote.',
+      });
+      return;
     }
     const answerRef = doc(firestore, `questions/${question.id}/answers`, answerId);
-    
     const updateData = { votes: increment(1) };
+    
+    // Use non-blocking update with chained error handling
     updateDoc(answerRef, updateData)
-        .catch(error => {
-            if (error.code === 'permission-denied') {
-                const permissionError = new FirestorePermissionError({
-                    path: answerRef.path,
-                    operation: 'update',
-                    requestResourceData: {
-                        votes: `increment(1)`
-                    },
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            } else {
-                 toast({
-                    variant: "destructive",
-                    title: "Upvote Failed",
-                    description: error.message || "Could not upvote this answer.",
-                });
-            }
-        });
-  }
+      .catch((error) => {
+        if (error.code === 'permission-denied') {
+          const permissionError = new FirestorePermissionError({
+            path: answerRef.path,
+            operation: 'update',
+            requestResourceData: {
+              votes: `increment(1)`,
+            },
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Upvote Failed',
+            description: error.message || 'Could not upvote this answer.',
+          });
+        }
+      });
+  };
 
   const displayAnswers = sortedAnswers || answers;
 
