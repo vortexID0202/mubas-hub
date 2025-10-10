@@ -6,12 +6,14 @@ import {
   Tag
 } from '@/lib/types';
 
+// Use a deterministic method to generate reputation to avoid hydration errors.
 export const users: User[] = Array.from({ length: 10 }, (_, i) => ({
   id: `user${i + 1}`,
   name: `Student ${i + 1}`,
   avatarUrl: `https://picsum.photos/seed/user${i+1}/40/40`,
-  reputation: Math.floor(Math.random() * 500) + 50,
+  reputation: 50 + ((i * 37) % 450), // Predictable reputation based on index
 }));
+
 
 export const sampleTags: Tag[] = [
   { id: '1', name: 'smis' },
