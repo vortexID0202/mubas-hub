@@ -84,9 +84,18 @@ export default function QuestionPage() {
   useEffect(() => {
     if (firestore && id && !viewIncrementedRef.current) {
         const questionDocRef = doc(firestore, 'questions', id);
-        updateDoc(questionDocRef, {
-            views: increment(1)
-        }).catch(console.error); // Best-effort, non-blocking
+        const updateData = { views: increment(1) };
+        updateDoc(questionDocRef, updateData)
+            .catch(error => {
+                if (error.code === 'permission-denied') {
+                    const permissionError = new FirestorePermissionError({
+                        path: questionDocRef.path,
+                        operation: 'update',
+                        requestResourceData: updateData,
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                }
+            });
         viewIncrementedRef.current = true; // Set flag to prevent future increments in this session
     }
   }, [id, firestore]);
