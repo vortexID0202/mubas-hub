@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
@@ -75,7 +75,6 @@ export default function AdminNewContentPage() {
         icon: data.category === 'Wi-Fi' ? 'Wifi' : data.category === 'Fees' ? 'Landmark' : 'BookOpen',
     };
     
-    // First, try to add the main knowledge base article
     try {
         const kbCollection = collection(firestore, 'knowledge_base_articles');
         const docRef = await addDoc(kbCollection, kbData);
@@ -95,11 +94,19 @@ export default function AdminNewContentPage() {
                 const updatesCollection = collection(firestore, 'live_updates');
                 await addDoc(updatesCollection, updateData);
             } catch (liveUpdateError: any) {
-                // If live update fails, inform the user but the main article was still posted.
-                toast({ variant: 'destructive', title: 'Live Update Failed', description: 'The article was published, but the live update could not be posted. Please try creating it manually.' });
+                 if (liveUpdateError.code === 'permission-denied') {
+                    const permissionError = new FirestorePermissionError({
+                        path: 'live_updates',
+                        operation: 'create',
+                        requestResourceData: updateData,
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                } else {
+                    toast({ variant: 'destructive', title: 'Live Update Failed', description: 'The article was published, but the live update could not be posted. Please try creating it manually.' });
+                }
                 // We still redirect as the primary action was successful.
                 router.push('/admin/content');
-                return; // Stop further execution
+                return;
             }
         }
         
