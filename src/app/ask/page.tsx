@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { CommunityQuestion, Tag, UserProfile } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
@@ -81,27 +81,27 @@ export default function AskQuestionPage() {
         ? values.tags.split(',').map(tag => ({ id: tag.trim(), name: tag.trim() }))
         : [];
         
+    const questionData: Omit<CommunityQuestion, 'id'> = {
+        title: values.title,
+        body: values.details,
+        authorId: user.uid,
+        author: { // Denormalize author data
+          id: user.uid,
+          name: userProfile.fullName,
+          avatarUrl: userProfile.avatarUrl,
+          reputation: userProfile.reputation
+        },
+        tags: tags,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        votes: 0,
+        answersCount: 0,
+        views: 0,
+    };
+
     try {
-        const questionData: Omit<CommunityQuestion, 'id'> = {
-            title: values.title,
-            body: values.details,
-            authorId: user.uid,
-            author: { // Denormalize author data
-              id: user.uid,
-              name: userProfile.fullName,
-              avatarUrl: userProfile.avatarUrl,
-              reputation: userProfile.reputation
-            },
-            tags: tags,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            votes: 0,
-            answersCount: 0,
-            views: 0,
-        };
-        
-        // This is now a client-side operation
-        await addDoc(collection(firestore, `questions`), questionData);
+        const questionsCollection = collection(firestore, `questions`);
+        await addDoc(questionsCollection, questionData);
 
         toast({
             title: "Question Posted!",
@@ -111,12 +111,21 @@ export default function AskQuestionPage() {
         router.push('/forum');
 
     } catch (error: any) {
-        console.error("Error submitting question to Firestore:", error);
-        toast({
-            variant: "destructive",
-            title: "Submission Failed",
-            description: error.message || "Failed to submit question. Please try again.",
-        });
+        if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: 'questions',
+                operation: 'create',
+                requestResourceData: questionData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } else {
+            console.error("Error submitting question to Firestore:", error);
+            toast({
+                variant: "destructive",
+                title: "Submission Failed",
+                description: error.message || "Failed to submit question. Please try again.",
+            });
+        }
     }
   }
 
