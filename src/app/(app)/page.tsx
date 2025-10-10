@@ -13,6 +13,7 @@ import {
   Megaphone,
   Pencil,
   BarChart,
+  PlusSquare,
 } from 'lucide-react';
 import {
   knowledgeBaseArticles,
@@ -48,54 +49,77 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { CommunityQuestion } from '@/lib/types';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
 
-const browseItems = [
-  {
-    title: 'Community Forum',
-    description: 'Ask questions and get help from your peers.',
-    href: '/forum',
-    icon: MessageSquare,
-  },
-  {
-    title: 'Knowledge Base',
-    description: 'Find official guides and verified information.',
-    href: '/kb',
-    icon: BookOpen,
-  },
-  {
-    title: 'Ask a Question',
-    description: 'Post your own question to the community.',
-    href: '/ask',
-    icon: Pencil,
-  },
-  {
-    title: 'Live Updates',
-    description: 'Latest announcements from the administration.',
-    href: '/updates',
-    icon: Megaphone,
-  },
-  {
-    title: 'Top Contributors',
-    description: 'See the most helpful members of the community.',
-    href: '#contributors',
-    icon: BarChart,
-  },
-];
 
 export default function Home() {
+  const { user } = useUser();
   const firestore = useFirestore();
   const sortedUsers = [...users].sort((a, b) => b.reputation - a.reputation);
   const topThree = sortedUsers.slice(0, 3);
   const restUsers = sortedUsers.slice(3, 10);
+  const isAdmin = user?.email === 'dante@gmail.com';
   
   const questionsQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3)) : null
   , [firestore]);
   const { data: communityQuestions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
+
+  const browseItems = [
+    {
+      title: 'Community Forum',
+      description: 'Ask questions and get help from your peers.',
+      href: '/forum',
+      icon: MessageSquare,
+      adminOnly: false,
+    },
+    {
+      title: 'Knowledge Base',
+      description: 'Find official guides and verified information.',
+      href: '/kb',
+      icon: BookOpen,
+      adminOnly: false,
+    },
+    {
+      title: 'Ask a Question',
+      description: 'Post your own question to the community.',
+      href: '/ask',
+      icon: Pencil,
+      adminOnly: false,
+      hideForAdmin: true,
+    },
+     {
+      title: 'Post Content',
+      description: 'Create a new knowledge base article.',
+      href: '/admin/content/new',
+      icon: PlusSquare,
+      adminOnly: true,
+    },
+    {
+      title: 'Live Updates',
+      description: 'Latest announcements from the administration.',
+      href: '/updates',
+      icon: Megaphone,
+      adminOnly: false,
+    },
+    {
+      title: 'Top Contributors',
+      description: 'See the most helpful members of the community.',
+      href: '#contributors',
+      icon: BarChart,
+      adminOnly: false,
+    },
+  ];
+
+  const visibleBrowseItems = browseItems.filter(item => {
+    if (isAdmin) {
+      return !item.hideForAdmin;
+    }
+    return !item.adminOnly;
+  });
 
 
   return (
@@ -139,7 +163,7 @@ export default function Home() {
                 className="mx-auto mt-10 w-full max-w-sm md:max-w-xl lg:max-w-4xl"
               >
                 <CarouselContent>
-                  {browseItems.map((item, index) => (
+                  {visibleBrowseItems.map((item, index) => (
                     <CarouselItem
                       key={index}
                       className="md:basis-1/2 lg:basis-1/3"

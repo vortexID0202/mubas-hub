@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, Menu, Pencil, PlusSquare } from 'lucide-react';
 import Logo from '@/components/logo';
 import { UserProfileNav } from '@/components/user-profile-nav';
 import { Button } from '@/components/ui/button';
@@ -71,10 +71,19 @@ export function Header() {
             </div>
         </div>
 
-        <div className="flex flex-none items-center justify-end space-x-2 pl-[10px] md:space-x-4">
-          <Button asChild size="sm" className="hidden sm:inline-flex">
-            <Link href="/ask">Ask Question</Link>
-          </Button>
+        <div className="flex flex-none items-center justify-end space-x-2 pl-10 md:space-x-4">
+          {isAdmin ? (
+            <Button asChild size="sm">
+              <Link href="/admin/content/new">
+                 <PlusSquare className="mr-2 h-4 w-4" />
+                Post Content
+              </Link>
+            </Button>
+          ) : (
+            <Button asChild size="sm">
+              <Link href="/ask">Ask Question</Link>
+            </Button>
+          )}
           <Button variant="ghost" size="icon">
             <Bell className="h-5 w-5" />
             <span className="sr-only">Notifications</span>

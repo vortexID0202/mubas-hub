@@ -1,7 +1,12 @@
+'use client';
 import Link from 'next/link';
 import Logo from '@/components/logo';
+import { useUser } from '@/firebase';
 
 export function Footer() {
+  const { user } = useUser();
+  const isAdmin = user?.email === 'dante@gmail.com';
+
   return (
     <footer className="w-full border-t bg-muted/40">
       <div className="container mx-auto flex flex-col items-center justify-between gap-4 py-8 md:flex-row">
@@ -24,9 +29,15 @@ export function Footer() {
           <Link href="/forum" className="transition-colors hover:text-primary">
             Forum
           </Link>
-          <Link href="/ask" className="transition-colors hover:text-primary">
-            Ask a Question
-          </Link>
+          {isAdmin ? (
+             <Link href="/admin/content/new" className="transition-colors hover:text-primary">
+                Post Content
+             </Link>
+          ) : (
+             <Link href="/ask" className="transition-colors hover:text-primary">
+                Ask a Question
+             </Link>
+          )}
         </nav>
         <div className="text-center text-sm text-muted-foreground md:text-right">
           <p>&copy; {new Date().getFullYear()} MUBAS Community Hub.</p>
