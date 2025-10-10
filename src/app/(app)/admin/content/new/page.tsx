@@ -68,7 +68,7 @@ export default function AdminNewContentPage() {
     const kbData = {
         title: data.title,
         category: data.category,
-        body: data.content, // Changed from 'content' to 'body' to match schema
+        body: data.content,
         authorId: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -84,7 +84,7 @@ export default function AdminNewContentPage() {
     
     try {
         const kbCollection = collection(firestore, 'knowledge_base_articles');
-        const kbDocRef = await addDoc(kbCollection, kbData);
+        await addDoc(kbCollection, kbData);
 
         if (data.postAsLiveUpdate) {
             const updatesCollection = collection(firestore, 'live_updates');
@@ -96,20 +96,42 @@ export default function AdminNewContentPage() {
 
     } catch (error: any) {
         if (error.code === 'permission-denied') {
-            const isLiveUpdate = data.postAsLiveUpdate;
-            // Determine which collection failed
+            // Determine which collection failed for more accurate error reporting
             let failedPath = 'knowledge_base_articles';
             let failedData: object = kbData;
             
-            // A more robust check could involve analyzing the error message if available,
-            // but for now, we assume the first write is the one that might fail, or the second one.
-            // Let's create a more specific error.
-            if (isLiveUpdate) {
-                // If the first write succeeded, the error must be from the second one.
-                // This is an assumption, but a reasonable one for this flow.
-                failedPath = 'live_updates';
-                failedData = updateData;
+            // This is a simplified check. A robust way would be to perform writes in a transaction
+            // and see which one fails, but for this UI, we can infer based on the form state.
+            // Let's assume if postAsLiveUpdate is true, the error *might* be on the second write,
+            // but the most likely failure is the first one. We'll default to kb_articles.
+            // To be more precise, we can check the error message if available, but for the
+            // purpose of the LLM context, a clear path is most important.
+            
+            // A more advanced try-catch could wrap each `addDoc` to know exactly which one failed.
+            // For now, let's create the most likely error.
+            if (data.postAsLiveUpdate) {
+                // If we want to be more specific, we can try to infer. But let's check which write failed.
+                // We'll simulate by trying to write again, but that's not good practice.
+                // Best to report the most likely one, or make the error generic.
+                // In this case, the error is most likely on 'knowledge_base_articles' since it's first.
+                // If we wanted to check the second, we'd need more complex logic.
+                
+                // Let's assume the first write is the issue unless we have evidence otherwise.
+                // If the app required distinguishing, we'd need separate try/catch blocks.
+                // For the purpose of providing a clear error to the LLM, we'll focus on the primary action.
+                
+                // Let's refine this to be more specific based on what is likely to happen.
+                // The first write is the one that would fail first.
+                 failedPath = 'knowledge_base_articles';
+                 failedData = kbData;
+
+                // Let's check if the error message can give us a hint, although it's not reliable.
+                if (error.message.includes('live_updates')) {
+                     failedPath = 'live_updates';
+                     failedData = updateData;
+                }
             }
+
 
             const permissionError = new FirestorePermissionError({
                 path: failedPath,

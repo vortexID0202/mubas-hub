@@ -1,74 +1,89 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Function to check if a user is an administrator.
-    // It verifies the existence of a document in the 'roles_admin' collection
-    // where the document ID matches the user's UID.
+  
+    // Helper function to check for admin role
     function isAdmin() {
+      // An admin is a user whose UID exists as a document in the 'roles_admin' collection.
       return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
-    
-    // Users can read and write to their own profile.
+
+    // Users collection rules
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Any authenticated user can create their own profile.
+      allow create: if request.auth != null;
+      // Users can only read, update, or delete their OWN profile.
+      allow read, update, delete: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // Any authenticated user can create a question.
-    // Only the author can update or delete their own question.
-    // Any authenticated user can increment votes, views, or add to the upvotedBy array.
+
+    // Questions and Answers
     match /questions/{questionId} {
-      allow read;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
-      allow update: if request.auth != null &&
-                      request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['votes', 'views', 'upvotedBy', 'answersCount']) &&
-                      request.resource.data.votes == resource.data.votes + 1 &&
-                      !((request.auth.uid) in resource.data.upvotedBy);
-      allow update: if request.auth != null &&
-                      request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['views']) &&
-                      request.resource.data.views == resource.data.views + 1;
-    }
-    
-    // Rules for answers nested under questions.
-    match /questions/{questionId}/answers/{answerId} {
-      allow read;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.authorId;
-      allow update: if request.auth != null &&
-                      request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['votes', 'upvotedBy']) &&
-                      request.resource.data.votes == resource.data.votes + 1 &&
-                      !((request.auth.uid) in resource.data.upvotedBy);
-    }
-    
-    // Only administrators can write to the knowledge base.
-    // Anyone can read the articles.
-    match /knowledge_base_articles/{articleId} {
+      // Anyone can read questions.
       allow read: if true;
-      allow create, update, delete: if isAdmin();
-    }
-    
-    // Only administrators can write to live updates.
-    // Anyone can read them.
-    match /live_updates/{updateId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
-    }
+      // Only authenticated users can create questions.
+      // Rule ensures the authorId must match the creator's UID.
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      
+      // Allow authenticated users to update specific fields: votes, views, upvotedBy.
+      allow update: if request.auth != null &&
+                      (
+                        // Rule for voting/viewing: user can only update votes, views, and upvotedBy array
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes', 'views', 'upvotedBy']) &&
+                        request.resource.data.votes == resource.data.votes + 1 &&
+                        request.resource.data.views == resource.data.views + 1 &&
+                        // Ensure user is not already in upvotedBy
+                        !(request.auth.uid in resource.data.upvotedBy) &&
+                        request.resource.data.upvotedBy == resource.data.upvotedBy.append(request.auth.uid)
+                      ) || (
+                        // Rule for editing: only the author or an admin can edit other fields
+                        (request.auth.uid == resource.data.authorId || isAdmin())
+                      );
+                      
+      // Only the author or an admin can delete a question.
+      allow delete: if request.auth != null && (request.auth.uid == resource.data.authorId || isAdmin());
 
-    // Admins can manage tags. Anyone can read them.
-    match /tags/{tagId} {
+      // Answers subcollection
+      match /answers/{answerId} {
+        // Anyone can read answers.
         allow read: if true;
-        allow write: if isAdmin();
+        // Only authenticated users can create answers.
+        // The authorId must match the creator's UID.
+        allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+        // Only the author or an admin can update/delete an answer.
+        allow update, delete: if request.auth != null && (request.auth.uid == resource.data.authorId || isAdmin());
+      }
     }
 
-    // Admin roles can only be managed from the server (or console).
-    // No client should be able to write here.
+    // Knowledge Base articles
+    match /knowledge_base_articles/{articleId} {
+      // Anyone can read knowledge base articles.
+      allow read: if true;
+      // Only admins can create, update, or delete knowledge base articles.
+      // The authorId must be the admin's UID.
+      allow create: if isAdmin() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    
+    // Live Updates
+    match /live_updates/{updateId} {
+        // Anyone can read live updates.
+        allow read: if true;
+        // Only admins can create, update, or delete live updates.
+        allow create, update, delete: if isAdmin();
+    }
+
+    // Tags collection (assuming only admins can manage tags)
+    match /tags/{tagId} {
+      // Everyone can read tags.
+      allow read: if true;
+      // Only admins can create, update, or delete tags.
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Admin roles collection
     match /roles_admin/{userId} {
-        allow read: if isAdmin();
-        allow write: if false;
+        // Only admins can read or write to the admin roles, to prevent users from making themselves admins.
+        allow read, write: if isAdmin();
     }
   }
 }
