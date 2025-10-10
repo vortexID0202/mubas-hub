@@ -100,32 +100,33 @@ export default function ProfilePage() {
         };
 
         setAreAnswersLoading(true);
-        try {
-            const answersQuery = query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid));
-            const querySnapshot = await getDocs(answersQuery);
-            const allAnswers: QuestionAnswer[] = [];
-            querySnapshot.forEach((doc) => {
-                allAnswers.push({ id: doc.id, ...doc.data() } as QuestionAnswer);
-            });
-            setUserAnswers(allAnswers);
-        } catch (error) {
-            console.error("Error fetching user answers with collectionGroup:", error);
-            // Fallback for environments where collectionGroup queries might fail without a specific index.
-            // This part is a safety net.
-            if (userQuestions) {
-                const allAnswers: QuestionAnswer[] = [];
-                for (const question of userQuestions) {
-                    const answersRef = collection(firestore, 'questions', question.id, 'answers');
-                    const q = query(answersRef, where('authorId', '==', user.uid));
-                    const querySnapshot = await getDocs(q);
-                    querySnapshot.forEach((doc) => {
-                        allAnswers.push({ id: doc.id, ...doc.data() } as QuestionAnswer);
+        const allAnswers: QuestionAnswer[] = [];
+        if (userQuestions) {
+            for (const question of userQuestions) {
+                const answersRef = collection(firestore, 'questions', question.id, 'answers');
+                const q = query(answersRef, where('authorId', '==', user.uid));
+                
+                getDocs(q)
+                    .then(querySnapshot => {
+                        querySnapshot.forEach((doc) => {
+                            allAnswers.push({ id: doc.id, ...doc.data(), questionId: question.id } as QuestionAnswer);
+                        });
+                        // This might cause multiple updates, but it's part of the fix process
+                        setUserAnswers([...allAnswers]); 
+                    })
+                    .catch(error => {
+                        if (error.code === 'permission-denied') {
+                            const permissionError = new FirestorePermissionError({
+                                path: q.toString(), // Simplified path for debugging
+                                operation: 'list',
+                            });
+                            errorEmitter.emit('permission-error', permissionError);
+                        }
                     });
-                }
-                setUserAnswers(allAnswers);
             }
         }
-        setAreAnswersLoading(false);
+        setUserAnswers(allAnswers); // Initial empty set
+        setAreAnswersLoading(false); // Set loading to false after initiating fetches
     }
 
     if (user?.uid) {
