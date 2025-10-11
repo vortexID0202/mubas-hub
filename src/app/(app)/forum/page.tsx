@@ -20,11 +20,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { CommunityQuestion, Tag } from '@/lib/types';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { sampleTags } from '@/lib/data';
+import { useAdmin } from '@/hooks/useAdmin';
 
 const QUESTIONS_PER_PAGE = 6;
 
@@ -85,8 +86,7 @@ export default function ForumPage() {
   const [activeFilter, setActiveFilter] = useState('recent');
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
   const firestore = useFirestore();
-  const { user } = useUser();
-  const isAdmin = user?.email === 'dante@gmail.com';
+  const { isAdmin } = useAdmin();
 
   const questionsQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc')) : null

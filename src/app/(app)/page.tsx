@@ -49,19 +49,19 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { CommunityQuestion } from '@/lib/types';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
+import { useAdmin } from '@/hooks/useAdmin';
 
 
 export default function Home() {
-  const { user } = useUser();
+  const { isAdmin } = useAdmin();
   const firestore = useFirestore();
   const sortedUsers = [...users].sort((a, b) => b.reputation - a.reputation);
   const topThree = sortedUsers.slice(0, 3);
   const restUsers = sortedUsers.slice(3, 10);
-  const isAdmin = user?.email === 'dante@gmail.com';
   
   const questionsQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3)) : null

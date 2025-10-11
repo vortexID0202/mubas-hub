@@ -18,14 +18,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
+import { useAdmin } from '@/hooks/useAdmin';
 
 export function UserProfileNav() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
-
-  // Temporary check for admin role. In a real app, this would come from a custom claim or Firestore.
-  const isAdmin = user?.email === 'dante@gmail.com';
+  const { isAdmin } = useAdmin();
 
   const handleLogout = async () => {
     if (!auth) return;

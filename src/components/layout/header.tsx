@@ -10,13 +10,12 @@ import SearchBar from '../search-bar';
 import { MobileNav } from './mobile-nav';
 import { useState } from 'react';
 import { ThemeToggle } from '../theme-toggle';
-import { useUser } from '@/firebase';
+import { useAdmin } from '@/hooks/useAdmin';
 import { cn } from '@/lib/utils';
 
 export function Header() {
   const [open, setOpen] = useState(false);
-  const { user, isUserLoading } = useUser();
-  const isAdmin = user?.email === 'dante@gmail.com';
+  const { isAdmin } = useAdmin();
   const pathname = usePathname();
 
   const navItems = [

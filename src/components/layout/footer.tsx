@@ -1,11 +1,10 @@
 'use client';
 import Link from 'next/link';
 import Logo from '@/components/logo';
-import { useUser } from '@/firebase';
+import { useAdmin } from '@/hooks/useAdmin';
 
 export function Footer() {
-  const { user } = useUser();
-  const isAdmin = user?.email === 'dante@gmail.com';
+  const { isAdmin } = useAdmin();
 
   return (
     <footer className="w-full border-t bg-muted/40">
