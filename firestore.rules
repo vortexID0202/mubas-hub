@@ -1,52 +1,45 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check if the user is an admin by checking
-    // for the existence of their UID in the 'roles_admin' collection.
+
+    // Helper function to check if a user is an admin
     function isAdmin() {
       return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    // Unsecured: For initial setup and ease of development.
-    // Consider adding rules for production.
     match /users/{userId} {
-      allow read, write: if true; 
+      allow read, update, write: if request.auth.uid == userId;
     }
 
-    // Rules for community questions
     match /questions/{questionId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
 
-      // Rules for answers to questions
       match /answers/{answerId} {
         allow read: if true;
-        allow create: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
         allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
       }
     }
 
-    // Rules for knowledge base articles
     match /knowledge_base_articles/{articleId} {
       allow read: if true;
-      // Allow write (create, update, delete) only for admins.
       allow write: if isAdmin();
     }
     
-    // Rules for live updates
     match /live_updates/{updateId} {
-        allow read: if true;
-        // Allow write only for admins.
-        allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
-
-    // Admin roles are managed here. Read/write should be highly restricted.
+    
+    match /tags/{tagId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+    
     match /roles_admin/{userId} {
-        allow read, write: if false; // Should only be managed from the Firebase console.
+      allow read, write: if false; // Nobody should be able to read/write roles directly via client
     }
   }
 }
