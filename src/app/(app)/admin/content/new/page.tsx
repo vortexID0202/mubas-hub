@@ -77,9 +77,9 @@ export default function AdminNewContentPage() {
     
     let articleDocRefId: string | null = null;
 
-    // Step 1: Try to publish the knowledge base article
+    // Step 1: Try to publish the knowledge base article to the new collection
     try {
-        const kbCollection = collection(firestore, 'knowledge_base_articles');
+        const kbCollection = collection(firestore, 'kb_articles');
         const docRef = await addDoc(kbCollection, kbData);
         articleDocRefId = docRef.id; // Save the new article ID
         
@@ -88,7 +88,7 @@ export default function AdminNewContentPage() {
     } catch (error: any) {
         if (error.code === 'permission-denied') {
             const permissionError = new FirestorePermissionError({
-                path: 'knowledge_base_articles',
+                path: 'kb_articles',
                 operation: 'create',
                 requestResourceData: kbData,
             });
