@@ -1,52 +1,57 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isUserAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isDocumentOwner(doc) {
-      return request.auth.uid == doc.data.authorId;
-    }
-
+  
+    // Function to check if the user has an admin role
     function isAdmin() {
+      // Allow if a document for the user exists in the 'roles_admin' collection
       return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    match /users/{userId} {
-      allow read: if isUserAuthenticated();
-      allow write: if isUserAuthenticated() && request.auth.uid == userId;
-    }
-
+    // QUESTIONS: Logged-in users can create their own, anyone can read.
     match /questions/{questionId} {
       allow read: if true;
-      allow create: if isUserAuthenticated() && request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isUserAuthenticated() && isDocumentOwner(resource);
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid || isAdmin();
+      
+      // ANSWERS: Logged-in users can create, anyone can read.
+      match /answers/{answerId} {
+        allow read: if true;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid || isAdmin();
+      }
     }
 
-    match /questions/{questionId}/answers/{answerId} {
-        allow read: if true;
-        allow create: if isUserAuthenticated() && request.resource.data.authorId == request.auth.uid;
-        allow update, delete: if isUserAuthenticated() && isDocumentOwner(resource);
+    // KNOWLEDGE BASE: Anyone can read, only admins can write.
+    match /knowledge_base_articles/{articleId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
     }
     
-    match /kb_articles/{document} {
-      allow read, write: if request.auth != null;
+    // USERS: Users can read/update their own profile.
+    match /users/{userId} {
+      allow read: if true;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      // No one can create/delete user profiles directly except through trusted server code.
+      allow create, delete: if false;
     }
-
-    match /knowledge_base_articles/{document} {
-      allow read, write: if request.auth != null;
+    
+    // LIVE UPDATES: Only admins can manage live updates.
+    match /live_updates/{updateId} {
+        allow read: if true;
+        allow write: if isAdmin();
     }
-
+    
+    // TAGS: Everyone can read, only admins can manage.
     match /tags/{tagId} {
         allow read: if true;
         allow write: if isAdmin();
     }
     
-    match /live_updates/{updateId} {
-      allow read: if true;
-      allow write: if isAdmin();
+    // ADMIN ROLES: Only readable/writable by other server logic, not clients.
+    match /roles_admin/{userId} {
+      allow read, write: if false;
     }
   }
 }
