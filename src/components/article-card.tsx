@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import {
   BookOpen,
@@ -50,7 +51,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
             {article.title}
           </CardTitle>
           <CardDescription className="mt-2 line-clamp-3 text-sm">
-            {article.body}
+            {article.content}
           </CardDescription>
         </CardContent>
         <CardFooter>

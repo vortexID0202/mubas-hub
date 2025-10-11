@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import {
@@ -16,7 +17,7 @@ import {
   PlusSquare,
 } from 'lucide-react';
 import {
-  knowledgeBaseArticles,
+  knowledgeBaseArticles as staticKnowledgeBaseArticles,
   users,
   liveUpdates,
 } from '@/lib/data';
@@ -50,9 +51,10 @@ import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { CommunityQuestion } from '@/lib/types';
+import { CommunityQuestion, KnowledgeBaseArticle } from '@/lib/types';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function Home() {
@@ -67,6 +69,12 @@ export default function Home() {
     firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3)) : null
   , [firestore]);
   const { data: communityQuestions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
+
+  const articlesQuery = useMemoFirebase(() =>
+    firestore ? query(collection(firestore, 'knowledge_base_articles'), orderBy('createdAt', 'desc'), limit(3)) : null
+  , [firestore]);
+  const { data: knowledgeBaseArticles, isLoading: isLoadingArticles } = useCollection<KnowledgeBaseArticle>(articlesQuery);
+
 
   const browseItems = [
     {
@@ -222,6 +230,11 @@ export default function Home() {
                   </DropdownMenu>
                 </div>
                 <TabsContent value="forum" className="mt-8">
+                  {isLoadingQuestions && (
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-96" />)}
+                    </div>
+                  )}
                   {communityQuestions && communityQuestions.length > 0 ? (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                       {communityQuestions.map((question) => (
@@ -229,6 +242,7 @@ export default function Home() {
                       ))}
                     </div>
                   ) : (
+                    !isLoadingQuestions && (
                     <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
                       <Frown className="h-16 w-16 text-muted-foreground" />
                       <h2 className="mt-6 text-xl font-semibold">
@@ -242,6 +256,7 @@ export default function Home() {
                         <Link href="/ask">Ask a Question</Link>
                       </Button>
                     </div>
+                    )
                   )}
                   <div className="mt-8 text-center">
                     <Button variant="link" asChild>
@@ -254,11 +269,28 @@ export default function Home() {
                 </TabsContent>
 
                 <TabsContent value="knowledge" className="mt-8" id="knowledge">
-                  <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {knowledgeBaseArticles.map((article) => (
-                      <ArticleCard key={article.id} article={article} />
-                    ))}
-                  </div>
+                   {isLoadingArticles && (
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-80" />)}
+                    </div>
+                  )}
+                  {knowledgeBaseArticles && knowledgeBaseArticles.length > 0 ? (
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                      {knowledgeBaseArticles.map((article) => (
+                        <ArticleCard key={article.id} article={article} />
+                      ))}
+                    </div>
+                   ) : (
+                     !isLoadingArticles && (
+                        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                            <BookOpen className="h-16 w-16 text-muted-foreground" />
+                            <h2 className="mt-6 text-xl font-semibold">No Articles Yet</h2>
+                            <p className="mt-2 text-center text-muted-foreground">
+                                The knowledge base is empty. Admin can post new articles.
+                            </p>
+                        </div>
+                     )
+                   )}
                   <div className="mt-8 text-center">
                     <Button variant="link" asChild>
                       <Link href="/kb">

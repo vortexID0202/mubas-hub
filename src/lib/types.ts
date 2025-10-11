@@ -1,3 +1,4 @@
+
 import { FieldValue } from 'firebase/firestore';
 
 export type UserProfile = {
@@ -62,8 +63,8 @@ export type KnowledgeBaseArticle = {
   title: string;
   category: string;
   icon: string;
-  body: string;
-  createdAt: string;
+  content: string;
+  createdAt: FieldValue | string;
 };
 
 export type LiveUpdate = {
