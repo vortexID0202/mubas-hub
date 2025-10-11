@@ -49,15 +49,15 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { CommunityQuestion } from '@/lib/types';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
-import { useAdmin } from '@/hooks/useAdmin';
 
 
 export default function Home() {
-  const { isAdmin } = useAdmin();
+  const { user } = useUser();
+  const isAdmin = user?.email === 'dante@gmail.com';
   const firestore = useFirestore();
   const sortedUsers = [...users].sort((a, b) => b.reputation - a.reputation);
   const topThree = sortedUsers.slice(0, 3);

@@ -18,13 +18,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
-import { useAdmin } from '@/hooks/useAdmin';
 
 export function UserProfileNav() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
-  const { isAdmin } = useAdmin();
+  const isAdmin = user?.email === 'dante@gmail.com';
 
   const handleLogout = async () => {
     if (!auth) return;
