@@ -114,12 +114,11 @@ export default function AdminNewContentPage() {
         })
         .catch(error => {
             if (error.code === 'permission-denied') {
-                const permissionError = new FirestorePermissionError({
-                    path: 'knowledge_base_articles',
-                    operation: 'create',
-                    requestResourceData: kbData,
+                toast({
+                    variant: 'destructive',
+                    title: 'Permission Denied',
+                    description: 'You do not have the required admin privileges to publish an article. Please contact a system administrator.',
                 });
-                errorEmitter.emit('permission-error', permissionError);
             } else {
                 toast({ variant: 'destructive', title: 'Article Publishing Failed', description: error.message || 'Could not save the new content.' });
             }
