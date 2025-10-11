@@ -68,7 +68,7 @@ export default function AdminNewContentPage() {
     const kbData = {
         title: data.title,
         category: data.category,
-        body: data.content,
+        content: data.content, // Corrected from 'body' to 'content'
         authorId: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
