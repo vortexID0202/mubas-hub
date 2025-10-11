@@ -98,12 +98,11 @@ export default function AdminNewContentPage() {
                     })
                     .catch(liveUpdateError => {
                         if (liveUpdateError.code === 'permission-denied') {
-                            const permissionError = new FirestorePermissionError({
-                                path: 'live_updates',
-                                operation: 'create',
-                                requestResourceData: updateData,
+                             toast({
+                                variant: 'destructive',
+                                title: 'Permission Denied',
+                                description: 'You do not have the required admin privileges to publish a live update. Please contact a system administrator.',
                             });
-                            errorEmitter.emit('permission-error', permissionError);
                         } else {
                             toast({ variant: 'destructive', title: 'Live Update Failed', description: 'The article was published, but the live update could not be posted.' });
                         }
