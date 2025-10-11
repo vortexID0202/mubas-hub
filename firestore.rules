@@ -3,71 +3,54 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check for admin role
     function isAdmin() {
-      // A user is an admin if their UID exists as a document in the roles_admin collection.
       return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
     }
 
-    // Rules for User Profiles
     match /users/{userId} {
-      // Anyone can see a user's basic profile information.
       allow read: if true;
-      // A user can only create their own profile.
-      allow create: if request.auth.uid == userId;
-      // A user can only update their own profile.
-      allow update: if request.auth.uid == userId;
-      // Deleting user profiles is not allowed.
-      allow delete: if false;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if isAdmin();
     }
 
-    // Rules for Knowledge Base Articles
-    match /knowledge_base_articles/{articleId} {
-      // Anyone can read knowledge base articles.
-      allow read: if true;
-      // Only admins can create, update, or delete articles.
-      allow write: if isAdmin();
-    }
-    
-    // Rules for Live Updates
-    match /live_updates/{updateId} {
-      // Anyone can read live updates.
-      allow read: if true;
-      // Only admins can create, update, or delete live updates.
-      allow write: if isAdmin();
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Rules for Community Questions
     match /questions/{questionId} {
-      // Anyone can read questions.
       allow read: if true;
-      // Authenticated users can create questions if they are the author.
-      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      // Only the author can update their own question.
-      allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
-      // Only the author or an admin can delete a question.
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (resource.data.authorId == request.auth.uid || isAdmin());
       allow delete: if request.auth != null && (resource.data.authorId == request.auth.uid || isAdmin());
-
-      // Rules for Answers to Questions
-      match /answers/{answerId} {
-        // Anyone can read answers.
-        allow read: if true;
-        // Authenticated users can create answers.
-        allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-        // Only the author can update their answer.
-        allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
-         // Only the author or an admin can delete an answer.
-        allow delete: if request.auth != null && (resource.data.authorId == request.auth.uid || isAdmin());
-      }
     }
 
-    // Rules for Admin Roles
+    match /questions/{questionId}/answers/{answerId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (resource.data.authorId == request.auth.uid || isAdmin());
+      allow delete: if request.auth != null && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    match /knowledge_base_articles/{articleId} {
+      allow read: if true;
+      allow create: if isAdmin() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /live_updates/{updateId} {
+      allow read: if true;
+      allow create: if isAdmin() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /tags/{tagId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /roles_admin/{userId} {
-      // Only the user themselves or an existing admin can check for admin status.
-      allow get: if request.auth.uid == userId || isAdmin();
-      // Only admins can see the full list of admins.
-      allow list: if isAdmin();
-      // Only admins can add or remove other admins.
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if isAdmin();
     }
   }
