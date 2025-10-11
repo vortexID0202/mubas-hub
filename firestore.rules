@@ -1,77 +1,49 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if the current user is an admin.
-    // It checks for the existence of a document in the 'admins' collection
-    // with the user's UID as the document ID.
+    // Helper function to check for admin role
     function isAdmin() {
+      // Check if a document for the user exists in the 'admins' collection
       return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    // Rules for the 'admins' collection itself.
-    // Only authenticated users can read their own admin status document.
-    // No one can list all admins or write to the collection from the client.
+    // Admins collection: Allow a user to read their OWN admin document.
+    // This is required for the useAdmin hook to work.
     match /admins/{userId} {
       allow get: if request.auth != null && request.auth.uid == userId;
-      allow list, write: if false;
+      // For listing/writing to the admin collection, you still need to be an admin.
+      // This prevents non-admins from seeing who else is an admin.
+      allow list, write: if isAdmin();
     }
 
-    // Rules for user profiles.
-    // Users can read any profile, but can only create or update their own.
-    match /users/{userId} {
-      allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if isAdmin(); // Only admins can delete user profiles
-    }
-
-    // Rules for knowledge base articles.
-    // Anyone can read, but only admins can write (create, update, delete).
+    // Knowledge Base: read for all, write for admins
     match /knowledge_base_articles/{articleId} {
       allow read: if true;
       allow write: if isAdmin();
     }
-    
-    // Rules for live updates.
-    // Anyone can read, but only admins can write.
-    match /live_updates/{updateId} {
-        allow read: if true;
-        allow write: if isAdmin();
-    }
 
-    // Rules for community questions.
+    // Questions: any authenticated user can create.
+    // Users can only update/delete their own questions.
     match /questions/{questionId} {
-      // Anyone can read questions.
       allow read: if true;
-
-      // Authenticated users can create questions if they are the author.
       allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
-      
-      // Users can update votes and views, or if they are the author, they can edit their question. Admins can also edit.
-      allow update: if request.auth != null || isAdmin();
+      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
 
-      // Only the author or an admin can delete a question.
-      allow delete: if request.auth != null && (resource.data.authorId == request.auth.uid || isAdmin());
-
-      // Rules for answers within a question.
+      // Answers subcollection
       match /answers/{answerId} {
-        // Anyone can read answers.
         allow read: if true;
-
-        // Authenticated users can create answers.
         allow create: if request.auth != null;
-        
-        // Authenticated users can upvote, or authors/admins can edit.
-        allow update: if request.auth != null || isAdmin();
-
-        // Only the author or an admin can delete an answer.
-        allow delete: if request.auth != null && (resource.data.authorId == request.auth.uid || isAdmin());
+        allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
       }
     }
-    
-    // Deny all other reads/writes by default
-    match /{path=**} {
-      allow read, write: if false;
+
+    // User profiles: a user can only read and write to their own profile.
+    match /users/{userId} {
+       allow get, update: if request.auth != null && request.auth.uid == userId;
+       // Disallow list/create/delete for security
+       allow list, create, delete: if false;
     }
   }
 }
