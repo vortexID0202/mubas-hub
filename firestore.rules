@@ -1,38 +1,37 @@
-rules_version = '2';
 
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check for admin role
-    function isAdmin(userId) {
-      return exists(/databases/$(database)/documents/admins/$(userId));
-    }
-
-    match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
-      allow create: if request.auth.uid != null;
-    }
-
-    match /questions/{questionId} {
-      allow read: if true;
-      allow create: if request.auth.uid != null && request.resource.data.authorId == request.auth.uid;
-      allow update: if request.auth.uid == resource.data.authorId;
-      allow delete: if request.auth.uid == resource.data.authorId;
-
-      match /answers/{answerId} {
-        allow read: if true;
-        allow create: if request.auth.uid != null;
-        allow update, delete: if request.auth.uid == resource.data.authorId;
-      }
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
     match /knowledge_base_articles/{articleId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null && isAdmin(request.auth.uid);
+      allow write: if isAdmin();
     }
     
+    match /questions/{questionId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.authorId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
+      
+      match /answers/{answerId} {
+        allow read: if true;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow update: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Add rule to allow reading from the admins collection
     match /admins/{userId} {
-      allow read: if isAdmin(request.auth.uid);
+      allow get: if request.auth != null && request.auth.uid == userId;
+      allow list: if false; // Do not allow listing all admins
     }
   }
 }
