@@ -17,9 +17,6 @@ import {
   PlusSquare,
   Loader2,
 } from 'lucide-react';
-import {
-  users,
-} from '@/lib/data';
 import { cn } from '@/lib/utils';
 import ArticleCard from '@/components/article-card';
 import QuestionCard from '@/components/question-card';
@@ -50,7 +47,7 @@ import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { CommunityQuestion, KnowledgeBaseArticle, LiveUpdate } from '@/lib/types';
+import { CommunityQuestion, KnowledgeBaseArticle, LiveUpdate, UserProfile } from '@/lib/types';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -60,9 +57,6 @@ export default function Home() {
   const { user } = useUser();
   const isAdmin = user?.email === 'dante@gmail.com';
   const firestore = useFirestore();
-  const sortedUsers = [...users].sort((a, b) => b.reputation - a.reputation);
-  const topThree = sortedUsers.slice(0, 3);
-  const restUsers = sortedUsers.slice(3, 10);
   
   const questionsQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3)) : null
@@ -78,6 +72,14 @@ export default function Home() {
     firestore ? query(collection(firestore, 'live_updates'), orderBy('createdAt', 'desc'), limit(5)) : null
   , [firestore]);
   const { data: liveUpdates, isLoading: isLoadingUpdates } = useCollection<LiveUpdate>(liveUpdatesQuery);
+
+  const usersQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'users'), orderBy('reputation', 'desc')) : null
+  , [firestore]);
+  const { data: allUsers, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
+
+  const topThree = allUsers?.slice(0, 3) ?? [];
+  const restUsers = allUsers?.slice(3, 10) ?? [];
 
 
   const browseItems = [
@@ -314,82 +316,106 @@ export default function Home() {
                       <CardTitle>Top Contributors</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="mb-8 flex items-end justify-center gap-4">
-                        {topThree[1] && (
-                          <div className="flex flex-col items-center text-center">
-                            <Avatar className="h-20 w-20 border-4 border-slate-300">
-                              <AvatarImage src={topThree[1].avatarUrl} />
-                              <AvatarFallback>
-                                {topThree[1].name.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <Medal className="mt-2 h-8 w-8 text-slate-400" />
-                            <p className="font-semibold">{topThree[1].name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {topThree[1].reputation} points
-                            </p>
+                      {isLoadingUsers && (
+                        <div>
+                          <div className="mb-8 flex items-end justify-center gap-4">
+                            <Skeleton className="h-24 w-24 rounded-full" />
+                            <Skeleton className="h-32 w-32 rounded-full" />
+                            <Skeleton className="h-24 w-24 rounded-full" />
                           </div>
-                        )}
-                        {topThree[0] && (
-                          <div className="flex flex-col items-center text-center">
-                            <Avatar className="h-24 w-24 border-4 border-amber-400">
-                              <AvatarImage src={topThree[0].avatarUrl} />
-                              <AvatarFallback>
-                                {topThree[0].name.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <Trophy className="mt-2 h-10 w-10 text-amber-400" />
-                            <p className="text-lg font-bold">
-                              {topThree[0].name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {topThree[0].reputation} points
-                            </p>
-                          </div>
-                        )}
-                        {topThree[2] && (
-                          <div className="flex flex-col items-center text-center">
-                            <Avatar className="h-20 w-20 border-4 border-amber-800">
-                              <AvatarImage src={topThree[2].avatarUrl} />
-                              <AvatarFallback>
-                                {topThree[2].name.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <Medal className="mt-2 h-8 w-8 text-amber-800" />
-                            <p className="font-semibold">{topThree[2].name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {topThree[2].reputation} points
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <ul className="space-y-2">
-                        {restUsers.map((user, index) => (
-                          <li
-                            key={user.id}
-                            className="flex items-center justify-between rounded-md bg-muted/50 p-3"
-                          >
-                            <div className="flex items-center gap-4">
-                              <span className="text-lg font-bold text-muted-foreground">
-                                {index + 4}
-                              </span>
-                              <Avatar className="h-10 w-10">
-                                <AvatarImage src={user.avatarUrl} />
-                                <AvatarFallback>
-                                  {user.name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div>
-                                <p className="font-semibold">{user.name}</p>
+                          <ul className="space-y-2">
+                             {Array.from({ length: 7 }).map((_, i) => (
+                                <li key={i} className="flex items-center justify-between rounded-md bg-muted/50 p-3">
+                                  <div className="flex items-center gap-4">
+                                    <Skeleton className="h-10 w-10 rounded-full" />
+                                    <Skeleton className="h-5 w-32" />
+                                  </div>
+                                  <Skeleton className="h-5 w-16" />
+                                </li>
+                             ))}
+                          </ul>
+                        </div>
+                      )}
+                      {!isLoadingUsers && (
+                        <>
+                          <div className="mb-8 flex items-end justify-center gap-4">
+                            {topThree[1] && (
+                              <div className="flex flex-col items-center text-center">
+                                <Avatar className="h-20 w-20 border-4 border-slate-300">
+                                  <AvatarImage src={topThree[1].avatarUrl} />
+                                  <AvatarFallback>
+                                    {topThree[1].fullName.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <Medal className="mt-2 h-8 w-8 text-slate-400" />
+                                <p className="font-semibold">{topThree[1].fullName}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {topThree[1].reputation} points
+                                </p>
                               </div>
-                            </div>
-                            <p className="font-mono text-lg font-semibold text-primary">
-                              {user.reputation}
-                            </p>
-                          </li>
-                        ))}
-                      </ul>
+                            )}
+                            {topThree[0] && (
+                              <div className="flex flex-col items-center text-center">
+                                <Avatar className="h-24 w-24 border-4 border-amber-400">
+                                  <AvatarImage src={topThree[0].avatarUrl} />
+                                  <AvatarFallback>
+                                    {topThree[0].fullName.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <Trophy className="mt-2 h-10 w-10 text-amber-400" />
+                                <p className="text-lg font-bold">
+                                  {topThree[0].fullName}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {topThree[0].reputation} points
+                                </p>
+                              </div>
+                            )}
+                            {topThree[2] && (
+                              <div className="flex flex-col items-center text-center">
+                                <Avatar className="h-20 w-20 border-4 border-amber-800">
+                                  <AvatarImage src={topThree[2].avatarUrl} />
+                                  <AvatarFallback>
+                                    {topThree[2].fullName.charAt(0)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <Medal className="mt-2 h-8 w-8 text-amber-800" />
+                                <p className="font-semibold">{topThree[2].fullName}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {topThree[2].reputation} points
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          <ul className="space-y-2">
+                            {restUsers.map((user, index) => (
+                              <li
+                                key={user.id}
+                                className="flex items-center justify-between rounded-md bg-muted/50 p-3"
+                              >
+                                <div className="flex items-center gap-4">
+                                  <span className="text-lg font-bold text-muted-foreground">
+                                    {index + 4}
+                                  </span>
+                                  <Avatar className="h-10 w-10">
+                                    <AvatarImage src={user.avatarUrl} />
+                                    <AvatarFallback>
+                                      {user.fullName.charAt(0)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-semibold">{user.fullName}</p>
+                                  </div>
+                                </div>
+                                <p className="font-mono text-lg font-semibold text-primary">
+                                  {user.reputation}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -477,3 +503,5 @@ export default function Home() {
     </>
   );
 }
+
+    
