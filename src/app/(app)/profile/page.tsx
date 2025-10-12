@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { CommunityQuestion, User, UserProfile, QuestionAnswer } from '@/lib/types';
+import { CommunityQuestion, User, UserProfile, QuestionAnswer, KnowledgeBaseArticle, LiveUpdate } from '@/lib/types';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { Pen, Loader2, MessageSquare } from 'lucide-react';
+import { Pen, Loader2, MessageSquare, BookOpen, Rss } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { collection, doc, query, where, updateDoc, collectionGroup } from 'firebase/firestore';
 import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
@@ -27,6 +28,9 @@ import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "fire
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Link from 'next/link';
+import ArticleCard from '@/components/article-card';
+import ClientOnlyDate from '@/components/client-only-date';
+import { Badge } from '@/components/ui/badge';
 
 
 function ProfilePageSkeleton() {
@@ -101,20 +105,37 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  const adminRoleRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user?.uid]);
+  const { data: adminRole, isLoading: isAdminLoading } = useDoc(adminRoleRef);
+  const isAdmin = !!adminRole;
+
   const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   const userQuestionsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore || !user?.uid || isAdmin) return null;
     return query(collection(firestore, 'questions'), where('authorId', '==', user.uid));
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, isAdmin]);
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
 
   const userAnswersQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore || !user?.uid || isAdmin) return null;
     return query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid));
-  }, [firestore, user?.uid]);
+  }, [firestore, user?.uid, isAdmin]);
   const { data: userAnswers, isLoading: areAnswersLoading } = useCollection<QuestionAnswer>(userAnswersQuery);
+  
+  const adminArticlesQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || !isAdmin) return null;
+    return query(collection(firestore, 'knowledge_base_articles'), where('authorId', '==', user.uid));
+  }, [firestore, user?.uid, isAdmin]);
+  const { data: adminArticles, isLoading: areArticlesLoading } = useCollection<KnowledgeBaseArticle>(adminArticlesQuery);
+
+  const adminUpdatesQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid || !isAdmin) return null;
+    return query(collection(firestore, 'live_updates'), where('authorId', '==', user.uid));
+  }, [firestore, user?.uid, isAdmin]);
+  const { data: adminUpdates, isLoading: areUpdatesLoading } = useCollection<LiveUpdate>(adminUpdatesQuery);
+
 
   const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -247,7 +268,7 @@ export default function ProfilePage() {
     }
   };
 
-  const isLoading = isUserLoading || isProfileLoading || areQuestionsLoading || areAnswersLoading;
+  const isLoading = isUserLoading || isProfileLoading || isAdminLoading || areQuestionsLoading || areAnswersLoading || areArticlesLoading || areUpdatesLoading;
   
   if (isLoading) {
     return <ProfilePageSkeleton />;
@@ -283,6 +304,8 @@ export default function ProfilePage() {
     avatarUrl: userProfile.avatarUrl,
     reputation: userProfile.reputation
   };
+  
+  const defaultTab = isAdmin ? "articles" : "questions";
 
   return (
     <>
@@ -314,63 +337,141 @@ export default function ProfilePage() {
                      <p className="font-bold text-lg text-primary">{userProfile.reputation} <span className="text-sm font-normal text-muted-foreground">Reputation</span></p>
                   </div>
                   <div className="mt-4 grid grid-cols-2 gap-4 w-full text-center">
-                      <div>
-                          <p className="font-bold text-lg">{userQuestions?.length || 0}</p>
-                          <p className="text-xs text-muted-foreground">Questions</p>
-                      </div>
-                      <div>
-                          <p className="font-bold text-lg">{userAnswers?.length || 0}</p>
-                          <p className="text-xs text-muted-foreground">Answers</p>
-                      </div>
+                      {isAdmin ? (
+                        <>
+                          <div>
+                              <p className="font-bold text-lg">{adminArticles?.length || 0}</p>
+                              <p className="text-xs text-muted-foreground">Articles</p>
+                          </div>
+                          <div>
+                              <p className="font-bold text-lg">{adminUpdates?.length || 0}</p>
+                              <p className="text-xs text-muted-foreground">Updates</p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                              <p className="font-bold text-lg">{userQuestions?.length || 0}</p>
+                              <p className="text-xs text-muted-foreground">Questions</p>
+                          </div>
+                          <div>
+                              <p className="font-bold text-lg">{userAnswers?.length || 0}</p>
+                              <p className="text-xs text-muted-foreground">Answers</p>
+                          </div>
+                        </>
+                      )}
                   </div>
                 </CardContent>
               </Card>
             </div>
 
             <div className="md:col-span-3">
-              <Tabs defaultValue="questions">
+              <Tabs defaultValue={defaultTab}>
                 <TabsList className="mb-4">
-                  <TabsTrigger value="questions">My Questions</TabsTrigger>
-                  <TabsTrigger value="answers">My Answers</TabsTrigger>
+                  {isAdmin ? (
+                    <>
+                      <TabsTrigger value="articles">Knowledge Base Articles</TabsTrigger>
+                      <TabsTrigger value="updates">Live Updates</TabsTrigger>
+                    </>
+                  ) : (
+                    <>
+                      <TabsTrigger value="questions">My Questions</TabsTrigger>
+                      <TabsTrigger value="answers">My Answers</TabsTrigger>
+                    </>
+                  )}
                   <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
-                <TabsContent value="questions">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Questions you've asked</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {userQuestions && userQuestions.length > 0 ? (
-                        <div className="grid gap-4 md:grid-cols-2">
-                          {userQuestions.map((q) => (
-                            <QuestionCard key={q.id} question={q} author={author} />
-                          ))}
-                        </div>
-                      ) : (
-                        <p>You haven't asked any questions yet.</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-                <TabsContent value="answers">
-                    <Card>
+
+                {isAdmin ? (
+                  <>
+                    <TabsContent value="articles">
+                      <Card>
                         <CardHeader>
-                            <CardTitle>Answers you've provided</CardTitle>
-                        </CardHeader> 
+                          <CardTitle>Articles You've Published</CardTitle>
+                        </CardHeader>
                         <CardContent>
-                           {areAnswersLoading && <p>Loading answers...</p>}
-                           {!areAnswersLoading && userAnswers && userAnswers.length > 0 ? (
-                             <div className="space-y-4">
-                               {userAnswers.map(answer => (
-                                 <AnswerItem key={answer.id} answer={answer} />
-                               ))}
-                             </div>
-                           ) : (
-                            !areAnswersLoading && <p>You haven't answered any questions yet.</p>
-                           )}
+                          {adminArticles && adminArticles.length > 0 ? (
+                            <div className="grid gap-4 md:grid-cols-2">
+                              {adminArticles.map((article) => (
+                                <ArticleCard key={article.id} article={article} />
+                              ))}
+                            </div>
+                          ) : (
+                            <p>You haven't published any articles yet.</p>
+                          )}
                         </CardContent>
-                    </Card>
-                </TabsContent>
+                      </Card>
+                    </TabsContent>
+                    <TabsContent value="updates">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Updates You've Posted</CardTitle>
+                            </CardHeader>
+                             <CardContent className="space-y-4">
+                                {adminUpdates && adminUpdates.length > 0 ? (
+                                    adminUpdates.map((update) => (
+                                        <Card key={update.id}>
+                                            <CardHeader>
+                                                <CardTitle>{update.title}</CardTitle>
+                                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                                    <Badge variant={update.category === 'Maintenance' ? 'destructive' : 'secondary'}>{update.category}</Badge>
+                                                    <ClientOnlyDate date={update.createdAt} />
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <p className="text-muted-foreground">{update.content}</p>
+                                            </CardContent>
+                                        </Card>
+                                    ))
+                                ) : (
+                                    <p>You haven't posted any updates yet.</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                  </>
+                ) : (
+                  <>
+                    <TabsContent value="questions">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Questions you've asked</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          {userQuestions && userQuestions.length > 0 ? (
+                            <div className="grid gap-4 md:grid-cols-2">
+                              {userQuestions.map((q) => (
+                                <QuestionCard key={q.id} question={q} author={author} />
+                              ))}
+                            </div>
+                          ) : (
+                            <p>You haven't asked any questions yet.</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+                    <TabsContent value="answers">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Answers you've provided</CardTitle>
+                            </CardHeader> 
+                            <CardContent>
+                              {areAnswersLoading && <p>Loading answers...</p>}
+                              {!areAnswersLoading && userAnswers && userAnswers.length > 0 ? (
+                                <div className="space-y-4">
+                                  {userAnswers.map(answer => (
+                                    <AnswerItem key={answer.id} answer={answer} />
+                                  ))}
+                                </div>
+                              ) : (
+                                !areAnswersLoading && <p>You haven't answered any questions yet.</p>
+                              )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                  </>
+                )}
+
                 <TabsContent value="settings" className="space-y-6">
                  <Form {...profileForm}>
                   <form onSubmit={profileForm.handleSubmit(handleProfileUpdate)}>
