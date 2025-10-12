@@ -66,12 +66,14 @@ export type KnowledgeBaseArticle = {
   icon: string;
   content: string;
   createdAt: FieldValue | string;
+  tagIds?: string[];
 };
 
 export type LiveUpdate = {
   id: string;
   title: string;
   content: string;
-  category: 'Announcement' | 'Maintenance' | 'Academics';
+  category: string;
   createdAt: FieldValue | string;
+  authorId: string;
 }

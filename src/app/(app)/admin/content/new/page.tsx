@@ -20,23 +20,18 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { PlusCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 const contentSchema = z.object({
   title: z.string().min(10, 'Title must be at least 10 characters.'),
-  category: z.string({ required_error: 'Please select a category.' }),
+  tags: z.string().refine(value => {
+    const tags = value.split(',').map(t => t.trim()).filter(Boolean);
+    return tags.length > 0 && tags.length <= 5;
+  }, 'Please provide 1 to 5 tags, separated by commas.'),
   content: z.string().min(50, 'Content must be at least 50 characters.'),
   postAsLiveUpdate: z.boolean().default(false),
 });
@@ -54,6 +49,7 @@ export default function AdminNewContentPage() {
     defaultValues: {
       title: '',
       content: '',
+      tags: '',
       postAsLiveUpdate: false,
     },
   });
@@ -66,13 +62,16 @@ export default function AdminNewContentPage() {
         toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in as an admin.'});
         return;
     }
+    
+    const tags = data.tags.split(',').map(tag => ({ id: tag.trim(), name: tag.trim() }));
+    const mainCategory = tags.length > 0 ? tags[0].name : 'General';
 
     if (data.postAsLiveUpdate) {
         // Post to live_updates collection
         const updateData = {
             title: data.title,
             content: data.content,
-            category: 'Announcement', // Live updates have their own categories
+            category: mainCategory,
             authorId: user.uid,
             createdAt: serverTimestamp(),
         };
@@ -99,12 +98,13 @@ export default function AdminNewContentPage() {
         // Post to knowledge_base_articles collection
         const kbData = {
             title: data.title,
-            category: data.category,
+            category: mainCategory,
             content: data.content,
             authorId: user.uid,
+            tagIds: tags.map(t => t.id),
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-            icon: data.category === 'Wi-Fi' ? 'Wifi' : data.category === 'Fees' ? 'Landmark' : 'BookOpen',
+            icon: mainCategory === 'Wi-Fi' ? 'Wifi' : mainCategory === 'Fees' ? 'Landmark' : 'BookOpen',
         };
         
         const kbCollection = collection(firestore, 'knowledge_base_articles');
@@ -182,33 +182,22 @@ export default function AdminNewContentPage() {
                 )}
               />
               
-              {!isLiveUpdate && (
-                <FormField
+              <FormField
                   control={form.control}
-                  name="category"
+                  name="tags"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Category</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                         <FormControl>
-                           <SelectTrigger>
-                             <SelectValue placeholder="Select an article category" />
-                           </SelectTrigger>
-                         </FormControl>
-                         <SelectContent>
-                           <SelectItem value="Wi-Fi">Wi-Fi</SelectItem>
-                           <SelectItem value="SMIS">SMIS</SelectItem>
-                           <SelectItem value="Fees">Fees</SelectItem>
-                           <SelectItem value="Academics">Academics</SelectItem>
-                           <SelectItem value="Library">Library</SelectItem>
-                           <SelectItem value="Other">Other</SelectItem>
-                         </SelectContent>
-                       </Select>
+                      <FormLabel>Tags / Category</FormLabel>
+                       <FormControl>
+                         <Input placeholder="e.g. Wi-Fi, SMIS, Fees" {...field} />
+                       </FormControl>
+                       <FormDescription>
+                        Add up to 5 tags, separated by commas. The first tag will be the main category.
+                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              )}
 
               <FormField
                 control={form.control}
@@ -239,5 +228,3 @@ export default function AdminNewContentPage() {
     </>
   );
 }
-
-    
