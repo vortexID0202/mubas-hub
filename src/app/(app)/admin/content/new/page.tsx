@@ -30,8 +30,8 @@ const contentSchema = z.object({
   title: z.string().min(10, 'Title must be at least 10 characters.'),
   tags: z.string().refine(value => {
     const tags = value.split(',').map(t => t.trim()).filter(Boolean);
-    return tags.length > 0 && tags.length <= 5;
-  }, 'Please provide 1 to 5 tags, separated by commas.'),
+    return tags.length > 0 && tags.length <= 10;
+  }, 'Please provide 1 to 10 tags, separated by commas.'),
   content: z.string().min(50, 'Content must be at least 50 characters.'),
   postAsLiveUpdate: z.boolean().default(false),
 });
@@ -192,7 +192,7 @@ export default function AdminNewContentPage() {
                          <Input placeholder="e.g. Wi-Fi, SMIS, Fees" {...field} />
                        </FormControl>
                        <FormDescription>
-                        Add up to 5 tags, separated by commas. The first tag will be the main category.
+                        Add up to 10 tags, separated by commas. The first tag will be the main category.
                        </FormDescription>
                       <FormMessage />
                     </FormItem>

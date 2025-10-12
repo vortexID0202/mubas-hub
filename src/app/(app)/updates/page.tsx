@@ -4,7 +4,6 @@
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -66,9 +65,9 @@ export default function UpdatesPage() {
                   <div className="flex items-center gap-4 text-sm text-muted-foreground">
                     <Badge
                       variant={
-                        update.category === 'Maintenance'
-                          ? 'destructive'
-                          : 'secondary'
+                        update.category === 'Maintenance' ? 'destructive'
+                        : update.category === 'Academics' ? 'default'
+                        : 'secondary'
                       }
                     >
                       {update.category}

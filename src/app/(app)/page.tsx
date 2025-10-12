@@ -75,7 +75,7 @@ export default function Home() {
   const { data: knowledgeBaseArticles, isLoading: isLoadingArticles } = useCollection<KnowledgeBaseArticle>(articlesQuery);
 
   const liveUpdatesQuery = useMemoFirebase(() =>
-    firestore ? query(collection(firestore, 'live_updates'), orderBy('createdAt', 'desc'), limit(3)) : null
+    firestore ? query(collection(firestore, 'live_updates'), orderBy('createdAt', 'desc'), limit(5)) : null
   , [firestore]);
   const { data: liveUpdates, isLoading: isLoadingUpdates } = useCollection<LiveUpdate>(liveUpdatesQuery);
 
@@ -432,11 +432,11 @@ export default function Home() {
                       <CardHeader>
                         <CardTitle>{update.title}</CardTitle>
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <Badge
+                           <Badge
                             variant={
-                              update.category === 'Maintenance'
-                                ? 'destructive'
-                                : 'secondary'
+                              update.category === 'Maintenance' ? 'destructive'
+                              : update.category === 'Academics' ? 'default'
+                              : 'secondary'
                             }
                           >
                             {update.category}
