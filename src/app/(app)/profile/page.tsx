@@ -119,9 +119,9 @@ export default function ProfilePage() {
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
 
   const userAnswersQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || isAdmin) return null;
+    if (!firestore || !user?.uid) return null;
     return query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid));
-  }, [firestore, user?.uid, isAdmin]);
+  }, [firestore, user?.uid]);
   const { data: userAnswers, isLoading: areAnswersLoading } = useCollection<QuestionAnswer>(userAnswersQuery);
   
   const adminArticlesQuery = useMemoFirebase(() => {
@@ -336,7 +336,7 @@ export default function ProfilePage() {
                   <div className="mt-4 w-full text-center">
                      <p className="font-bold text-lg text-primary">{userProfile.reputation} <span className="text-sm font-normal text-muted-foreground">Reputation</span></p>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-4 w-full text-center">
+                  <div className="mt-4 grid grid-cols-3 gap-4 w-full text-center">
                       {isAdmin ? (
                         <>
                           <div>
@@ -346,6 +346,10 @@ export default function ProfilePage() {
                           <div>
                               <p className="font-bold text-lg">{adminUpdates?.length || 0}</p>
                               <p className="text-xs text-muted-foreground">Updates</p>
+                          </div>
+                           <div>
+                              <p className="font-bold text-lg">{userAnswers?.length || 0}</p>
+                              <p className="text-xs text-muted-foreground">Answers</p>
                           </div>
                         </>
                       ) : (
@@ -372,6 +376,7 @@ export default function ProfilePage() {
                     <>
                       <TabsTrigger value="articles">Knowledge Base Articles</TabsTrigger>
                       <TabsTrigger value="updates">Live Updates</TabsTrigger>
+                      <TabsTrigger value="answers">My Answers</TabsTrigger>
                     </>
                   ) : (
                     <>
@@ -382,95 +387,90 @@ export default function ProfilePage() {
                   <TabsTrigger value="settings">Settings</TabsTrigger>
                 </TabsList>
 
-                {isAdmin ? (
-                  <>
-                    <TabsContent value="articles">
-                      <Card>
+                
+                <TabsContent value="articles" style={{ display: isAdmin ? 'block' : 'none' }}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Articles You've Published</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {adminArticles && adminArticles.length > 0 ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {adminArticles.map((article) => (
+                            <ArticleCard key={article.id} article={article} />
+                          ))}
+                        </div>
+                      ) : (
+                        <p>You haven't published any articles yet.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                <TabsContent value="updates" style={{ display: isAdmin ? 'block' : 'none' }}>
+                    <Card>
                         <CardHeader>
-                          <CardTitle>Articles You've Published</CardTitle>
+                            <CardTitle>Updates You've Posted</CardTitle>
                         </CardHeader>
+                         <CardContent className="space-y-4">
+                            {adminUpdates && adminUpdates.length > 0 ? (
+                                adminUpdates.map((update) => (
+                                    <Card key={update.id}>
+                                        <CardHeader>
+                                            <CardTitle>{update.title}</CardTitle>
+                                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                                <Badge variant={update.category === 'Maintenance' ? 'destructive' : 'secondary'}>{update.category}</Badge>
+                                                <ClientOnlyDate date={update.createdAt} />
+                                            </div>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p className="text-muted-foreground">{update.content}</p>
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            ) : (
+                                <p>You haven't posted any updates yet.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="questions" style={{ display: !isAdmin ? 'block' : 'none' }}>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Questions you've asked</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {userQuestions && userQuestions.length > 0 ? (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {userQuestions.map((q) => (
+                            <QuestionCard key={q.id} question={q} author={author} />
+                          ))}
+                        </div>
+                      ) : (
+                        <p>You haven't asked any questions yet.</p>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+                <TabsContent value="answers">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Answers you've provided</CardTitle>
+                        </CardHeader> 
                         <CardContent>
-                          {adminArticles && adminArticles.length > 0 ? (
-                            <div className="grid gap-4 md:grid-cols-2">
-                              {adminArticles.map((article) => (
-                                <ArticleCard key={article.id} article={article} />
+                          {areAnswersLoading && <p>Loading answers...</p>}
+                          {!areAnswersLoading && userAnswers && userAnswers.length > 0 ? (
+                            <div className="space-y-4">
+                              {userAnswers.map(answer => (
+                                <AnswerItem key={answer.id} answer={answer} />
                               ))}
                             </div>
                           ) : (
-                            <p>You haven't published any articles yet.</p>
+                            !areAnswersLoading && <p>You haven't answered any questions yet.</p>
                           )}
                         </CardContent>
-                      </Card>
-                    </TabsContent>
-                    <TabsContent value="updates">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Updates You've Posted</CardTitle>
-                            </CardHeader>
-                             <CardContent className="space-y-4">
-                                {adminUpdates && adminUpdates.length > 0 ? (
-                                    adminUpdates.map((update) => (
-                                        <Card key={update.id}>
-                                            <CardHeader>
-                                                <CardTitle>{update.title}</CardTitle>
-                                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                                    <Badge variant={update.category === 'Maintenance' ? 'destructive' : 'secondary'}>{update.category}</Badge>
-                                                    <ClientOnlyDate date={update.createdAt} />
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent>
-                                                <p className="text-muted-foreground">{update.content}</p>
-                                            </CardContent>
-                                        </Card>
-                                    ))
-                                ) : (
-                                    <p>You haven't posted any updates yet.</p>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                  </>
-                ) : (
-                  <>
-                    <TabsContent value="questions">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Questions you've asked</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          {userQuestions && userQuestions.length > 0 ? (
-                            <div className="grid gap-4 md:grid-cols-2">
-                              {userQuestions.map((q) => (
-                                <QuestionCard key={q.id} question={q} author={author} />
-                              ))}
-                            </div>
-                          ) : (
-                            <p>You haven't asked any questions yet.</p>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-                    <TabsContent value="answers">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Answers you've provided</CardTitle>
-                            </CardHeader> 
-                            <CardContent>
-                              {areAnswersLoading && <p>Loading answers...</p>}
-                              {!areAnswersLoading && userAnswers && userAnswers.length > 0 ? (
-                                <div className="space-y-4">
-                                  {userAnswers.map(answer => (
-                                    <AnswerItem key={answer.id} answer={answer} />
-                                  ))}
-                                </div>
-                              ) : (
-                                !areAnswersLoading && <p>You haven't answered any questions yet.</p>
-                              )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                  </>
-                )}
+                    </Card>
+                </TabsContent>
+                
 
                 <TabsContent value="settings" className="space-y-6">
                  <Form {...profileForm}>
@@ -574,3 +574,5 @@ export default function ProfilePage() {
     </>
   );
 }
+
+    
