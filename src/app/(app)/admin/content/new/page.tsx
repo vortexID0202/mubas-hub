@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -57,7 +58,8 @@ export default function AdminNewContentPage() {
     },
   });
   
-  const { formState: { isSubmitting } } = form;
+  const { formState: { isSubmitting }, watch } = form;
+  const isLiveUpdate = watch('postAsLiveUpdate');
 
   const onSubmit = async (data: ContentFormData) => {
     if (!firestore || !user) {
@@ -65,63 +67,65 @@ export default function AdminNewContentPage() {
         return;
     }
 
-    const kbData = {
-        title: data.title,
-        category: data.category,
-        content: data.content,
-        authorId: user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        icon: data.category === 'Wi-Fi' ? 'Wifi' : data.category === 'Fees' ? 'Landmark' : 'BookOpen',
-    };
-    
-    const kbCollection = collection(firestore, 'knowledge_base_articles');
-    
-    addDoc(kbCollection, kbData)
-        .then(docRef => {
-            toast({ title: 'Article Published', description: 'The new article has been added to the knowledge base.'});
-            
-            if (data.postAsLiveUpdate) {
-                const updateData = {
-                    title: data.title,
-                    content: data.content,
-                    category: 'Announcement', 
-                    authorId: user.uid,
-                    createdAt: serverTimestamp(),
-                    relatedArticleId: docRef.id,
-                };
-                const updatesCollection = collection(firestore, 'live_updates');
-                addDoc(updatesCollection, updateData)
-                    .then(() => {
-                        toast({ title: 'Live Update Posted', description: 'The live update has been published.' });
-                        router.push('/admin/content');
-                    })
-                    .catch(liveUpdateError => {
-                        if (liveUpdateError.code === 'permission-denied') {
-                             toast({
-                                variant: 'destructive',
-                                title: 'Permission Denied',
-                                description: 'You do not have the required admin privileges to publish a live update. Please contact a system administrator.',
-                            });
-                        } else {
-                            toast({ variant: 'destructive', title: 'Live Update Failed', description: 'The article was published, but the live update could not be posted.' });
-                        }
-                    });
-            } else {
+    if (data.postAsLiveUpdate) {
+        // Post to live_updates collection
+        const updateData = {
+            title: data.title,
+            content: data.content,
+            category: 'Announcement', // Live updates have their own categories
+            authorId: user.uid,
+            createdAt: serverTimestamp(),
+        };
+        const updatesCollection = collection(firestore, 'live_updates');
+        
+        addDoc(updatesCollection, updateData)
+            .then(() => {
+                toast({ title: 'Live Update Published', description: 'The new live update has been published.' });
                 router.push('/admin/content');
-            }
-        })
-        .catch(error => {
-            if (error.code === 'permission-denied') {
-                toast({
-                    variant: 'destructive',
-                    title: 'Permission Denied',
-                    description: 'You do not have the required admin privileges to publish an article. Please contact a system administrator.',
-                });
-            } else {
-                toast({ variant: 'destructive', title: 'Article Publishing Failed', description: error.message || 'Could not save the new content.' });
-            }
-        });
+            })
+            .catch(error => {
+                if (error.code === 'permission-denied') {
+                     toast({
+                        variant: 'destructive',
+                        title: 'Permission Denied',
+                        description: 'You do not have the required admin privileges to publish a live update. Please contact a system administrator.',
+                    });
+                } else {
+                    toast({ variant: 'destructive', title: 'Live Update Failed', description: error.message || 'The live update could not be posted.' });
+                }
+            });
+
+    } else {
+        // Post to knowledge_base_articles collection
+        const kbData = {
+            title: data.title,
+            category: data.category,
+            content: data.content,
+            authorId: user.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            icon: data.category === 'Wi-Fi' ? 'Wifi' : data.category === 'Fees' ? 'Landmark' : 'BookOpen',
+        };
+        
+        const kbCollection = collection(firestore, 'knowledge_base_articles');
+        
+        addDoc(kbCollection, kbData)
+            .then(() => {
+                toast({ title: 'Article Published', description: 'The new article has been added to the knowledge base.'});
+                router.push('/admin/content');
+            })
+            .catch(error => {
+                if (error.code === 'permission-denied') {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Permission Denied',
+                        description: 'You do not have the required admin privileges to publish an article. Please contact a system administrator.',
+                    });
+                } else {
+                    toast({ variant: 'destructive', title: 'Article Publishing Failed', description: error.message || 'Could not save the new content.' });
+                }
+            });
+    }
   };
 
   return (
@@ -136,72 +140,17 @@ export default function AdminNewContentPage() {
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <Card>
             <CardHeader>
-              <CardTitle>New Knowledge Base Article</CardTitle>
+              <CardTitle>{isLiveUpdate ? 'New Live Update' : 'New Knowledge Base Article'}</CardTitle>
               <CardDescription>
-                Fill out the form below to create a new article for the knowledge base.
+                Fill out the form below to create new content. Use the toggle to switch between a Live Update and a Knowledge Base article.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter article title" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Category</FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                       <FormControl>
-                         <SelectTrigger>
-                           <SelectValue placeholder="Select a category" />
-                         </SelectTrigger>
-                       </FormControl>
-                       <SelectContent>
-                         <SelectItem value="Wi-Fi">Wi-Fi</SelectItem>
-                         <SelectItem value="SMIS">SMIS</SelectItem>
-                         <SelectItem value="Fees">Fees</SelectItem>
-                         <SelectItem value="Academics">Academics</SelectItem>
-                         <SelectItem value="Library">Library</SelectItem>
-                         <SelectItem value="Other">Other</SelectItem>
-                       </SelectContent>
-                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="content"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Content</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Write the full content of the article here..." className="min-h-[300px]" {...field} />
-                    </FormControl>
-                     <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-            <CardFooter className="flex flex-col items-start gap-6 border-t pt-6">
-              <FormField
+               <FormField
                 control={form.control}
                 name="postAsLiveUpdate"
                 render={({ field }) => (
-                  <FormItem className="flex items-center space-x-3 rounded-lg border p-4 w-full">
+                  <FormItem className="flex items-center space-x-3 rounded-lg border p-4 w-full bg-muted/40">
                      <FormControl>
                         <Switch
                           checked={field.value}
@@ -213,12 +162,69 @@ export default function AdminNewContentPage() {
                         Post as Live Update
                       </FormLabel>
                       <p className="text-sm text-muted-foreground">
-                        If enabled, this will also publish the article title and a link as a live update for all users.
+                        If enabled, this will publish a live update. If disabled, it will create a knowledge base article.
                       </p>
                     </div>
                   </FormItem>
                 )}
                 />
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter content title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {!isLiveUpdate && (
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                         <FormControl>
+                           <SelectTrigger>
+                             <SelectValue placeholder="Select an article category" />
+                           </SelectTrigger>
+                         </FormControl>
+                         <SelectContent>
+                           <SelectItem value="Wi-Fi">Wi-Fi</SelectItem>
+                           <SelectItem value="SMIS">SMIS</SelectItem>
+                           <SelectItem value="Fees">Fees</SelectItem>
+                           <SelectItem value="Academics">Academics</SelectItem>
+                           <SelectItem value="Library">Library</SelectItem>
+                           <SelectItem value="Other">Other</SelectItem>
+                         </SelectContent>
+                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={form.control}
+                name="content"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Content</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Write the full content here..." className="min-h-[300px]" {...field} />
+                    </FormControl>
+                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter className="flex flex-col items-start gap-6 border-t pt-6">
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Publishing...</>
@@ -233,3 +239,5 @@ export default function AdminNewContentPage() {
     </>
   );
 }
+
+    
