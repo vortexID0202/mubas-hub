@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 
 import {
@@ -83,8 +83,8 @@ export default function AdminNewContentPage() {
             
             if (data.postAsLiveUpdate) {
                 const updateData = {
-                    title: `New Article: ${data.title}`,
-                    content: `A new knowledge base article has been published: "${data.title}"`,
+                    title: data.title,
+                    content: data.content,
                     category: 'Announcement', 
                     authorId: user.uid,
                     createdAt: serverTimestamp(),
