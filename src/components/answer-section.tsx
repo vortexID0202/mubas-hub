@@ -1,7 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { Bot, Sparkles, ThumbsUp, CheckCircle } from 'lucide-react';
-import { collection, query, orderBy, updateDoc, doc, increment, arrayUnion, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, updateDoc, doc, increment, arrayUnion, deleteDoc, runTransaction } from 'firebase/firestore';
 
 import { getRankedAnswers } from '@/app/actions';
 import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
@@ -56,7 +56,7 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
     });
   };
 
-  const handleAnswerUpvote = (answerId: string) => {
+  const handleAnswerUpvote = async (answerId: string, authorId: string) => {
     if (!firestore || !user) {
       toast({
         variant: 'destructive',
@@ -65,32 +65,55 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
       });
       return;
     }
-    const answerRef = doc(firestore, `questions/${question.id}/answers`, answerId);
-    const updateData = { 
-        votes: increment(1),
-        upvotedBy: arrayUnion(user.uid)
-    };
-    
-    updateDoc(answerRef, updateData)
-      .catch((error) => {
-        if (error.code === 'permission-denied') {
-          const permissionError = new FirestorePermissionError({
-            path: answerRef.path,
-            operation: 'update',
-            requestResourceData: {
-              votes: `increment(1)`,
-              upvotedBy: `arrayUnion(${user.uid})`
-            },
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        } else {
-          toast({
-            variant: 'destructive',
-            title: 'Upvote Failed',
-            description: error.message || 'Could not upvote this answer.',
-          });
-        }
+    if(user.uid === authorId) {
+      toast({
+        variant: 'destructive',
+        title: 'Cannot upvote own answer',
+        description: 'You cannot upvote your own answer.',
       });
+      return;
+    }
+
+    const answerRef = doc(firestore, `questions/${question.id}/answers`, answerId);
+    const authorRef = doc(firestore, 'users', authorId);
+
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const answerDoc = await transaction.get(answerRef);
+            if (!answerDoc.exists()) {
+                throw "Document does not exist!";
+            }
+            
+            const upvotedBy = answerDoc.data().upvotedBy || [];
+            if (upvotedBy.includes(user.uid)) {
+                // User has already upvoted, do nothing.
+                // You might want to throw a specific error or show a toast here.
+                return;
+            }
+
+            // Atomically update the votes and the author's reputation
+            transaction.update(answerRef, { 
+                votes: increment(1),
+                upvotedBy: arrayUnion(user.uid)
+            });
+            transaction.update(authorRef, { reputation: increment(10) });
+        });
+    } catch (error: any) {
+        if (error.code === 'permission-denied') {
+             const permissionError = new FirestorePermissionError({
+                path: answerRef.path,
+                operation: 'update',
+                requestResourceData: { votes: 'increment(1)' }
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } else {
+             toast({
+                variant: 'destructive',
+                title: 'Upvote Failed',
+                description: error.message || 'Could not process your upvote.',
+            });
+        }
+    }
   };
 
   const handleApprove = async (answerId: string) => {
@@ -169,7 +192,7 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
                                 variant="ghost" 
                                 size="sm" 
                                 className={cn("flex items-center gap-2 text-muted-foreground", hasUpvoted && "bg-primary/10 text-primary")}
-                                onClick={() => handleAnswerUpvote(answer.id)} 
+                                onClick={() => handleAnswerUpvote(answer.id, answer.authorId)} 
                                 disabled={!user || hasUpvoted}
                             >
                             <ThumbsUp className="h-4 w-4" />
