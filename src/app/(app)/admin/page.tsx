@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -16,17 +15,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { users, liveUpdates } from '@/lib/data';
 import { Activity, ArrowUpRight, BookOpen, Users, ShieldAlert, FileText, Download, Shield } from 'lucide-react';
 import Link from 'next/link';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { CommunityQuestion } from '@/lib/types';
+import { CommunityQuestion, UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import ClientOnlyDate from '@/components/client-only-date';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
+  const { user: currentUser } = useUser();
 
   const questionsQuery = useMemoFirebase(() => 
     firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(5)) : null
@@ -38,11 +37,23 @@ export default function AdminDashboardPage() {
   , [firestore]);
   const { data: allQuestions } = useCollection(totalQuestionsQuery);
 
+  const usersQuery = useMemoFirebase(() =>
+    firestore ? collection(firestore, 'users') : null
+  , [firestore]);
+  const { data: allUsers, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
+
+  const flagsQuery = useMemoFirebase(() =>
+    firestore ? collection(firestore, 'flags') : null
+  , [firestore]);
+  const { data: allFlags, isLoading: isLoadingFlags } = useCollection(flagsQuery);
+
+  const totalUsers = allUsers ? allUsers.filter(u => u.id !== currentUser?.uid).length : 0;
+
   const overviewCards = [
     {
       title: 'Total Users',
       icon: Users,
-      value: users.length,
+      value: isLoadingUsers ? '...' : totalUsers,
       change: '+10.1% from last month',
       href: '/admin/users'
     },
@@ -56,14 +67,14 @@ export default function AdminDashboardPage() {
     {
       title: 'Pending Moderation',
       icon: ShieldAlert,
-      value: 3,
+      value: isLoadingFlags ? '...' : allFlags?.length ?? 0,
       change: '+2 flagged since last hour',
       href: '/admin/moderation'
     },
     {
       title: 'Live Updates',
       icon: Activity,
-      value: liveUpdates.length,
+      value: '...', // Static for now
       change: '+2 since last week',
       href: '/admin/content'
     }
@@ -72,7 +83,7 @@ export default function AdminDashboardPage() {
      {
       title: 'System Logs',
       icon: FileText,
-      value: "2,350",
+      value: "...",
       change: 'View system activity',
       href: '/admin/system/logs'
     },
@@ -194,8 +205,20 @@ export default function AdminDashboardPage() {
           <CardHeader>
             <CardTitle>Top Contributors</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-8">
-            {users
+          <CardContent className="flex flex-col gap-8">
+            {isLoadingUsers && (
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="grid gap-1 flex-1">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-5 w-12" />
+                </div>
+              ))
+            )}
+            {allUsers && allUsers
               .slice()
               .sort((a, b) => b.reputation - a.reputation)
               .slice(0, 5)
@@ -203,10 +226,10 @@ export default function AdminDashboardPage() {
                 <div key={user.id} className="flex items-center gap-4">
                   <div className="grid gap-1">
                     <p className="text-sm font-medium leading-none">
-                      {user.name}
+                      {user.fullName}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {user.id}@mubas.ac.mw
+                      {user.email}
                     </p>
                   </div>
                   <div className="ml-auto font-medium">{user.reputation} pts</div>

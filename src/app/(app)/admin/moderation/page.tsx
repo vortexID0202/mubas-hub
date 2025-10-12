@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -19,35 +18,97 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, X } from 'lucide-react';
-import { useMemo } from 'react';
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { collectionGroup, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 import ClientOnlyDate from '@/components/client-only-date';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Note: This is now static data. In a real app, this would be fetched from a 'flags' collection in Firestore.
-const flaggedContent = [
-    {
-        id: 'q-1',
-        type: 'Question',
-        content: 'This is not a serious question, just spam.',
-        author: 'Student 1',
-        date: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'a-1',
-        type: 'Answer',
-        content: 'This answer is incorrect and misleading.',
-        author: 'Student 2',
-        date: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    },
-    {
-        id: 'c-1',
-        type: 'Comment',
-        content: 'This comment contains inappropriate language.',
-        author: 'Student 3',
-        date: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
+  const firestore = useFirestore();
+  const questionRef = useMemoFirebase(() => firestore ? doc(firestore, 'questions', answer.questionId) : null, [firestore, answer.questionId]);
+  const { data: question, isLoading, error } = useDoc<CommunityQuestion>(questionRef);
+  const { toast } = useToast();
+
+  const handleApprove = async () => {
+    if (!firestore) return;
+    const answerRef = doc(firestore, `questions/${answer.questionId}/answers`, answer.id);
+    try {
+      await updateDoc(answerRef, { approved: true });
+      toast({ title: "Answer approved." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Approval failed", description: error.message });
     }
-]
+  };
+
+  const handleDelete = async () => {
+    if (!firestore) return;
+    const answerRef = doc(firestore, `questions/${answer.questionId}/answers`, answer.id);
+    try {
+      await deleteDoc(answerRef);
+      toast({ title: "Answer deleted." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Deletion failed", description: error.message });
+    }
+  };
+
+  return (
+    <TableRow>
+      <TableCell className="font-medium max-w-sm">
+        <p className="truncate">{answer.body}</p>
+        {isLoading && <Skeleton className="h-4 w-32 mt-1" />}
+        {error && <p className="text-xs text-red-500 mt-1">Error loading question.</p>}
+        {question && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <p className="text-xs text-muted-foreground mt-1">
+                For question: <span className="underline cursor-pointer">{question.title}</span>
+              </p>
+            </PopoverTrigger>
+            <PopoverContent>
+              <div className="space-y-2">
+                <h4 className="font-semibold">{question.title}</h4>
+                <p className="text-sm text-muted-foreground line-clamp-3">{question.body}</p>
+                <div className="text-xs text-muted-foreground">
+                  Asked by {question.author.name} on <ClientOnlyDate date={question.createdAt} formatString="P" />
+                </div>
+                <Link href={`/questions/${question.id}`} className="text-sm text-primary underline" target="_blank" rel="noopener noreferrer">View full question</Link>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+        {!question && !isLoading && !error && <p className="text-xs text-muted-foreground mt-1">Question not found.</p>}
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline">Answer</Badge>
+      </TableCell>
+      <TableCell>{answer.author.name}</TableCell>
+      <TableCell><ClientOnlyDate date={answer.createdAt} formatString="Pp" /></TableCell>
+      <TableCell className="text-right">
+        <Button variant="outline" size="icon" className="mr-2 h-8 w-8" onClick={handleApprove}>
+            <Check className="h-4 w-4 text-green-500" />
+            <span className="sr-only">Approve</span>
+        </Button>
+         <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDelete}>
+            <X className="h-4 w-4 text-red-500" />
+            <span className="sr-only">Reject</span>
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 
 export default function AdminModerationPage() {
+  const firestore = useFirestore();
+  const answersQuery = useMemoFirebase(
+    () => firestore ? query(collectionGroup(firestore, 'answers'), where('approved', '!=', true)) : null,
+    [firestore]
+  );
+  const { data: unapprovedAnswers, isLoading } = useCollection<QuestionAnswer>(answersQuery);
 
   return (
     <>
@@ -56,9 +117,9 @@ export default function AdminModerationPage() {
       </div>
        <Card>
         <CardHeader>
-          <CardTitle>Flagged Content</CardTitle>
+          <CardTitle>Unapproved Answers</CardTitle>
           <CardDescription>
-            Review and take action on content that has been flagged by the community.
+            Review and approve or delete answers that have not yet been approved.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -73,26 +134,13 @@ export default function AdminModerationPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {flaggedContent.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium max-w-sm truncate">{item.content}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{item.type}</Badge>
-                  </TableCell>
-                  <TableCell>{item.author}</TableCell>
-                  <TableCell><ClientOnlyDate date={item.date} formatString="Pp" /></TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="icon" className="mr-2 h-8 w-8">
-                        <Check className="h-4 w-4 text-green-500" />
-                        <span className="sr-only">Approve</span>
-                    </Button>
-                     <Button variant="outline" size="icon" className="h-8 w-8">
-                        <X className="h-4 w-4 text-red-500" />
-                        <span className="sr-only">Reject</span>
-                    </Button>
-                  </TableCell>
-                </TableRow>
+              {isLoading && <TableRow><TableCell colSpan={5} className="text-center">Loading...</TableCell></TableRow>}
+              {!isLoading && unapprovedAnswers?.map((answer) => (
+                <AnswerModerationItem key={answer.id} answer={answer} />
               ))}
+              {!isLoading && unapprovedAnswers?.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="text-center">No unapproved answers.</TableCell></TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

@@ -15,11 +15,10 @@ import {
   Pencil,
   BarChart,
   PlusSquare,
+  Loader2,
 } from 'lucide-react';
 import {
-  knowledgeBaseArticles as staticKnowledgeBaseArticles,
   users,
-  liveUpdates,
 } from '@/lib/data';
 import { cn } from '@/lib/utils';
 import ArticleCard from '@/components/article-card';
@@ -51,7 +50,7 @@ import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { CommunityQuestion, KnowledgeBaseArticle } from '@/lib/types';
+import { CommunityQuestion, KnowledgeBaseArticle, LiveUpdate } from '@/lib/types';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -74,6 +73,11 @@ export default function Home() {
     firestore ? query(collection(firestore, 'knowledge_base_articles'), orderBy('createdAt', 'desc'), limit(3)) : null
   , [firestore]);
   const { data: knowledgeBaseArticles, isLoading: isLoadingArticles } = useCollection<KnowledgeBaseArticle>(articlesQuery);
+
+  const liveUpdatesQuery = useMemoFirebase(() =>
+    firestore ? query(collection(firestore, 'live_updates'), orderBy('createdAt', 'desc'), limit(3)) : null
+  , [firestore]);
+  const { data: liveUpdates, isLoading: isLoadingUpdates } = useCollection<LiveUpdate>(liveUpdatesQuery);
 
 
   const browseItems = [
@@ -406,28 +410,56 @@ export default function Home() {
               </div>
 
               <div className="mt-8 grid gap-6">
-                {liveUpdates.slice(0, 3).map((update) => (
-                  <Card key={update.id}>
-                    <CardHeader>
-                      <CardTitle>{update.title}</CardTitle>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <Badge
-                          variant={
-                            update.category === 'Maintenance'
-                              ? 'destructive'
-                              : 'secondary'
-                          }
-                        >
-                          {update.category}
-                        </Badge>
-                        <ClientOnlyDate date={update.createdAt} />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground">{update.content}</p>
-                    </CardContent>
-                  </Card>
-                ))}
+                {isLoadingUpdates && (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <Card key={i}>
+                      <CardHeader>
+                        <Skeleton className="h-6 w-3/4" />
+                        <div className="flex items-center gap-4">
+                          <Skeleton className="h-5 w-20" />
+                          <Skeleton className="h-5 w-24" />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <Skeleton className="h-4 w-full" />
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+                {liveUpdates && liveUpdates.length > 0 ? (
+                  liveUpdates.map((update) => (
+                    <Card key={update.id}>
+                      <CardHeader>
+                        <CardTitle>{update.title}</CardTitle>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <Badge
+                            variant={
+                              update.category === 'Maintenance'
+                                ? 'destructive'
+                                : 'secondary'
+                            }
+                          >
+                            {update.category}
+                          </Badge>
+                          <ClientOnlyDate date={update.createdAt} />
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-muted-foreground">{update.content}</p>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  !isLoadingUpdates && (
+                     <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                        <Rss className="h-16 w-16 text-muted-foreground" />
+                        <h2 className="mt-6 text-xl font-semibold">No Live Updates Yet</h2>
+                        <p className="mt-2 text-center text-muted-foreground">
+                           Check back later for the latest announcements.
+                        </p>
+                    </div>
+                  )
+                )}
               </div>
 
               <div className="mt-8 text-center">

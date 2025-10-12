@@ -49,6 +49,7 @@ export type QuestionAnswer = {
   comments: AnswerComment[];
   isVerified?: boolean;
   upvotedBy: string[]; // Add this
+  approved?: boolean;
 };
 
 export type AnswerComment = {
@@ -72,5 +73,5 @@ export type LiveUpdate = {
   title: string;
   content: string;
   category: 'Announcement' | 'Maintenance' | 'Academics';
-  createdAt: string;
+  createdAt: FieldValue | string;
 }

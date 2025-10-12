@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -22,7 +21,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Pen, Loader2, MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, doc, query, where, updateDoc, collectionGroup, getDocs } from 'firebase/firestore';
+import { collection, doc, query, where, updateDoc, collectionGroup } from 'firebase/firestore';
 import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
@@ -72,6 +71,28 @@ const passwordSchema = z.object({
   path: ['confirmPassword'],
 });
 
+function AnswerItem({ answer }: { answer: QuestionAnswer }) {
+  const firestore = useFirestore();
+  const questionRef = useMemoFirebase(() => firestore ? doc(firestore, 'questions', answer.questionId) : null, [firestore, answer.questionId]);
+  const { data: question, isLoading } = useDoc<CommunityQuestion>(questionRef);
+
+  return (
+    <div className="rounded-lg border p-4">
+      <p className="text-muted-foreground">{answer.body}</p>
+      <div className="mt-2 text-sm text-muted-foreground">
+        <span>Answered in response to: </span>
+        {isLoading && <Skeleton className="h-4 w-48 inline-block" />}
+        {question && (
+          <Link href={`/questions/${answer.questionId}`} className="text-primary hover:underline">
+            {question.title}
+          </Link>
+        )}
+        {!question && !isLoading && <span>Question not found</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
@@ -89,53 +110,11 @@ export default function ProfilePage() {
   }, [firestore, user?.uid]);
   const { data: userQuestions, isLoading: areQuestionsLoading } = useCollection<CommunityQuestion>(userQuestionsQuery);
 
-  const [userAnswers, setUserAnswers] = useState<QuestionAnswer[]>([]);
-  const [areAnswersLoading, setAreAnswersLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchUserAnswers() {
-        if (!firestore || !user?.uid) {
-            setAreAnswersLoading(false);
-            return;
-        };
-
-        setAreAnswersLoading(true);
-        const allAnswers: QuestionAnswer[] = [];
-        if (userQuestions) {
-            for (const question of userQuestions) {
-                const answersRef = collection(firestore, 'questions', question.id, 'answers');
-                const q = query(answersRef, where('authorId', '==', user.uid));
-                
-                getDocs(q)
-                    .then(querySnapshot => {
-                        querySnapshot.forEach((doc) => {
-                            allAnswers.push({ id: doc.id, ...doc.data(), questionId: question.id } as QuestionAnswer);
-                        });
-                        // This might cause multiple updates, but it's part of the fix process
-                        setUserAnswers([...allAnswers]); 
-                    })
-                    .catch(error => {
-                        if (error.code === 'permission-denied') {
-                            const permissionError = new FirestorePermissionError({
-                                path: q.toString(), // Simplified path for debugging
-                                operation: 'list',
-                            });
-                            errorEmitter.emit('permission-error', permissionError);
-                        }
-                    });
-            }
-        }
-        setUserAnswers(allAnswers); // Initial empty set
-        setAreAnswersLoading(false); // Set loading to false after initiating fetches
-    }
-
-    if (user?.uid) {
-      fetchUserAnswers();
-    } else if (!isUserLoading) {
-      setAreAnswersLoading(false);
-    }
-  }, [firestore, user, userQuestions, isUserLoading]);
-
+  const userAnswersQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid));
+  }, [firestore, user?.uid]);
+  const { data: userAnswers, isLoading: areAnswersLoading } = useCollection<QuestionAnswer>(userAnswersQuery);
 
   const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -176,10 +155,8 @@ export default function ProfilePage() {
 
     profileForm.formState.isSubmitting;
     
-    // Non-blocking update to Firestore
     updateDoc(userDocRef, updateData)
       .then(async () => {
-        // Only update Auth profile and show toast on successful Firestore write
         await updateProfile(user, { displayName: newFullName });
         toast({
           title: "Profile Updated",
@@ -188,7 +165,6 @@ export default function ProfilePage() {
         router.refresh();
       })
       .catch(error => {
-        // Emit contextual error for Firestore permission issues
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
           operation: 'update',
@@ -382,22 +358,15 @@ export default function ProfilePage() {
                             <CardTitle>Answers you've provided</CardTitle>
                         </CardHeader> 
                         <CardContent>
-                           {userAnswers && userAnswers.length > 0 ? (
+                           {areAnswersLoading && <p>Loading answers...</p>}
+                           {!areAnswersLoading && userAnswers && userAnswers.length > 0 ? (
                              <div className="space-y-4">
                                {userAnswers.map(answer => (
-                                 <div key={answer.id} className="rounded-lg border p-4">
-                                   <p className="text-muted-foreground">{answer.body}</p>
-                                   <div className="mt-2 text-sm text-muted-foreground">
-                                     <span>Answered in response to: </span>
-                                     <a href={`/questions/${answer.questionId}`} className="text-primary hover:underline">
-                                       View Question
-                                     </a>
-                                   </div>
-                                 </div>
+                                 <AnswerItem key={answer.id} answer={answer} />
                                ))}
                              </div>
                            ) : (
-                             <p>You haven't answered any questions yet.</p>
+                            !areAnswersLoading && <p>You haven't answered any questions yet.</p>
                            )}
                         </CardContent>
                     </Card>

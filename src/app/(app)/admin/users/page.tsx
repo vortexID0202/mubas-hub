@@ -1,6 +1,7 @@
+'use client';
 
-import Image from 'next/image';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Loader2 } from 'lucide-react';
+import { collection, query, orderBy } from 'firebase/firestore';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,10 +28,23 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { users } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { UserProfile } from '@/lib/types';
 
 export default function AdminUsersPage() {
+  const firestore = useFirestore();
+  const { user: currentUser, isUserLoading: isCurrentUserLoading } = useUser();
+
+  const usersQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'users'), orderBy('reputation', 'desc')) : null,
+    [firestore]
+  );
+  const { data: users, isLoading: areUsersLoading } = useCollection<UserProfile>(usersQuery);
+
+  const filteredUsers = users?.filter(user => user.id !== currentUser?.uid);
+  const isLoading = areUsersLoading || isCurrentUserLoading;
+
   return (
     <>
       <div className="flex items-center">
@@ -56,18 +70,25 @@ export default function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((user) => (
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && filteredUsers && filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
-                        <AvatarImage src={user.avatarUrl} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                        <AvatarImage src={user.avatarUrl} alt={user.fullName} />
+                        <AvatarFallback>{user.fullName.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="grid gap-0.5">
-                        <p className="font-medium">{user.name}</p>
+                        <p className="font-medium">{user.fullName}</p>
                         <p className="text-xs text-muted-foreground">
-                          {user.id}@mubas.ac.mw
+                          {user.email}
                         </p>
                       </div>
                     </div>
@@ -102,7 +123,7 @@ export default function AdminUsersPage() {
         </CardContent>
         <CardFooter>
           <div className="text-xs text-muted-foreground">
-            Showing <strong>1-10</strong> of <strong>{users.length}</strong> users
+            Showing <strong>{filteredUsers?.length || 0}</strong> of <strong>{filteredUsers?.length || 0}</strong> users
           </div>
         </CardFooter>
       </Card>

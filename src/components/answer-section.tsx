@@ -1,13 +1,13 @@
 'use client';
 import { useState, useTransition } from 'react';
-import { Bot, Sparkles, ThumbsUp } from 'lucide-react';
-import { collection, query, orderBy, updateDoc, doc, increment, arrayUnion } from 'firebase/firestore';
+import { Bot, Sparkles, ThumbsUp, CheckCircle } from 'lucide-react';
+import { collection, query, orderBy, updateDoc, doc, increment, arrayUnion, deleteDoc } from 'firebase/firestore';
 
 import { getRankedAnswers } from '@/app/actions';
 import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError, useDoc } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import ClientOnlyDate from './client-only-date';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,10 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+
+  const adminRoleRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user?.uid]);
+  const { data: adminRole, isLoading: isAdminLoading } = useDoc(adminRoleRef);
+  const isAdmin = !!adminRole;
 
   const answersQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, `questions/${question.id}/answers`), orderBy('createdAt', 'desc')) : null,
@@ -67,7 +71,6 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
         upvotedBy: arrayUnion(user.uid)
     };
     
-    // Use non-blocking update with chained error handling
     updateDoc(answerRef, updateData)
       .catch((error) => {
         if (error.code === 'permission-denied') {
@@ -88,6 +91,28 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
           });
         }
       });
+  };
+
+  const handleApprove = async (answerId: string) => {
+    if (!firestore || !isAdmin) return;
+    const answerRef = doc(firestore, `questions/${question.id}/answers`, answerId);
+    try {
+      await updateDoc(answerRef, { approved: true });
+      toast({ title: "Answer approved." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Approval failed", description: error.message });
+    }
+  };
+
+  const handleDelete = async (answerId: string) => {
+    if (!firestore || !isAdmin) return;
+    const answerRef = doc(firestore, `questions/${question.id}/answers`, answerId);
+    try {
+      await deleteDoc(answerRef);
+      toast({ title: "Answer deleted." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Deletion failed", description: error.message });
+    }
   };
 
   const displayAnswers = sortedAnswers || answers;
@@ -118,7 +143,7 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
             {displayAnswers.map((answer) => {
                 const hasUpvoted = user && answer.upvotedBy?.includes(user.uid);
                 return (
-                    <div key={answer.id} className="flex gap-4">
+                    <div key={answer.id} className={cn("flex gap-4 p-4 rounded-lg", answer.approved && "bg-green-100 dark:bg-green-900/20")}>
                         <Avatar className="h-10 w-10">
                         <AvatarImage
                             src={answer.author.avatarUrl}
@@ -128,7 +153,10 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
                         </Avatar>
                         <div className="flex-1">
                         <div className="flex items-center justify-between">
-                            <div className="font-semibold">{answer.author.name}</div>
+                            <div className="font-semibold flex items-center gap-2">
+                              {answer.author.name}
+                              {answer.approved && <CheckCircle className="h-5 w-5 text-green-500" />}
+                            </div>
                             <div className="text-sm text-muted-foreground">
                             Answered <ClientOnlyDate date={answer.createdAt} formatType="formatDistanceToNow" />
                             </div>
@@ -147,6 +175,12 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
                             <ThumbsUp className="h-4 w-4" />
                             <span>{answer.votes}</span>
                             </Button>
+                            {isAdmin && !isAdminLoading && (
+                              <>
+                                <Button variant="ghost" size="sm" onClick={() => handleApprove(answer.id)} disabled={answer.approved}>Approve</Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleDelete(answer.id)}>Delete</Button>
+                              </>
+                            )}
                         </div>
                         </div>
                     </div>
