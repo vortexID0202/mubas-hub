@@ -1,4 +1,6 @@
-import { liveUpdates } from '@/lib/data';
+
+'use client';
+
 import {
   Card,
   CardContent,
@@ -7,15 +9,22 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Rss } from 'lucide-react';
+import { Loader2, Rss } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import ClientOnlyDate from '@/components/client-only-date';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, orderBy, query } from 'firebase/firestore';
+import { LiveUpdate } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function UpdatesPage() {
-  const sortedUpdates = [...liveUpdates].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  const firestore = useFirestore();
+  const updatesQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'live_updates'), orderBy('createdAt', 'desc')) : null,
+    [firestore]
   );
+  const { data: liveUpdates, isLoading } = useCollection<LiveUpdate>(updatesQuery);
 
   return (
     <>
@@ -34,7 +43,23 @@ export default function UpdatesPage() {
           </div>
 
           <div className="mt-10 grid gap-8">
-            {sortedUpdates.map((update) => (
+            {isLoading && (
+               Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="border-l-4 border-primary">
+                    <CardHeader>
+                        <Skeleton className="h-6 w-3/4" />
+                        <div className="flex items-center gap-4">
+                            <Skeleton className="h-5 w-20" />
+                            <Skeleton className="h-5 w-24" />
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-4 w-full" />
+                    </CardContent>
+                </Card>
+               ))
+            )}
+            {liveUpdates?.map((update) => (
               <Card key={update.id} className="border-l-4 border-primary">
                 <CardHeader>
                   <CardTitle>{update.title}</CardTitle>
@@ -56,6 +81,15 @@ export default function UpdatesPage() {
                 </CardContent>
               </Card>
             ))}
+             {!isLoading && liveUpdates?.length === 0 && (
+                <div className="flex min-h-[300px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                    <Rss className="h-16 w-16 text-muted-foreground" />
+                    <h2 className="mt-6 text-xl font-semibold">No Live Updates Yet</h2>
+                    <p className="mt-2 text-center text-muted-foreground">
+                        Check back later for the latest announcements.
+                    </p>
+                </div>
+            )}
           </div>
         </div>
       </main>
