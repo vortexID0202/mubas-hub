@@ -1,9 +1,9 @@
+
 'use client';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { Bot, Sparkles, ThumbsUp, CheckCircle } from 'lucide-react';
 import { collection, query, orderBy, updateDoc, doc, increment, arrayUnion, deleteDoc, runTransaction } from 'firebase/firestore';
 
-import { getRankedAnswers } from '@/app/actions';
 import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,6 @@ type AnswerSectionProps = {
 };
 
 export default function AnswerSection({ question }: AnswerSectionProps) {
-  const [isPending, startTransition] = useTransition();
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
@@ -27,35 +26,11 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
   const isAdmin = !!adminRole;
 
   const answersQuery = useMemoFirebase(
-    () => firestore ? query(collection(firestore, `questions/${question.id}/answers`), orderBy('createdAt', 'desc')) : null,
+    () => firestore ? query(collection(firestore, `questions/${question.id}/answers`), orderBy('votes', 'desc')) : null,
     [firestore, question.id]
   );
   const { data: answers, isLoading: areAnswersLoading } = useCollection<QuestionAnswer>(answersQuery);
-  const [sortedAnswers, setSortedAnswers] = useState<QuestionAnswer[] | null>(null);
-
-  const handleRankAnswers = () => {
-    if (!answers) return;
-    startTransition(async () => {
-      const input = {
-        question: question.title,
-        answers: answers.map((a) => ({
-          answerText: a.body,
-          upvotes: a.votes,
-          comments: a.comments.map((c) => c.body),
-        })),
-      };
-      const rankedAnswers = await getRankedAnswers(input);
-
-      const answerMap = new Map(answers.map((a) => [a.body, a]));
-      
-      const newSortedAnswers = rankedAnswers
-        .map(ranked => answerMap.get(ranked.answerText))
-        .filter((a): a is QuestionAnswer => !!a);
-
-      setSortedAnswers(newSortedAnswers);
-    });
-  };
-
+  
   const handleAnswerUpvote = async (answerId: string, authorId: string) => {
     if (!firestore || !user) {
       toast({
@@ -86,12 +61,9 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
             
             const upvotedBy = answerDoc.data().upvotedBy || [];
             if (upvotedBy.includes(user.uid)) {
-                // User has already upvoted, do nothing.
-                // You might want to throw a specific error or show a toast here.
                 return;
             }
 
-            // Atomically update the votes and the author's reputation
             transaction.update(answerRef, { 
                 votes: increment(1),
                 upvotedBy: arrayUnion(user.uid)
@@ -138,32 +110,20 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
     }
   };
 
-  const displayAnswers = sortedAnswers || answers;
-
   return (
     <div className="mt-12">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">
-          {areAnswersLoading ? '...' : (displayAnswers?.length || 0)}{' '}
-          {(displayAnswers?.length || 0) === 1 ? 'Answer' : 'Answers'}
+          {areAnswersLoading ? '...' : (answers?.length || 0)}{' '}
+          {(answers?.length || 0) === 1 ? 'Answer' : 'Answers'}
         </h2>
-        {displayAnswers && displayAnswers.length > 1 && (
-            <Button variant="outline" onClick={handleRankAnswers} disabled={isPending}>
-                {isPending ? (
-                    <Bot className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                    <Sparkles className="mr-2 h-4 w-4" />
-                )}
-                Rank with AI
-            </Button>
-        )}
       </div>
 
       {areAnswersLoading && <p className="mt-6 text-muted-foreground">Loading answers...</p>}
 
-      {!areAnswersLoading && displayAnswers && displayAnswers.length > 0 && (
+      {!areAnswersLoading && answers && answers.length > 0 && (
         <div className="mt-6 space-y-8">
-            {displayAnswers.map((answer) => {
+            {answers.map((answer) => {
                 const hasUpvoted = user && answer.upvotedBy?.includes(user.uid);
                 return (
                     <div key={answer.id} className={cn("flex gap-4 p-4 rounded-lg", answer.approved && "bg-green-100 dark:bg-green-900/20")}>
@@ -200,7 +160,7 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
                             </Button>
                             {isAdmin && !isAdminLoading && (
                               <>
-                                <Button variant="ghost" size="sm" onClick={() => handleApprove(answer.id)} disabled={answer.approved}>Approve</Button>
+                                {!answer.approved && <Button variant="ghost" size="sm" onClick={() => handleApprove(answer.id)}>Approve</Button>}
                                 <Button variant="ghost" size="sm" onClick={() => handleDelete(answer.id)}>Delete</Button>
                               </>
                             )}
@@ -212,7 +172,7 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
         </div>
       )}
 
-      {!areAnswersLoading && (!displayAnswers || displayAnswers.length === 0) && (
+      {!areAnswersLoading && (!answers || answers.length === 0) && (
         <p className="mt-6 text-muted-foreground">
             No answers yet. Be the first to help out!
         </p>
