@@ -83,3 +83,13 @@ const knowledgeBaseSuggesterFlow = ai.defineFlow(
     return output!;
   }
 );
+interface KnowledgeBaseArticle {
+    id: number; // or string, based on your logic
+    title: string;
+    body: string; // Add this line if it is not present
+}
+const knowledgeBaseArticles: KnowledgeBaseArticle[] = [
+    { id: 1, title: "Article One", body: "This is the body of article one." },
+    { id: 2, title: "Article Two", body: "This is the body of article two." },
+    // More articles...
+];
