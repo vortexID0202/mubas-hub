@@ -1,9 +1,9 @@
 export const firebaseConfig = {
-  "projectId": "mubas-community-47645290-bc530",
-  "appId": "1:776805638483:web:821d2bfcce6e8c7101c1a6",
-  "apiKey": "AIzaSyBs1nbw6qvV39KHd5jce7euWzKNhQzB4Xg",
-  "storageBucket": "mubas-community-47645290-bc530.firebasestorage.app",
-  "authDomain": "mubas-community-47645290-bc530.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "776805638483"
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
 };
