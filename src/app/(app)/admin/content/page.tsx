@@ -45,8 +45,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import ClientOnlyDate from '@/components/client-only-date';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, orderBy, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { KnowledgeBaseArticle, LiveUpdate } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -70,10 +70,11 @@ function AdminContentPageSkeletonRow() {
 
 export default function AdminContentPage() {
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState<{id: string, type: 'articles' | 'updates'} | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{id: string, title: string, type: 'articles' | 'updates'} | null>(null);
 
   const articlesQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'knowledge_base_articles'), orderBy('createdAt', 'desc')) : null,
@@ -87,17 +88,25 @@ export default function AdminContentPage() {
   );
   const { data: updates, isLoading: isLoadingUpdates } = useCollection<LiveUpdate>(updatesQuery);
 
-  const handleDeleteClick = (id: string, type: 'articles' | 'updates') => {
-      setItemToDelete({ id, type });
+  const handleDeleteClick = (id: string, title: string, type: 'articles' | 'updates') => {
+      setItemToDelete({ id, title, type });
       setDialogOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (!itemToDelete || !firestore) return;
+    if (!itemToDelete || !firestore || !user) return;
 
     const collectionName = itemToDelete.type === 'articles' ? 'knowledge_base_articles' : 'live_updates';
+    const logsCollection = collection(firestore, 'logs');
+
     try {
         await deleteDoc(doc(firestore, collectionName, itemToDelete.id));
+        await addDoc(logsCollection, {
+            level: 'warn',
+            message: `Admin deleted ${itemToDelete.type === 'articles' ? 'article' : 'update'}: "${itemToDelete.title}"`,
+            createdAt: serverTimestamp(),
+            context: { userId: user.uid, service: 'ContentService' }
+        });
         toast({ title: 'Content Deleted', description: 'The item has been successfully deleted.' });
     } catch (error) {
         console.error("Error deleting document: ", error);
@@ -188,7 +197,7 @@ export default function AdminContentPage() {
                              <DropdownMenuItem asChild>
                                 <Link href={`/admin/content/${article.id}/edit?type=article`}>Edit</Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleDeleteClick(article.id, 'articles')} className="text-red-600">
+                            <DropdownMenuItem onSelect={() => handleDeleteClick(article.id, article.title, 'articles')} className="text-red-600">
                                 Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -268,7 +277,7 @@ export default function AdminContentPage() {
                             <DropdownMenuItem asChild>
                                 <Link href={`/admin/content/${update.id}/edit?type=update`}>Edit</Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleDeleteClick(update.id, 'updates')} className="text-red-600">
+                            <DropdownMenuItem onSelect={() => handleDeleteClick(update.id, update.title, 'updates')} className="text-red-600">
                                 Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>

@@ -1,5 +1,7 @@
+
 'use client';
 
+import { useMemo, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -37,19 +39,12 @@ import {
 } from 'recharts';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Log } from '@/lib/types';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { collection, orderBy, query, Timestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ClientOnlyDate from '@/components/client-only-date';
+import { sub, format } from 'date-fns';
 
-
-const chartData = [
-  { name: '1h ago', errors: 4, warnings: 24, info: 100 },
-  { name: '45m ago', errors: 3, warnings: 13, info: 150 },
-  { name: '30m ago', errors: 2, warnings: 8, info: 200 },
-  { name: '15m ago', errors: 1, warnings: 15, info: 220 },
-  { name: 'Now', errors: 1, warnings: 5, info: 300 },
-];
 
 function LogsPageSkeleton() {
     return Array.from({length: 5}).map((_, i) => (
@@ -64,12 +59,55 @@ function LogsPageSkeleton() {
 
 export default function AdminSystemLogsPage() {
   const firestore = useFirestore();
+  const [levelFilter, setLevelFilter] = useState('all');
 
   const logsQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'logs'), orderBy('createdAt', 'desc')) : null,
     [firestore]
   );
   const { data: logs, isLoading } = useCollection<Log>(logsQuery);
+
+  const filteredLogs = useMemo(() => {
+    if (!logs) return [];
+    if (levelFilter === 'all') return logs;
+    return logs.filter(log => log.level === levelFilter);
+  }, [logs, levelFilter]);
+
+
+  const chartData = useMemo(() => {
+    if (!logs) return [];
+
+    const now = new Date();
+    const periods = Array.from({ length: 5 }).map((_, i) => {
+      const end = sub(now, { minutes: i * 15 });
+      const start = sub(now, { minutes: (i + 1) * 15 });
+      const label = i === 0 ? 'Now' : `${(i) * 15}m ago`;
+      return { start, end, label, errors: 0, warnings: 0, info: 0 };
+    }).reverse();
+
+    logs.forEach(log => {
+      const logDate = (log.createdAt as Timestamp)?.toDate();
+      if (!logDate) return;
+
+      for (const period of periods) {
+        if (logDate >= period.start && logDate < period.end) {
+          if (log.level === 'error') period.errors++;
+          if (log.level === 'warn') period.warnings++;
+          if (log.level === 'info') period.info++;
+          break;
+        }
+      }
+    });
+    
+    return periods.map(({ label, errors, warnings, info }) => ({
+        name: label,
+        errors,
+        warnings,
+        info
+    }));
+
+  }, [logs]);
+
 
   return (
     <>
@@ -81,27 +119,30 @@ export default function AdminSystemLogsPage() {
         <CardHeader>
           <CardTitle>System Activity</CardTitle>
           <CardDescription>
-            A real-time overview of system events.
+            A real-time overview of system events over the last hour.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'hsl(var(--background))',
-                  border: '1px solid hsl(var(--border))',
-                }}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="errors" stroke="hsl(var(--destructive))" activeDot={{ r: 8 }} />
-              <Line type="monotone" dataKey="warnings" stroke="hsl(var(--primary))" />
-               <Line type="monotone" dataKey="info" stroke="hsl(var(--muted-foreground))" />
-            </LineChart>
-          </ResponsiveContainer>
+            {isLoading && <Skeleton className="w-full h-[300px]" />}
+            {!isLoading && (
+                 <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip
+                        contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        }}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="errors" name="Errors" stroke="hsl(var(--destructive))" activeDot={{ r: 8 }} />
+                    <Line type="monotone" dataKey="warnings" name="Warnings" stroke="hsl(var(--primary))" />
+                    <Line type="monotone" dataKey="info" name="Info" stroke="hsl(var(--muted-foreground))" />
+                    </LineChart>
+                </ResponsiveContainer>
+            )}
         </CardContent>
       </Card>
       <Card className="flex-1 flex flex-col">
@@ -111,7 +152,7 @@ export default function AdminSystemLogsPage() {
             Browse and filter through individual log entries.
           </CardDescription>
            <div className="flex items-center gap-2 pt-4">
-             <Select defaultValue="all">
+             <Select value={levelFilter} onValueChange={setLevelFilter}>
                <SelectTrigger className="w-[180px]">
                  <SelectValue placeholder="Filter by level" />
                </SelectTrigger>
@@ -122,9 +163,6 @@ export default function AdminSystemLogsPage() {
                  <SelectItem value="error">Error</SelectItem>
                </SelectContent>
              </Select>
-            <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" /> Filter
-            </Button>
           </div>
         </CardHeader>
         <CardContent className="flex-1 overflow-hidden">
@@ -140,7 +178,7 @@ export default function AdminSystemLogsPage() {
             </TableHeader>
             <TableBody>
               {isLoading && <LogsPageSkeleton />}
-              {!isLoading && logs?.map((log) => (
+              {!isLoading && filteredLogs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell className="font-mono text-xs">
                      <ClientOnlyDate date={log.createdAt} formatString="Pp" />
@@ -160,9 +198,9 @@ export default function AdminSystemLogsPage() {
                   </TableCell>
                   <TableCell className="font-medium">{log.message}</TableCell>
                   <TableCell className="font-mono text-xs">
-                    {log.context?.userId && `user: ${log.context.userId}`}
-                    {log.context?.ip && `ip: ${log.context.ip}`}
-                    {log.context?.service && `service: ${log.context.service}`}
+                    {log.context?.userId && `user: ${log.context.userId.substring(0, 8)}...`}
+                    {log.context?.ip && ` ip: ${log.context.ip}`}
+                    {log.context?.service && ` service: ${log.context.service}`}
                   </TableCell>
                 </TableRow>
               ))}
@@ -185,5 +223,3 @@ export default function AdminSystemLogsPage() {
     </>
   );
 }
-
-    

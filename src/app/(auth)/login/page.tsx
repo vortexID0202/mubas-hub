@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/logo';
@@ -57,6 +57,18 @@ export default function LoginPage() {
           return;
         }
       }
+
+      // Log the successful login
+      const logsCollection = collection(firestore, 'logs');
+      await addDoc(logsCollection, {
+        level: 'info',
+        message: `User login successful: ${user.email}`,
+        createdAt: serverTimestamp(),
+        context: {
+            userId: user.uid,
+            service: 'AuthService',
+        }
+      });
 
       router.push(redirect);
 

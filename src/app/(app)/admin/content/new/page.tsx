@@ -65,9 +65,9 @@ export default function AdminNewContentPage() {
     
     const tags = data.tags.split(',').map(tag => ({ id: tag.trim(), name: tag.trim() }));
     const mainCategory = tags.length > 0 ? tags[0].name : 'General';
+    const logsCollection = collection(firestore, 'logs');
 
     if (data.postAsLiveUpdate) {
-        // Post to live_updates collection
         const updateData = {
             title: data.title,
             content: data.content,
@@ -77,25 +77,29 @@ export default function AdminNewContentPage() {
         };
         const updatesCollection = collection(firestore, 'live_updates');
         
-        addDoc(updatesCollection, updateData)
-            .then(() => {
-                toast({ title: 'Live Update Published', description: 'The new live update has been published.' });
-                router.push('/admin/content');
-            })
-            .catch(error => {
-                if (error.code === 'permission-denied') {
-                     toast({
-                        variant: 'destructive',
-                        title: 'Permission Denied',
-                        description: 'You do not have the required admin privileges to publish a live update. Please contact a system administrator.',
-                    });
-                } else {
-                    toast({ variant: 'destructive', title: 'Live Update Failed', description: error.message || 'The live update could not be posted.' });
-                }
+        try {
+            await addDoc(updatesCollection, updateData);
+            await addDoc(logsCollection, {
+                level: 'info',
+                message: `Admin created live update: "${data.title}"`,
+                createdAt: serverTimestamp(),
+                context: { userId: user.uid, service: 'ContentService' }
             });
+            toast({ title: 'Live Update Published', description: 'The new live update has been published.' });
+            router.push('/admin/content');
+        } catch (error: any) {
+            if (error.code === 'permission-denied') {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Permission Denied',
+                    description: 'You do not have the required admin privileges to publish a live update. Please contact a system administrator.',
+                });
+            } else {
+                toast({ variant: 'destructive', title: 'Live Update Failed', description: error.message || 'The live update could not be posted.' });
+            }
+        }
 
     } else {
-        // Post to knowledge_base_articles collection
         const kbData = {
             title: data.title,
             category: mainCategory,
@@ -109,22 +113,27 @@ export default function AdminNewContentPage() {
         
         const kbCollection = collection(firestore, 'knowledge_base_articles');
         
-        addDoc(kbCollection, kbData)
-            .then(() => {
-                toast({ title: 'Article Published', description: 'The new article has been added to the knowledge base.'});
-                router.push('/admin/content');
-            })
-            .catch(error => {
-                if (error.code === 'permission-denied') {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Permission Denied',
-                        description: 'You do not have the required admin privileges to publish an article. Please contact a system administrator.',
-                    });
-                } else {
-                    toast({ variant: 'destructive', title: 'Article Publishing Failed', description: error.message || 'Could not save the new content.' });
-                }
+        try {
+            await addDoc(kbCollection, kbData);
+            await addDoc(logsCollection, {
+                level: 'info',
+                message: `Admin created knowledge base article: "${data.title}"`,
+                createdAt: serverTimestamp(),
+                context: { userId: user.uid, service: 'ContentService' }
             });
+            toast({ title: 'Article Published', description: 'The new article has been added to the knowledge base.'});
+            router.push('/admin/content');
+        } catch (error: any) {
+            if (error.code === 'permission-denied') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Permission Denied',
+                    description: 'You do not have the required admin privileges to publish an article. Please contact a system administrator.',
+                });
+            } else {
+                toast({ variant: 'destructive', title: 'Article Publishing Failed', description: error.message || 'Could not save the new content.' });
+            }
+        }
     }
   };
 
