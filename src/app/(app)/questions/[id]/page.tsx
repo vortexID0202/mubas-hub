@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AnswerSection from '@/components/answer-section';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { useDoc, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError, useDoc_DEPRECATED } from '@/firebase';
 import { doc, updateDoc, increment, runTransaction, collection, serverTimestamp, Timestamp, arrayUnion } from 'firebase/firestore';
 import { CommunityQuestion, QuestionAnswer, UserProfile } from '@/lib/types';
 import { z } from 'zod';
@@ -75,6 +75,10 @@ export default function QuestionPage() {
   
   const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+
+  const adminRoleRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user?.uid]);
+  const { data: adminRole } = useDoc(adminRoleRef);
+  const isAdmin = !!adminRole;
   
   const form = useForm<z.infer<typeof answerSchema>>({
     resolver: zodResolver(answerSchema),
@@ -158,7 +162,7 @@ export default function QuestionPage() {
         votes: 0,
         comments: [],
         upvotedBy: [],
-        approved: false,
+        approved: isAdmin, // Admins' answers are auto-approved
     };
     
     try {
@@ -178,7 +182,7 @@ export default function QuestionPage() {
 
         toast({
             title: "Answer Submitted!",
-            description: "Your answer has been posted and is pending approval.",
+            description: isAdmin ? "Your answer has been posted." : "Your answer has been submitted for approval.",
         });
         form.reset();
 
