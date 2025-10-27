@@ -130,7 +130,7 @@ export default function AdminSystemReportsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-3">
-            <div className="space-y-4 md:col-span-1">
+            <div className="flex flex-col gap-4 md:col-span-1">
                  <Select value={reportType} onValueChange={(value) => setReportType(value as ReportType)}>
                    <SelectTrigger>
                      <SelectValue placeholder="Select report type" />
@@ -197,7 +197,7 @@ export default function AdminSystemReportsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ScrollArea className="h-[300px]">
+                        <ScrollArea className="h-[300px] sm:h-[400px]">
                         {isLoading ? (
                              <div className="flex items-center justify-center h-full">
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
