@@ -371,7 +371,7 @@ export default function ProfilePage() {
 
             <div className="md:col-span-3">
               <Tabs defaultValue={defaultTab}>
-                <TabsList className="mb-4">
+                <TabsList className="mb-4 h-auto flex-wrap justify-start">
                   {isAdmin ? (
                     <>
                       <TabsTrigger value="articles">Knowledge Base Articles</TabsTrigger>
@@ -574,5 +574,3 @@ export default function ProfilePage() {
     </>
   );
 }
-
-    
