@@ -33,13 +33,12 @@ function getSdks() {
   };
 }
 
-
-export const HybridSearchInputSchema = z.object({
+const HybridSearchInputSchema = z.object({
   query: z.string().describe('The user input query.'),
 });
 export type HybridSearchInput = z.infer<typeof HybridSearchInputSchema>;
 
-export const HybridSearchOutputSchema = z.object({
+const HybridSearchOutputSchema = z.object({
   results: z.array(
     z.object({
       id: z.string().describe('The document ID.'),
@@ -54,51 +53,6 @@ export const HybridSearchOutputSchema = z.object({
 });
 export type HybridSearchOutput = z.infer<typeof HybridSearchOutputSchema>;
 
-export async function hybridSearch(input: HybridSearchInput): Promise<HybridSearchOutput> {
-  return hybridSearchFlow(input);
-}
-
-// Note: This is a simplified fetch. A real implementation would use a proper search index.
-async function fetchAllContent() {
-    const { firestore } = getSdks();
-    const allContent = [];
-
-    const kbQuery = firestore.collection('knowledge_base_articles');
-    const kbSnapshot = await kbQuery.get();
-    kbSnapshot.forEach(doc => {
-        const data = doc.data() as KnowledgeBaseArticle;
-        allContent.push({
-            id: doc.id,
-            type: 'knowledgeBase' as const,
-            title: data.title,
-            content: data.content,
-            isVerified: true, // All KB articles are considered verified
-        });
-    });
-
-    const questionsQuery = firestore.collection('questions');
-    const questionsSnapshot = await questionsQuery.get();
-    questionsSnapshot.forEach(doc => {
-        const data = doc.data() as CommunityQuestion;
-        allContent.push({
-            id: doc.id,
-            type: 'communityForum' as const,
-            title: data.title,
-            content: data.body,
-            isVerified: data.isVerified || false,
-            votes: data.votes || 0,
-        });
-    });
-
-    return allContent;
-}
-
-
-async function generateAllContentString() {
-    const content = await fetchAllContent();
-    return content.map(item => `ID: ${item.id}, Type: ${item.type}, Title: ${item.title}, Content: ${item.content.substring(0, 200)}...`).join('\n---\n');
-}
-
 
 const hybridSearchFlow = ai.defineFlow(
   {
@@ -109,6 +63,47 @@ const hybridSearchFlow = ai.defineFlow(
   async (input) => {
     if (input.query.length < 3) {
       return { results: [] };
+    }
+    
+    // Note: This is a simplified fetch. A real implementation would use a proper search index.
+    async function fetchAllContent() {
+        const { firestore } = getSdks();
+        const allContent = [];
+
+        const kbQuery = firestore.collection('knowledge_base_articles');
+        const kbSnapshot = await kbQuery.get();
+        kbSnapshot.forEach(doc => {
+            const data = doc.data() as KnowledgeBaseArticle;
+            allContent.push({
+                id: doc.id,
+                type: 'knowledgeBase' as const,
+                title: data.title,
+                content: data.content,
+                isVerified: true, // All KB articles are considered verified
+            });
+        });
+
+        const questionsQuery = firestore.collection('questions');
+        const questionsSnapshot = await questionsQuery.get();
+        questionsSnapshot.forEach(doc => {
+            const data = doc.data() as CommunityQuestion;
+            allContent.push({
+                id: doc.id,
+                type: 'communityForum' as const,
+                title: data.title,
+                content: data.body,
+                isVerified: data.isVerified || false,
+                votes: data.votes || 0,
+            });
+        });
+
+        return allContent;
+    }
+
+
+    async function generateAllContentString() {
+        const content = await fetchAllContent();
+        return content.map(item => `ID: ${item.id}, Type: ${item.type}, Title: ${item.title}, Content: ${item.content.substring(0, 200)}...`).join('\n---\n');
     }
     
     const allContentString = await generateAllContentString();
@@ -146,8 +141,9 @@ Return a JSON object with a "results" array, ordered from most to least relevant
       return { results: [] };
     }
 
-    // Add the full URL to each result
     const allContent = await fetchAllContent();
+
+    // Add the full URL to each result
     const resultsWithUrls = output.results.map(result => {
         const originalContent = allContent.find(c => c.id === result.id);
         return {
@@ -178,3 +174,8 @@ Return a JSON object with a "results" array, ordered from most to least relevant
     return { results: resultsWithUrls };
   }
 );
+
+
+export async function hybridSearch(input: HybridSearchInput): Promise<HybridSearchOutput> {
+  return hybridSearchFlow(input);
+}
