@@ -11,7 +11,7 @@ export type UserProfile = {
 };
 
 export type User = {
-  id: string;
+  id:string;
   name: string;
   avatarUrl: string;
   reputation: number;
@@ -92,4 +92,15 @@ export type Log = {
     }
 }
 
-    
+export type Notification = {
+    id: string;
+    userId: string; // The user who should receive the notification
+    actorId: string; // The user who performed the action
+    actorName: string;
+    actorAvatar: string;
+    type: 'new_answer' | 'question_upvote' | 'answer_approved' | 'question_flagged';
+    questionTitle: string;
+    relatedItemId: string; // e.g., question ID
+    createdAt: FieldValue | string;
+    isRead: boolean;
+}

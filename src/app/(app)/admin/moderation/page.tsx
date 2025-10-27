@@ -25,9 +25,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, X, MessageSquare, AlertTriangle, Trash2, MoreHorizontal, Flag, ShieldQuestion } from 'lucide-react';
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, updateDoc, deleteDoc, collectionGroup, orderBy } from 'firebase/firestore';
-import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, where, doc, updateDoc, deleteDoc, collectionGroup, orderBy, runTransaction, serverTimestamp, increment } from 'firebase/firestore';
+import { CommunityQuestion, QuestionAnswer, Notification } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import ClientOnlyDate from '@/components/client-only-date';
@@ -48,26 +48,52 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLab
 
 function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
   const firestore = useFirestore();
+  const { user: adminUser } = useUser();
   const questionRef = useMemoFirebase(() => firestore ? doc(firestore, 'questions', answer.questionId) : null, [firestore, answer.questionId]);
   const { data: question, isLoading } = useDoc<CommunityQuestion>(questionRef);
   const { toast } = useToast();
 
   const handleApprove = async () => {
-    if (!firestore) return;
+    if (!firestore || !adminUser || !question) return;
     const answerRef = doc(firestore, `questions/${answer.questionId}/answers`, answer.id);
+    
     try {
-      await updateDoc(answerRef, { approved: true });
-      toast({ title: "Answer approved." });
+      await runTransaction(firestore, async (transaction) => {
+        // 1. Update the answer's 'approved' status
+        transaction.update(answerRef, { approved: true });
+
+        // 2. Create a notification for the answer's author
+        const notificationData: Omit<Notification, 'id'> = {
+            userId: answer.authorId,
+            actorId: adminUser.uid,
+            actorName: 'Admin',
+            actorAvatar: '', // Admin might not have a public avatar
+            type: 'answer_approved',
+            questionTitle: question.title,
+            relatedItemId: question.id,
+            createdAt: serverTimestamp(),
+            isRead: false,
+        };
+        const notificationRef = doc(collection(firestore, `users/${answer.authorId}/notifications`));
+        transaction.set(notificationRef, notificationData);
+      });
+
+      toast({ title: "Answer approved and author notified." });
+
     } catch (error: any) {
       toast({ variant: "destructive", title: "Approval failed", description: error.message });
     }
   };
 
   const handleDelete = async () => {
-    if (!firestore) return;
+    if (!firestore || !question) return;
     const answerRef = doc(firestore, `questions/${answer.questionId}/answers`, answer.id);
+    const questionRef = doc(firestore, 'questions', answer.questionId);
     try {
-      await deleteDoc(answerRef);
+      await runTransaction(firestore, async (transaction) => {
+        transaction.delete(answerRef);
+        transaction.update(questionRef, { answersCount: increment(-1) });
+      });
       toast({ title: "Answer deleted." });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Deletion failed", description: error.message });
@@ -117,6 +143,7 @@ function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
 
 export default function AdminModerationPage() {
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -150,7 +177,7 @@ export default function AdminModerationPage() {
   };
 
   const handleConfirmAction = async () => {
-    if (!questionToAction || !firestore) return;
+    if (!questionToAction || !firestore || !user) return;
 
     const { id, action } = questionToAction;
 
@@ -160,6 +187,23 @@ export default function AdminModerationPage() {
             toast({ title: 'Question Deleted', description: 'The question has been successfully deleted.' });
         } else if (action === 'flag') {
             await updateDoc(doc(firestore, 'questions', id), { isFlagged: true });
+             // Notify admin
+            const adminId = 'AAXL7PXM5eNkUQ3CabRFvYAthAe2';
+            const questionDoc = allQuestions?.find(q => q.id === id);
+            if (questionDoc) {
+                const adminNotificationData: Omit<Notification, 'id'> = {
+                    userId: adminId,
+                    actorId: user.uid,
+                    actorName: user.name,
+                    actorAvatar: user.photoURL || '',
+                    type: 'question_flagged',
+                    questionTitle: questionDoc.title,
+                    relatedItemId: id,
+                    createdAt: serverTimestamp(),
+                    isRead: false,
+                };
+                await addDoc(collection(firestore, `users/${adminId}/notifications`), adminNotificationData);
+            }
             toast({ title: 'Question Flagged', description: 'The question has been flagged for review.' });
         } else if (action === 'unflag') {
             await updateDoc(doc(firestore, 'questions', id), { isFlagged: false });

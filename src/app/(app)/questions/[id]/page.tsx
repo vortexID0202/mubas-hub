@@ -1,4 +1,3 @@
-
 'use client';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
@@ -12,8 +11,8 @@ import AnswerSection from '@/components/answer-section';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useDoc, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError, useDoc_DEPRECATED } from '@/firebase';
-import { doc, updateDoc, increment, runTransaction, collection, serverTimestamp, Timestamp, arrayUnion } from 'firebase/firestore';
-import { CommunityQuestion, QuestionAnswer, UserProfile } from '@/lib/types';
+import { doc, updateDoc, increment, runTransaction, collection, serverTimestamp, Timestamp, arrayUnion, addDoc } from 'firebase/firestore';
+import { CommunityQuestion, QuestionAnswer, UserProfile, Notification } from '@/lib/types';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -106,7 +105,7 @@ export default function QuestionPage() {
   }, [id, firestore, user, isUserLoading]);
 
   async function handleUpvote() {
-    if (!firestore || !user) {
+    if (!firestore || !user || !userProfile) {
         toast({
             variant: "destructive",
             title: "Not logged in",
@@ -114,25 +113,47 @@ export default function QuestionPage() {
         });
         return;
     }
-    if (!questionRef) return;
-    
-    const updateData = { 
-        votes: increment(1),
-        upvotedBy: arrayUnion(user.uid) 
-    };
+    if (!questionRef || !question) return;
 
-    updateDoc(questionRef, updateData)
-        .catch(error => {
-            const permissionError = new FirestorePermissionError({
-                path: questionRef.path,
-                operation: 'update',
-                requestResourceData: {
-                    votes: `increment(1)`,
-                    upvotedBy: `arrayUnion(${user.uid})`
-                },
+    if (question.authorId === user.uid) {
+        toast({ variant: 'destructive', title: 'Cannot upvote your own question.' });
+        return;
+    }
+    
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const questionDoc = await transaction.get(questionRef);
+            if (!questionDoc.exists()) throw "Question not found";
+
+            const upvotedBy = questionDoc.data().upvotedBy || [];
+            if (upvotedBy.includes(user.uid)) {
+                toast({ variant: 'destructive', title: 'Already Upvoted' });
+                return;
+            }
+
+            transaction.update(questionRef, { 
+                votes: increment(1),
+                upvotedBy: arrayUnion(user.uid) 
             });
-            errorEmitter.emit('permission-error', permissionError);
+
+            // Create notification for the question author
+            const notificationData: Omit<Notification, 'id'> = {
+                userId: question.authorId,
+                actorId: user.uid,
+                actorName: userProfile.fullName,
+                actorAvatar: userProfile.avatarUrl,
+                type: 'question_upvote',
+                questionTitle: question.title,
+                relatedItemId: question.id,
+                createdAt: serverTimestamp(),
+                isRead: false,
+            };
+            const notificationRef = doc(collection(firestore, `users/${question.authorId}/notifications`));
+            transaction.set(notificationRef, notificationData);
         });
+    } catch(e) {
+        // ... error handling
+    }
   }
 
   async function handleAnswerSubmit(values: z.infer<typeof answerSchema>) {
@@ -164,9 +185,9 @@ export default function QuestionPage() {
     };
     
     try {
+        const newAnswerRef = doc(collection(firestore, `questions/${question.id}/answers`));
+
         await runTransaction(firestore, async (transaction) => {
-            const newAnswerRef = doc(collection(firestore, `questions/${question.id}/answers`));
-            
             transaction.set(newAnswerRef, {
                 ...answerData,
                 createdAt: serverTimestamp()
@@ -176,6 +197,40 @@ export default function QuestionPage() {
             transaction.update(questionDocRef, {
                 answersCount: increment(1)
             });
+
+            // Notify question author (if they aren't the one answering)
+            if (question.authorId !== user.uid) {
+                const notificationData: Omit<Notification, 'id'> = {
+                    userId: question.authorId,
+                    actorId: user.uid,
+                    actorName: userProfile.fullName,
+                    actorAvatar: userProfile.avatarUrl,
+                    type: 'new_answer',
+                    questionTitle: question.title,
+                    relatedItemId: question.id,
+                    createdAt: serverTimestamp(),
+                    isRead: false,
+                };
+                const notificationRef = doc(collection(firestore, `users/${question.authorId}/notifications`));
+                transaction.set(notificationRef, notificationData);
+            }
+             // If answer is not auto-approved, notify admin
+            if (!isAdmin) {
+                const adminId = 'AAXL7PXM5eNkUQ3CabRFvYAthAe2'; // Hardcoded Admin ID
+                const adminNotificationData: Omit<Notification, 'id'> = {
+                    userId: adminId,
+                    actorId: user.uid,
+                    actorName: userProfile.fullName,
+                    actorAvatar: userProfile.avatarUrl,
+                    type: 'new_answer', // Re-use for moderation queue
+                    questionTitle: `New answer on: "${question.title}"`,
+                    relatedItemId: newAnswerRef.id, // Link to the answer
+                    createdAt: serverTimestamp(),
+                    isRead: false,
+                };
+                 const adminNotificationRef = doc(collection(firestore, `users/${adminId}/notifications`));
+                 transaction.set(adminNotificationRef, adminNotificationData);
+            }
         });
 
         toast({

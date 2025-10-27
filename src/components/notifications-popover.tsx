@@ -1,4 +1,3 @@
-
 'use client';
 import { Bell, CheckCheck } from 'lucide-react';
 import {
@@ -11,43 +10,98 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NotificationItem } from './notification-item';
 import Link from 'next/link';
 import { ScrollArea } from './ui/scroll-area';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { Notification } from '@/lib/types';
+import { collection, query, orderBy, limit, writeBatch, doc } from 'firebase/firestore';
+import { formatDistanceToNow } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
-// Placeholder notifications
-const placeholderNotifications = [
-  {
-    id: '1',
-    userAvatar: '/avatars/01.png',
-    userName: 'John Doe',
-    action: 'posted a new answer to your question',
-    questionTitle: 'How to setup WiFi?',
-    timestamp: '5m ago',
-    isRead: false,
-    href: '/questions/1',
-  },
-  {
-    id: '2',
-    userAvatar: '/avatars/02.png',
-    userName: 'Jane Smith',
-    action: 'upvoted your answer on',
-    questionTitle: 'Library opening hours',
-    timestamp: '1h ago',
-    isRead: false,
-    href: '/questions/2',
-  },
-  {
-    id: '3',
-    userAvatar: '/avatars/03.png',
-    userName: 'Admin',
-    action: 'verified your answer on',
-    questionTitle: 'SMIS Password Reset',
-    timestamp: '3h ago',
-    isRead: true,
-    href: '/questions/3',
-  },
-];
+const getNotificationDetails = (notification: Notification) => {
+    let actionText = '';
+    let href = `/questions/${notification.relatedItemId}`;
+
+    switch (notification.type) {
+        case 'new_answer':
+            actionText = 'posted a new answer to your question';
+            href += `#answer-${notification.id}`;
+            break;
+        case 'question_upvote':
+            actionText = 'upvoted your question';
+            break;
+        case 'answer_approved':
+            actionText = 'approved your answer on';
+            break;
+        case 'question_flagged':
+            actionText = 'flagged a question for review';
+            break;
+        default:
+            actionText = 'interacted with';
+    }
+    return { actionText, href };
+};
+
 
 export default function NotificationsPopover() {
-  const unreadCount = placeholderNotifications.filter(n => !n.isRead).length;
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const notificationsQuery = useMemoFirebase(() => 
+    user && firestore 
+        ? query(collection(firestore, `users/${user.uid}/notifications`), orderBy('createdAt', 'desc'), limit(50))
+        : null
+  , [user, firestore]);
+  
+  const { data: notifications, isLoading } = useCollection<Notification>(notificationsQuery);
+
+  const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+
+  const handleMarkAllAsRead = async () => {
+    if (!firestore || !user || unreadCount === 0) return;
+
+    const batch = writeBatch(firestore);
+    notifications?.forEach(notification => {
+        if (!notification.isRead) {
+            const notifRef = doc(firestore, `users/${user.uid}/notifications`, notification.id);
+            batch.update(notifRef, { isRead: true });
+        }
+    });
+
+    try {
+        await batch.commit();
+        toast({ title: 'Notifications marked as read.' });
+    } catch (error) {
+        console.error("Error marking notifications as read: ", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not mark notifications as read.' });
+    }
+  };
+
+  const renderNotifications = (notifs: Notification[]) => {
+    if (notifs.length === 0) {
+        return (
+            <div className="text-center text-sm text-muted-foreground p-8">
+                {isLoading ? "Loading..." : "You're all caught up!"}
+            </div>
+        );
+    }
+
+    return notifs.map(notification => {
+        const { actionText, href } = getNotificationDetails(notification);
+        return (
+             <NotificationItem
+                key={notification.id}
+                id={notification.id}
+                userAvatar={notification.actorAvatar}
+                userName={notification.actorName}
+                action={actionText}
+                questionTitle={notification.questionTitle}
+                timestamp={notification.createdAt ? formatDistanceToNow(new Date((notification.createdAt as any).seconds * 1000), { addSuffix: true }) : ''}
+                isRead={notification.isRead}
+                href={href}
+             />
+        )
+    })
+  }
 
   return (
     <Popover>
@@ -65,7 +119,7 @@ export default function NotificationsPopover() {
       <PopoverContent className="w-80 md:w-96 p-0" align="end">
         <div className="flex items-center justify-between p-4 border-b">
             <h3 className="font-semibold">Notifications</h3>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={handleMarkAllAsRead} disabled={unreadCount === 0}>
                 <CheckCheck className="mr-2 h-4 w-4" />
                 Mark all as read
             </Button>
@@ -78,32 +132,18 @@ export default function NotificationsPopover() {
           <TabsContent value="all">
             <ScrollArea className="h-96">
                 <div className="p-2 space-y-1">
-                    {placeholderNotifications.map(notification => (
-                        <NotificationItem key={notification.id} {...notification} />
-                    ))}
+                   {renderNotifications(notifications || [])}
                 </div>
             </ScrollArea>
           </TabsContent>
           <TabsContent value="unread">
              <ScrollArea className="h-96">
                 <div className="p-2 space-y-1">
-                    {placeholderNotifications.filter(n => !n.isRead).map(notification => (
-                        <NotificationItem key={notification.id} {...notification} />
-                    ))}
-                     {placeholderNotifications.filter(n => !n.isRead).length === 0 && (
-                        <div className="text-center text-sm text-muted-foreground p-8">
-                            You&apos;re all caught up!
-                        </div>
-                    )}
+                    {renderNotifications(notifications?.filter(n => !n.isRead) || [])}
                 </div>
             </ScrollArea>
           </TabsContent>
         </Tabs>
-        <div className="p-2 border-t text-center">
-            <Link href="/notifications" className="text-sm text-primary hover:underline">
-                View all notifications
-            </Link>
-        </div>
       </PopoverContent>
     </Popover>
   );
