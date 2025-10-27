@@ -357,6 +357,51 @@
         "message",
         "createdAt"
       ]
+    },
+    "ApiKey": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "API Key",
+      "type": "object",
+      "description": "Represents an API key for external services.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the API key."
+        },
+        "name": {
+          "type": "string",
+          "description": "A descriptive name for the key."
+        },
+        "hashedKey": {
+          "type": "string",
+          "description": "The hashed value of the API key."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp when the key was created.",
+          "format": "date-time"
+        },
+        "lastUsed": {
+          "type": "string",
+          "description": "The timestamp when the key was last used.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the key.",
+          "enum": [
+            "active",
+            "revoked"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "hashedKey",
+        "createdAt",
+        "status"
+      ]
     }
   },
   "auth": {
@@ -420,9 +465,13 @@
           "$ref": "#/entities/Log"
         },
         "description": "Stores system log entries. Only admins can read these logs."
+      },
+      "/api_keys/{apiKeyId}": {
+        "schema": {
+          "$ref": "#/entities/ApiKey"
+        },
+        "description": "Stores API keys for external services. Only admins can manage these keys."
       }
     }
   }
 }
-
-    
