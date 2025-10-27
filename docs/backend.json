@@ -256,6 +256,7 @@
       ]
     },
     "LiveUpdate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Live Update",
       "type": "object",
       "description": "Represents a live update or announcement.",
@@ -313,53 +314,55 @@
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": {
-        "$ref": "#/entities/User"
+    "structure": {
+      "/users/{userId}": {
+        "schema": {
+          "$ref": "#/entities/User"
+        },
+        "description": "Stores user profiles. User data is private and accessible only to the user and admins."
       },
-      "description": "Stores user profiles. User data is private and accessible only to the user and admins."
-    },
-    "/questions/{questionId}": {
-      "schema": {
-        "$ref": "#/entities/Question"
+      "/questions/{questionId}": {
+        "schema": {
+          "$ref": "#/entities/Question"
+        },
+        "description": "Stores community forum questions. Includes denormalized 'authorId' for simpler rule creation. Anyone can read questions, but only the author or an admin can update or delete them."
       },
-      "description": "Stores community forum questions. Includes denormalized 'authorId' for simpler rule creation. Anyone can read questions, but only the author or an admin can update or delete them."
-    },
-    "/questions/{questionId}/answers/{answerId}": {
-      "schema": {
-        "$ref": "#/entities/Answer"
+      "/questions/{questionId}/answers/{answerId}": {
+        "schema": {
+          "$ref": "#/entities/Answer"
+        },
+        "description": "Stores answers to specific questions, establishing a clear hierarchical relationship. Includes denormalized 'authorId' and 'questionId' for authorization independence. Anyone can read answers to a question, but only the author or an admin can update or delete them."
       },
-      "description": "Stores answers to specific questions, establishing a clear hierarchical relationship. Includes denormalized 'authorId' and 'questionId' for authorization independence. Anyone can read answers to a question, but only the author or an admin can update or delete them."
-    },
-    "/knowledge_base_articles/{articleId}": {
-      "schema": {
-        "$ref": "#/entities/KnowledgeBaseArticle"
+      "/knowledge_base_articles/{articleId}": {
+        "schema": {
+          "$ref": "#/entities/KnowledgeBaseArticle"
+        },
+        "description": "Stores knowledge base articles. Only admins can create, update, or delete articles. Everyone can read."
       },
-      "description": "Stores knowledge base articles. Only admins can create, update, or delete articles. Everyone can read."
-    },
-    "/live_updates/{updateId}": {
-      "schema": {
-        "$ref": "#/entities/LiveUpdate"
+      "/live_updates/{updateId}": {
+        "schema": {
+          "$ref": "#/entities/LiveUpdate"
+        },
+        "description": "Stores live updates and announcements. Anyone can read these updates, but only admins can create them."
       },
-      "description": "Stores live updates and announcements. Anyone can read these updates, but only admins can create them."
-    },
-    "/tags/{tagId}": {
-      "schema": {
-        "$ref": "#/entities/Tag"
+      "/tags/{tagId}": {
+        "schema": {
+          "$ref": "#/entities/Tag"
+        },
+        "description": "Stores tags that can be associated with questions or knowledge base articles. Tags can be read by anyone, but only admins can create, update, or delete them."
       },
-      "description": "Stores tags that can be associated with questions or knowledge base articles. Tags can be read by anyone, but only admins can create, update, or delete them."
-    },
-    "/users/{userId}/notifications/{notificationId}": {
-      "schema": {
-        "$ref": "#/entities/Notification"
+      "/users/{userId}/notifications/{notificationId}": {
+        "schema": {
+          "$ref": "#/entities/Notification"
+        },
+        "description": "Stores notifications for a specific user. Only the user and admins can access these notifications."
       },
-      "description": "Stores notifications for a specific user. Only the user and admins can access these notifications."
-    },
-    "/roles_admin/{uid}": {
-      "schema": {
-        "$ref": "#/entities/User"
-      },
-      "description": "DEPRECATED: Admin roles are now managed via custom claims. The existence of a document at this path previously granted admin privileges. This is kept for historical reference but is no longer the source of truth for admin status."
+      "/roles_admin/{uid}": {
+        "schema": {
+          "$ref": "#/entities/User"
+        },
+        "description": "DEPRECATED: Admin roles are now managed via custom claims. The existence of a document at this path previously granted admin privileges. This is kept for historical reference but is no longer the source of truth for admin status."
+      }
     }
   }
 }
