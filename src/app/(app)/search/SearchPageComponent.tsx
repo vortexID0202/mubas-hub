@@ -132,7 +132,7 @@ export default function SearchPageComponent() {
             <Frown className="h-16 w-16 text-muted-foreground" />
             <h2 className="mt-6 text-xl font-semibold">No Results Found</h2>
             <p className="mt-2 text-center text-muted-foreground">
-                We couldn&apos;t find anything matching your search. Try using different keywords.
+                We couldn't find anything matching your search. Try using different keywords.
             </p>
             {!isAdmin && (
               <Button asChild className="mt-6">
