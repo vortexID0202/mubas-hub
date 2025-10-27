@@ -1,6 +1,7 @@
 
 'use client';
 import Link from 'next/link';
+import { useState, useMemo } from 'react';
 import {
   BookOpen,
   Frown,
@@ -51,7 +52,6 @@ import { CommunityQuestion, KnowledgeBaseArticle, LiveUpdate, UserProfile } from
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo } from 'react';
 import SearchBar from '@/components/search-bar';
 
 
@@ -59,11 +59,15 @@ export default function Home() {
   const { user } = useUser();
   const isAdmin = user?.email === 'dante@gmail.com';
   const firestore = useFirestore();
+  const [questionFilter, setQuestionFilter] = useState<'recent' | 'popular'>('recent');
   
   const questionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3));
-  }, [firestore]);
+    const q = questionFilter === 'recent' 
+      ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3))
+      : query(collection(firestore, 'questions'), orderBy('votes', 'desc'), limit(3));
+    return q;
+  }, [firestore, questionFilter]);
 
   const { data: communityQuestions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
 
@@ -240,12 +244,16 @@ export default function Home() {
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline">
                         <Filter className="mr-2 h-4 w-4" />
-                        Filter
+                        {questionFilter === 'recent' ? 'Recent' : 'Popular'}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
-                      <DropdownMenuItem>Recently Uploaded</DropdownMenuItem>
-                      <DropdownMenuItem>Popular Questions</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setQuestionFilter('recent')}>
+                        Recently Uploaded
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setQuestionFilter('popular')}>
+                        Popular Questions
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
