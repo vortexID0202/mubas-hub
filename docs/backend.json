@@ -313,144 +313,53 @@
     }
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user profiles. User data is private and accessible only to the user and admins.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            }
-          ]
-        }
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
       },
-      {
-        "path": "/questions/{questionId}",
-        "definition": {
-          "entityName": "Question",
-          "schema": {
-            "$ref": "#/backend/entities/Question"
-          },
-          "description": "Stores community forum questions. Includes denormalized 'authorId' for simpler rule creation. Anyone can read questions, but only the author or an admin can update or delete them.",
-          "params": [
-            {
-              "name": "questionId",
-              "description": "The unique identifier of the question."
-            }
-          ]
-        }
+      "description": "Stores user profiles. User data is private and accessible only to the user and admins."
+    },
+    "/questions/{questionId}": {
+      "schema": {
+        "$ref": "#/entities/Question"
       },
-      {
-        "path": "/questions/{questionId}/answers/{answerId}",
-        "definition": {
-          "entityName": "Answer",
-          "schema": {
-            "$ref": "#/backend/entities/Answer"
-          },
-          "description": "Stores answers to specific questions, establishing a clear hierarchical relationship. Includes denormalized 'authorId' and 'questionId' for authorization independence. Anyone can read answers to a question, but only the author or an admin can update or delete them.",
-          "params": [
-            {
-              "name": "questionId",
-              "description": "The unique identifier of the parent question."
-            },
-            {
-              "name": "answerId",
-              "description": "The unique identifier of the answer."
-            }
-          ]
-        }
+      "description": "Stores community forum questions. Includes denormalized 'authorId' for simpler rule creation. Anyone can read questions, but only the author or an admin can update or delete them."
+    },
+    "/questions/{questionId}/answers/{answerId}": {
+      "schema": {
+        "$ref": "#/entities/Answer"
       },
-      {
-        "path": "/knowledge_base_articles/{articleId}",
-        "definition": {
-          "entityName": "KnowledgeBaseArticle",
-          "schema": {
-            "$ref": "#/backend/entities/KnowledgeBaseArticle"
-          },
-          "description": "Stores knowledge base articles. Only admins can create, update, or delete articles. Everyone can read.",
-          "params": [
-            {
-              "name": "articleId",
-              "description": "The unique identifier of the knowledge base article."
-            }
-          ]
-        }
+      "description": "Stores answers to specific questions, establishing a clear hierarchical relationship. Includes denormalized 'authorId' and 'questionId' for authorization independence. Anyone can read answers to a question, but only the author or an admin can update or delete them."
+    },
+    "/knowledge_base_articles/{articleId}": {
+      "schema": {
+        "$ref": "#/entities/KnowledgeBaseArticle"
       },
-      {
-        "path": "/live_updates/{updateId}",
-        "definition": {
-          "entityName": "LiveUpdate",
-          "schema": {
-            "$ref": "#/backend/entities/LiveUpdate"
-          },
-          "description": "Stores live updates and announcements. Anyone can read these updates, but only admins can create them.",
-          "params": [
-            {
-              "name": "updateId",
-              "description": "The unique identifier of the live update."
-            }
-          ]
-        }
+      "description": "Stores knowledge base articles. Only admins can create, update, or delete articles. Everyone can read."
+    },
+    "/live_updates/{updateId}": {
+      "schema": {
+        "$ref": "#/entities/LiveUpdate"
       },
-      {
-        "path": "/tags/{tagId}",
-        "definition": {
-          "entityName": "Tag",
-          "schema": {
-            "$ref": "#/backend/entities/Tag"
-          },
-          "description": "Stores tags that can be associated with questions or knowledge base articles.  Tags can be read by anyone, but only admins can create, update, or delete them.",
-          "params": [
-            {
-              "name": "tagId",
-              "description": "The unique identifier of the tag."
-            }
-          ]
-        }
+      "description": "Stores live updates and announcements. Anyone can read these updates, but only admins can create them."
+    },
+    "/tags/{tagId}": {
+      "schema": {
+        "$ref": "#/entities/Tag"
       },
-      {
-        "path": "/users/{userId}/notifications/{notificationId}",
-        "definition": {
-          "entityName": "Notification",
-          "schema": {
-            "$ref": "#/backend/entities/Notification"
-          },
-          "description": "Stores notifications for a specific user. Only the user and admins can access these notifications.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "notificationId",
-              "description": "The unique identifier of the notification."
-            }
-          ]
-        }
+      "description": "Stores tags that can be associated with questions or knowledge base articles. Tags can be read by anyone, but only admins can create, update, or delete them."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": {
+        "$ref": "#/entities/Notification"
       },
-      {
-        "path": "/roles_admin/{uid}",
-        "definition": {
-          "entityName": "adminRole",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "DEPRECATED: Admin roles are now managed via custom claims. The existence of a document at this path previously granted admin privileges. This is kept for historical reference but is no longer the source of truth for admin status.",
-          "params": [
-            {
-              "name": "uid",
-              "description": "The unique identifier of the user."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to ensure security, scalability, and ease of debugging, following the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). Authorization Independence is achieved through denormalization of authorization data (e.g., user roles) directly into documents where access control is required, avoiding costly and complex `get()` calls in security rules. Structural Segregation ensures each collection has a homogeneous security posture. Access Modeling employs path-based ownership for private user data and membership maps for collaborative data. Data Clarity and Predictability are maintained through explicit state modeling and consistent naming conventions.\n\nSpecifically, the `/users/{userId}` collection stores user profiles. The `/questions/{questionId}` collection stores community forum questions, with denormalized `authorId` for simpler rule creation related to ownership. The `/answers/{answerId}` subcollection nested under `/questions/{questionId}` stores answers to specific questions, ensuring a clear hierarchical relationship. The `/knowledge_base_articles/{articleId}` collection stores articles, and the `/tags/{tagId}` collection stores tags. Notifications are stored under `/users/{userId}/notifications/{notificationId}`, providing a direct and easily secured path for user-specific notifications. Roles are managed in a dedicated `/roles_admin/{uid}` collection.\n\nThis structure facilitates simple and robust security rules. For example, a rule can easily check if `request.auth.uid == resource.data.authorId` to allow a user to update their own question. List operations are secured by ensuring that collections only contain documents that the user is authorized to access. Roles are determined by the existence of a document in a specific role collection (e.g., `/roles_admin/{uid}`), not by custom claims, adhering to the DBAC principle. The consistent use of naming conventions and explicit data modeling enhances debuggability."
+      "description": "Stores notifications for a specific user. Only the user and admins can access these notifications."
+    },
+    "/roles_admin/{uid}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "DEPRECATED: Admin roles are now managed via custom claims. The existence of a document at this path previously granted admin privileges. This is kept for historical reference but is no longer the source of truth for admin status."
+    }
   }
 }
