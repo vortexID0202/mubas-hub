@@ -78,8 +78,9 @@ export default function Home() {
   , [firestore]);
   const { data: allUsers, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
 
-  const topThree = allUsers?.slice(0, 3) ?? [];
-  const restUsers = allUsers?.slice(3, 10) ?? [];
+  const nonAdminUsers = allUsers?.filter(u => u.email !== 'dante@gmail.com') ?? [];
+  const topThree = nonAdminUsers.slice(0, 3);
+  const restUsers = nonAdminUsers.slice(3, 10);
 
 
   const browseItems = [
@@ -336,7 +337,7 @@ export default function Home() {
                           </ul>
                         </div>
                       )}
-                      {!isLoadingUsers && allUsers && allUsers.length > 0 && (
+                      {!isLoadingUsers && nonAdminUsers && nonAdminUsers.length > 0 && (
                         <>
                           <div className="mb-8 flex items-end justify-center gap-4">
                             {topThree[1] && (
@@ -416,7 +417,7 @@ export default function Home() {
                           </ul>
                         </>
                       )}
-                      {!isLoadingUsers && (!allUsers || allUsers.length === 0) && (
+                      {!isLoadingUsers && (!nonAdminUsers || nonAdminUsers.length === 0) && (
                         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
                           <Users className="h-16 w-16 text-muted-foreground" />
                           <h2 className="mt-6 text-xl font-semibold">No Users Found</h2>

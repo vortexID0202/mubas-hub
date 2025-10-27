@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -47,7 +48,8 @@ export default function AdminDashboardPage() {
   , [firestore]);
   const { data: allFlags, isLoading: isLoadingFlags } = useCollection(flagsQuery);
 
-  const totalUsers = allUsers ? allUsers.filter(u => u.id !== currentUser?.uid).length : 0;
+  const nonAdminUsers = allUsers?.filter(u => u.email !== 'dante@gmail.com') ?? [];
+  const totalUsers = nonAdminUsers.length;
 
   const overviewCards = [
     {
@@ -218,7 +220,7 @@ export default function AdminDashboardPage() {
                 </div>
               ))
             )}
-            {allUsers && allUsers
+            {nonAdminUsers && nonAdminUsers
               .slice()
               .sort((a, b) => b.reputation - a.reputation)
               .slice(0, 5)
