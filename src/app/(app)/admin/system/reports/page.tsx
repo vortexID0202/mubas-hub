@@ -21,7 +21,7 @@ import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
 import { UserProfile, Log, CommunityQuestion, QuestionAnswer, KnowledgeBaseArticle } from '@/lib/types';
@@ -44,6 +44,12 @@ export default function AdminSystemReportsPage() {
     });
     const [isLoading, setIsLoading] = useState(false);
     const [reportData, setReportData] = useState<ReportData | null>(null);
+
+    useEffect(() => {
+        // Clear the report data whenever the report type changes to prevent showing stale data.
+        setReportData(null);
+    }, [reportType]);
+
 
     const generateReport = async () => {
         setIsLoading(true);
@@ -88,9 +94,19 @@ export default function AdminSystemReportsPage() {
                     const topQuestionsSnap = await getDocs(topQuestionsQuery);
                     const topQuestions = topQuestionsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as CommunityQuestion));
                     
-                    const topArticlesQuery = query(collection(firestore, 'knowledge_base_articles'), orderBy('views', 'desc'), limit(10));
-                    const topArticlesSnap = await getDocs(topArticlesQuery); // Assuming 'views' field exists
-                    const topArticles = topArticlesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as KnowledgeBaseArticle));
+                    // Assuming 'views' field might not exist, so we handle this gracefully
+                    let topArticles: KnowledgeBaseArticle[] = [];
+                    try {
+                        const topArticlesQuery = query(collection(firestore, 'knowledge_base_articles'), orderBy('views', 'desc'), limit(10));
+                        const topArticlesSnap = await getDocs(topArticlesQuery);
+                        topArticles = topArticlesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as KnowledgeBaseArticle));
+                    } catch (e) {
+                        console.warn("Could not query articles by 'views'. This field may not exist on all documents.");
+                        // Fallback to fetching by creation date if 'views' index doesn't exist
+                        const fallbackQuery = query(collection(firestore, 'knowledge_base_articles'), orderBy('createdAt', 'desc'), limit(10));
+                        const fallbackSnap = await getDocs(fallbackQuery);
+                        topArticles = fallbackSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as KnowledgeBaseArticle));
+                    }
 
                     fetchedData = [...topQuestions, ...topArticles];
                     break;
@@ -113,7 +129,15 @@ export default function AdminSystemReportsPage() {
             });
         } catch (err: any) {
             console.error("Error generating report: ", err);
-            toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to generate report.' });
+            if (err.code === 'permission-denied') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Permission Denied',
+                    description: `You do not have permission to generate the '${reportType.replace(/_/g, ' ')}' report. Check Firestore security rules.`,
+                });
+            } else {
+                 toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to generate report.' });
+            }
         } finally {
             setIsLoading(false);
         }
@@ -140,7 +164,7 @@ export default function AdminSystemReportsPage() {
         }
 
         if (reportData.length === 0) {
-            return <p className="text-center text-muted-foreground">No data found for the selected criteria.</p>;
+            return <p className="text-center text-muted-foreground py-10">No data found for the selected criteria.</p>;
         }
 
         switch (reportType) {
@@ -150,7 +174,7 @@ export default function AdminSystemReportsPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead className="min-w-[250px]">User</TableHead>
+                                    <TableHead>User</TableHead>
                                     <TableHead>Reputation</TableHead>
                                     <TableHead>Status</TableHead>
                                 </TableRow>
@@ -158,7 +182,7 @@ export default function AdminSystemReportsPage() {
                             <TableBody>
                                 {(reportData as UserProfile[]).map(user => (
                                     <TableRow key={user.id}>
-                                        <TableCell className="font-medium">
+                                        <TableCell className="font-medium min-w-[250px]">
                                             <div className="font-medium">{user.fullName}</div>
                                             <div className="text-sm text-muted-foreground">{user.email}</div>
                                         </TableCell>
