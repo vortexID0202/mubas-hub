@@ -1,17 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, 'use client';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/logo';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UserProfile } from '@/lib/types';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -20,6 +23,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
@@ -28,16 +32,31 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    if (!auth) {
+
+    if (!auth || !firestore) {
       setError('Authentication service is not available.');
       setLoading(false);
       return;
     }
+
     try {
-      // The onIdTokenChanged listener in AuthProvider will handle session creation.
-      await signInWithEmailAndPassword(auth, email, password);
-      // The listener will trigger, and upon successful session creation,
-      // the user will be authenticated for server actions. We can now redirect.
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Check if user is suspended
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        const userProfile = userDoc.data() as UserProfile;
+        if (userProfile.status === 'suspended') {
+          await signOut(auth); // Sign out the user immediately
+          setError('Your account has been suspended. Please contact an administrator.');
+          setLoading(false);
+          return;
+        }
+      }
+
       router.push(redirect);
 
     } catch (err: any) {
@@ -152,4 +171,3 @@ export default function LoginPage() {
     </div>
   );
 }
-// 

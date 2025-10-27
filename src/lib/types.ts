@@ -1,4 +1,3 @@
-
 import { FieldValue } from 'firebase/firestore';
 
 export type UserProfile = {
@@ -8,6 +7,7 @@ export type UserProfile = {
   avatarUrl: string;
   reputation: number;
   createdAt: FieldValue;
+  status?: 'active' | 'suspended';
 };
 
 export type User = {

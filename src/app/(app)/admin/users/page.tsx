@@ -1,8 +1,9 @@
 
 'use client';
 
+import { useState } from 'react';
 import { MoreHorizontal, Loader2 } from 'lucide-react';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -30,14 +41,19 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useUser, useMemoFirebase, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { UserProfile } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
   const { user: currentUser, isUserLoading: isCurrentUserLoading } = useUser();
+  const { toast } = useToast();
+  
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
 
   const usersQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'users'), orderBy('reputation', 'desc')) : null,
@@ -47,6 +63,37 @@ export default function AdminUsersPage() {
 
   const filteredUsers = users?.filter(user => user.email !== 'dante@gmail.com');
   const isLoading = areUsersLoading || isCurrentUserLoading;
+  
+  const handleSuspendClick = (user: UserProfile) => {
+    setUserToAction(user);
+    setDialogOpen(true);
+  };
+
+  const handleConfirmSuspend = async () => {
+    if (!userToAction || !firestore) return;
+    
+    const newStatus = userToAction.status === 'suspended' ? 'active' : 'suspended';
+    const userRef = doc(firestore, 'users', userToAction.id);
+    const updateData = { status: newStatus };
+
+    try {
+      await updateDoc(userRef, updateData);
+      toast({
+        title: `User ${newStatus === 'suspended' ? 'Suspended' : 'Reactivated'}`,
+        description: `${userToAction.fullName}'s account has been ${newStatus}.`,
+      });
+    } catch (error) {
+       const permissionError = new FirestorePermissionError({
+            path: userRef.path,
+            operation: 'update',
+            requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    } finally {
+      setDialogOpen(false);
+      setUserToAction(null);
+    }
+  };
 
   return (
     <>
@@ -99,7 +146,9 @@ export default function AdminUsersPage() {
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">{user.reputation}</TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      <Badge variant="outline">Active</Badge>
+                      <Badge variant={user.status === 'suspended' ? 'destructive' : 'outline'}>
+                        {user.status === 'suspended' ? 'Suspended' : 'Active'}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -118,7 +167,9 @@ export default function AdminUsersPage() {
                           <DropdownMenuItem asChild>
                             <Link href={`/admin/users/${user.id}`}>View Profile</Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>Suspend</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSuspendClick(user)}>
+                            {user.status === 'suspended' ? 'Reactivate' : 'Suspend'}
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -134,6 +185,22 @@ export default function AdminUsersPage() {
           </div>
         </CardFooter>
       </Card>
+      
+       <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will {userToAction?.status === 'suspended' ? 'reactivate' : 'suspend'} the user&apos;s account.
+                    {userToAction?.status !== 'suspended' && ' A suspended user cannot log in.'}
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmSuspend}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+     </AlertDialog>
     </>
   );
 }
