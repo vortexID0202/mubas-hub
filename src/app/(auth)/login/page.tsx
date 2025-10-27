@@ -73,6 +73,17 @@ export default function LoginPage() {
       router.push(redirect);
 
     } catch (err: any) {
+      // Log the failed login attempt
+      const logsCollection = collection(firestore, 'logs');
+      addDoc(logsCollection, {
+        level: 'warn',
+        message: `Failed login attempt for email: ${email}`,
+        createdAt: serverTimestamp(),
+        context: {
+            service: 'AuthService',
+        }
+      });
+      
       if (
         err.code === 'auth/invalid-credential' ||
         err.code === 'auth/wrong-password' ||
