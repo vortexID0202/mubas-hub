@@ -389,7 +389,7 @@
           "schema": {
             "$ref": "#/backend/entities/LiveUpdate"
           },
-          "description": "Stores live updates and announcements. Only admins can create updates. Everyone can read.",
+          "description": "Stores live updates and announcements. Anyone can read these updates, but only admins can create them.",
           "params": [
             {
               "name": "updateId",
