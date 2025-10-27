@@ -25,7 +25,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useFirestore } from '@/firebase';
 import { UserProfile, Log, CommunityQuestion, QuestionAnswer, KnowledgeBaseArticle } from '@/lib/types';
-import { collection, query, where, Timestamp, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, Timestamp, getDocs, orderBy, limit, collectionGroup } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -47,7 +47,7 @@ export default function AdminSystemReportsPage() {
 
     const generateReport = async () => {
         setIsLoading(true);
-        setReportData(null);
+        setReportData(null); // Clear previous data to show loading state
 
         if (!firestore) {
             toast({ variant: 'destructive', title: 'Error', description: 'Database connection not available.' });
@@ -76,8 +76,7 @@ export default function AdminSystemReportsPage() {
                     const flaggedQuestionsSnap = await getDocs(flaggedQuestionsQuery);
                     const flaggedQuestions = flaggedQuestionsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, type: 'question' } as CommunityQuestion & {type: 'question'}));
                     
-                    // Note: collectionGroup queries can't be combined with date filters easily
-                    const unapprovedAnswersQuery = query(collection(firestore, 'answers'), where('approved', '==', false));
+                    const unapprovedAnswersQuery = query(collectionGroup(firestore, 'answers'), where('approved', '==', false));
                     const unapprovedAnswersSnap = await getDocs(unapprovedAnswersQuery);
                     const unapprovedAnswers = unapprovedAnswersSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, type: 'answer' } as QuestionAnswer & {type: 'answer'}));
 
@@ -97,12 +96,13 @@ export default function AdminSystemReportsPage() {
                     break;
                 
                 case 'system_health':
-                    baseQuery = query(collection(firestore, 'logs'), where('level', 'in', ['error', 'warn']));
+                    baseQuery = query(collection(firestore, 'logs'), orderBy('createdAt', 'desc'));
                     if (fromDate) baseQuery = query(baseQuery, where('createdAt', '>=', fromDate));
                     if (toDate) baseQuery = query(baseQuery, where('createdAt', '<=', toDate));
-                    baseQuery = query(baseQuery, orderBy('createdAt', 'desc'));
                     const logsSnapshot = await getDocs(baseQuery);
-                    fetchedData = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Log));
+                    fetchedData = logsSnapshot.docs
+                        .map(doc => ({ id: doc.id, ...doc.data() } as Log))
+                        .filter(log => log.level === 'error' || log.level === 'warn');
                     break;
             }
             
