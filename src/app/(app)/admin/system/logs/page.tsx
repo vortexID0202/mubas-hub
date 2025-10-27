@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Filter } from 'lucide-react';
+import { FileText, Filter, Loader2, ServerCrash } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -35,15 +35,13 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { Log } from '@/lib/types';
+import { collection, orderBy, query } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import ClientOnlyDate from '@/components/client-only-date';
 
-const logData = [
-  { time: '10:00', level: 'info', message: 'User logged in', user: 'user1' },
-  { time: '10:02', level: 'info', message: 'Viewed page: /dashboard', user: 'user1' },
-  { time: '10:05', level: 'warn', message: 'Failed login attempt', ip: '192.168.1.100' },
-  { time: '10:15', level: 'error', message: 'Database connection failed', service: 'api' },
-  { time: '10:30', level: 'info', message: 'New question posted', user: 'user2' },
-  { time: '11:00', level: 'info', message: 'User logged out', user: 'user1' },
-];
 
 const chartData = [
   { name: '1h ago', errors: 4, warnings: 24, info: 100 },
@@ -53,7 +51,26 @@ const chartData = [
   { name: 'Now', errors: 1, warnings: 5, info: 300 },
 ];
 
+function LogsPageSkeleton() {
+    return Array.from({length: 5}).map((_, i) => (
+        <TableRow key={i}>
+            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+            <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+        </TableRow>
+    ))
+}
+
 export default function AdminSystemLogsPage() {
+  const firestore = useFirestore();
+
+  const logsQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'logs'), orderBy('createdAt', 'desc')) : null,
+    [firestore]
+  );
+  const { data: logs, isLoading } = useCollection<Log>(logsQuery);
+
   return (
     <>
       <div className="flex items-center gap-4">
@@ -87,7 +104,7 @@ export default function AdminSystemLogsPage() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="flex-1 flex flex-col">
         <CardHeader>
           <CardTitle>Detailed Logs</CardTitle>
           <CardDescription>
@@ -110,7 +127,8 @@ export default function AdminSystemLogsPage() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
           <Table>
             <TableHeader>
               <TableRow>
@@ -121,9 +139,12 @@ export default function AdminSystemLogsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logData.map((log, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-mono text-xs">{log.time}</TableCell>
+              {isLoading && <LogsPageSkeleton />}
+              {!isLoading && logs?.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="font-mono text-xs">
+                     <ClientOnlyDate date={log.createdAt} formatString="Pp" />
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant={
@@ -139,16 +160,30 @@ export default function AdminSystemLogsPage() {
                   </TableCell>
                   <TableCell className="font-medium">{log.message}</TableCell>
                   <TableCell className="font-mono text-xs">
-                    {log.user && `user: ${log.user}`}
-                    {log.ip && `ip: ${log.ip}`}
-                    {log.service && `service: ${log.service}`}
+                    {log.context?.userId && `user: ${log.context.userId}`}
+                    {log.context?.ip && `ip: ${log.context.ip}`}
+                    {log.context?.service && `service: ${log.context.service}`}
                   </TableCell>
                 </TableRow>
               ))}
+               {!isLoading && logs?.length === 0 && (
+                <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                            <ServerCrash className="h-10 w-10" />
+                            <p className="font-semibold">No logs found</p>
+                            <p className="text-sm">The system has not recorded any log entries yet.</p>
+                        </div>
+                    </TableCell>
+                </TableRow>
+               )}
             </TableBody>
           </Table>
+          </ScrollArea>
         </CardContent>
       </Card>
     </>
   );
 }
+
+    

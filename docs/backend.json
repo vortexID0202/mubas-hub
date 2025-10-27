@@ -31,7 +31,10 @@
         "status": {
           "type": "string",
           "description": "The user's account status.",
-          "enum": ["active", "suspended"]
+          "enum": [
+            "active",
+            "suspended"
+          ]
         }
       },
       "required": [
@@ -303,6 +306,57 @@
         "authorId",
         "createdAt"
       ]
+    },
+    "Log": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Log",
+      "type": "object",
+      "description": "Represents a system log entry.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the log entry."
+        },
+        "level": {
+          "type": "string",
+          "description": "The severity level of the log.",
+          "enum": [
+            "info",
+            "warn",
+            "error"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "description": "The main log message."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp when the log was created.",
+          "format": "date-time"
+        },
+        "context": {
+          "type": "object",
+          "description": "Additional contextual information.",
+          "properties": {
+            "userId": {
+              "type": "string"
+            },
+            "ip": {
+              "type": "string"
+            },
+            "service": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "id",
+        "level",
+        "message",
+        "createdAt"
+      ]
     }
   },
   "auth": {
@@ -361,12 +415,14 @@
         },
         "description": "Stores notifications for a specific user. Only the user and admins can access these notifications."
       },
-      "/roles_admin/{uid}": {
+      "/logs/{logId}": {
         "schema": {
-          "$ref": "#/entities/User"
+          "$ref": "#/entities/Log"
         },
-        "description": "DEPRECATED: Admin roles are now managed via custom claims. The existence of a document at this path previously granted admin privileges. This is kept for historical reference but is no longer the source of truth for admin status."
+        "description": "Stores system log entries. Only admins can read these logs."
       }
     }
   }
 }
+
+    

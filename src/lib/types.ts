@@ -79,3 +79,17 @@ export type LiveUpdate = {
   createdAt: FieldValue | string;
   authorId: string;
 }
+
+export type Log = {
+    id: string;
+    level: 'info' | 'warn' | 'error';
+    message: string;
+    createdAt: FieldValue | string;
+    context?: {
+        userId?: string;
+        ip?: string;
+        service?: string;
+    }
+}
+
+    
