@@ -371,7 +371,7 @@ export default function ProfilePage() {
 
             <div className="md:col-span-3">
               <Tabs defaultValue={defaultTab}>
-                <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:w-auto sm:inline-flex sm:flex-wrap">
+                <TabsList className="mb-4 grid h-auto w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:inline-flex lg:flex-wrap lg:w-auto">
                   {isAdmin ? (
                     <>
                       <TabsTrigger value="articles">Articles</TabsTrigger>
@@ -394,14 +394,15 @@ export default function ProfilePage() {
                       <CardTitle>Articles You've Published</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {adminArticles && adminArticles.length > 0 ? (
+                      {areArticlesLoading && <p>Loading articles...</p>}
+                      {!areArticlesLoading && adminArticles && adminArticles.length > 0 ? (
                         <div className="grid gap-4 md:grid-cols-2">
                           {adminArticles.map((article) => (
                             <ArticleCard key={article.id} article={article} />
                           ))}
                         </div>
                       ) : (
-                        <p>You haven't published any articles yet.</p>
+                        !areArticlesLoading && <p>You haven't published any articles yet.</p>
                       )}
                     </CardContent>
                   </Card>
@@ -412,7 +413,8 @@ export default function ProfilePage() {
                             <CardTitle>Updates You've Posted</CardTitle>
                         </CardHeader>
                          <CardContent className="space-y-4">
-                            {adminUpdates && adminUpdates.length > 0 ? (
+                            {areUpdatesLoading && <p>Loading updates...</p>}
+                            {!areUpdatesLoading && adminUpdates && adminUpdates.length > 0 ? (
                                 adminUpdates.map((update) => (
                                     <Card key={update.id}>
                                         <CardHeader>
@@ -428,7 +430,7 @@ export default function ProfilePage() {
                                     </Card>
                                 ))
                             ) : (
-                                <p>You haven't posted any updates yet.</p>
+                                !areUpdatesLoading && <p>You haven't posted any updates yet.</p>
                             )}
                         </CardContent>
                     </Card>
@@ -439,14 +441,15 @@ export default function ProfilePage() {
                       <CardTitle>Questions you've asked</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {userQuestions && userQuestions.length > 0 ? (
+                      {areQuestionsLoading && <p>Loading questions...</p>}
+                      {!areQuestionsLoading && userQuestions && userQuestions.length > 0 ? (
                         <div className="grid gap-4 md:grid-cols-2">
                           {userQuestions.map((q) => (
                             <QuestionCard key={q.id} question={q} author={author} />
                           ))}
                         </div>
                       ) : (
-                        <p>You haven't asked any questions yet.</p>
+                        !areQuestionsLoading && <p>You haven't asked any questions yet.</p>
                       )}
                     </CardContent>
                   </Card>
