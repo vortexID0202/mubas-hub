@@ -191,15 +191,15 @@ export default function AdminSystemReportsPage() {
                  </Button>
             </div>
             <div className="md:col-span-2">
-                 <Card className="h-full">
+                 <Card className="h-full flex flex-col">
                     <CardHeader>
                         <CardTitle>Report Preview</CardTitle>
                         <CardDescription>
                             {reportData ? `Showing ${reportData.length} results for "User Activity"` : 'Your generated report will appear here.'}
                         </CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <ScrollArea className="h-[300px] sm:h-[400px]">
+                    <CardContent className="flex-1 flex flex-col overflow-hidden">
+                        <ScrollArea className="h-[300px] sm:h-[400px] flex-1">
                         {isLoading ? (
                              <div className="flex items-center justify-center h-full">
                                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -255,5 +255,3 @@ export default function AdminSystemReportsPage() {
     </>
   );
 }
-
-    
