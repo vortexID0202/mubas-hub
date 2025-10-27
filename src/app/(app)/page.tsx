@@ -52,6 +52,7 @@ import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo } from 'react';
+import SearchBar from '@/components/search-bar';
 
 
 export default function Home() {
@@ -161,6 +162,9 @@ export default function Home() {
                 <h1 className="font-headline text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                   Welcome to the MUBAS Community Hub
                 </h1>
+                <div className="my-4 w-full max-w-xl mx-auto">
+                    <SearchBar />
+                </div>
                 <p className="text-gray-200 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Search for solutions, articles, or ask a question to the
                   community. We are here to help you succeed.
@@ -522,3 +526,5 @@ export default function Home() {
     </>
   );
 }
+
+    
