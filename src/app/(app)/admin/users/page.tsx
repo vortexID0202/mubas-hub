@@ -33,6 +33,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { UserProfile } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import Link from 'next/link';
 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
@@ -114,7 +115,9 @@ export default function AdminUsersPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>View Profile</DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/admin/users/${user.id}`}>View Profile</Link>
+                          </DropdownMenuItem>
                           <DropdownMenuItem>Suspend</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
