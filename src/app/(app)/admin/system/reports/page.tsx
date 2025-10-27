@@ -154,6 +154,7 @@ export default function AdminSystemReportsPage() {
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
+                      <span className="truncate">
                       {date?.from ? (
                         date.to ? (
                           <>
@@ -166,6 +167,7 @@ export default function AdminSystemReportsPage() {
                       ) : (
                         <span>Pick a date range</span>
                       )}
+                      </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -253,3 +255,5 @@ export default function AdminSystemReportsPage() {
     </>
   );
 }
+
+    
