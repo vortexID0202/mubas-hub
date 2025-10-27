@@ -8,14 +8,9 @@ function getAdminApp(): App {
     return apps[0];
   }
 
-  // This should be automatically configured in a Firebase App Hosting environment
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
-    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-    : undefined;
-
-  return initializeApp({
-    credential: serviceAccount ? cert(serviceAccount) : undefined,
-  });
+  // In a Firebase App Hosting environment, initializeApp() discovers credentials automatically.
+  // This call will work in both deployed and local emulator environments.
+  return initializeApp();
 }
 
 function getSdks() {
