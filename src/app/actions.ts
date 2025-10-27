@@ -15,9 +15,8 @@ import {
 } from '@/ai/flows/knowledge-base-suggester';
 import {
   hybridSearch as hybridSearchAI,
-  HybridSearchInput,
-  HybridSearchOutput,
 } from '@/ai/flows/hybrid-search';
+import type { HybridSearchInput, HybridSearchOutput } from '@/ai/flows/hybrid-search';
 
 
 export async function getSearchSuggestions(
@@ -49,8 +48,8 @@ export async function hybridSearch(input: HybridSearchInput): Promise<HybridSear
       return {
           ...result,
           url: result.type === 'knowledgeBase' ? `/kb/${result.id}` : `/questions/${result.id}`,
-          // Ensure original votes and verification status are preserved if AI hallucinates them
           votes: originalContent?.votes, 
+          answersCount: originalContent?.answersCount,
           isVerified: originalContent?.isVerified,
       }
   });

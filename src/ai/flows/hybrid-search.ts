@@ -21,6 +21,7 @@ const HybridSearchInputSchema = z.object({
     content: z.string(),
     isVerified: z.boolean().optional(),
     votes: z.number().optional(),
+    answersCount: z.number().optional(),
   })).describe('The content to search through.')
 });
 export type HybridSearchInput = z.infer<typeof HybridSearchInputSchema>;
@@ -33,6 +34,9 @@ const HybridSearchOutputSchema = z.object({
       title: z.string().describe('The title of the result.'),
       description: z.string().describe('A brief description or snippet of the result.'),
       url: z.string().describe('The URL to the full content.'),
+      isVerified: z.boolean().optional().describe('Whether the content is verified.'),
+      votes: z.number().optional().describe('Number of votes for the content.'),
+      answersCount: z.number().optional().describe('Number of answers for the question.'),
     })
   ).describe('A list of search results.'),
 });
@@ -61,7 +65,7 @@ Rank the results based on the following criteria, in order of importance:
 2. Verified status (verified articles or questions with verified answers are more important).
 3. Popularity (higher votes are better).
 
-For each result, provide the ID, type, title, and a brief, helpful description/snippet. The URL should be constructed based on the type and ID.
+For each result, provide the ID, type, title, and a brief, helpful description/snippet. The URL should be constructed based on the type and ID. Also include the original verification status, votes, and answer count if available.
 
 === Available Content ===
 ${allContentString}

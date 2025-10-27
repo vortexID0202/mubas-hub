@@ -90,6 +90,7 @@ export default function SearchPageComponent() {
                 content: doc.body,
                 isVerified: doc.isVerified || false,
                 votes: doc.votes || 0,
+                answersCount: doc.answersCount || 0,
             });
         });
         
@@ -156,10 +157,16 @@ export default function SearchPageComponent() {
                 </CardHeader>
                 <CardContent>
                 <CardDescription>{result.description}</CardDescription>
-                {result.type === 'communityForum' && result.votes !== undefined && (
-                    <div className="mt-4 flex items-center text-sm text-muted-foreground">
-                        <ArrowBigUp className="mr-1 h-4 w-4" />
-                        <span>{result.votes} votes</span>
+                {result.type === 'communityForum' && (result.votes !== undefined || result.answersCount !== undefined) && (
+                    <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                            <ArrowBigUp className="mr-1 h-4 w-4" />
+                            <span>{result.votes ?? 0} votes</span>
+                        </div>
+                         <div className="flex items-center gap-1">
+                            <MessageSquare className="mr-1 h-4 w-4" />
+                            <span>{result.answersCount ?? 0} answers</span>
+                        </div>
                     </div>
                 )}
                 </CardContent>
