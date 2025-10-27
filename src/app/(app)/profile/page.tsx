@@ -371,10 +371,10 @@ export default function ProfilePage() {
 
             <div className="md:col-span-3">
               <Tabs defaultValue={defaultTab}>
-                <TabsList className="mb-4 h-auto flex-wrap justify-start">
+                <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:w-auto sm:inline-flex sm:flex-wrap">
                   {isAdmin ? (
                     <>
-                      <TabsTrigger value="articles">Knowledge Base Articles</TabsTrigger>
+                      <TabsTrigger value="articles">Articles</TabsTrigger>
                       <TabsTrigger value="updates">Live Updates</TabsTrigger>
                       <TabsTrigger value="answers">My Answers</TabsTrigger>
                     </>
