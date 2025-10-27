@@ -106,7 +106,7 @@ export default function SearchBar() {
                     <MessageSquare className="h-5 w-5 flex-shrink-0 text-primary" />
                   )}
                   <div className="flex-grow">
-                    <p className="font-semibold">{suggestion.title}</p>
+                    <p className="font-semibold text-card-foreground">{suggestion.title}</p>
                     <p className="text-sm text-muted-foreground">
                       {suggestion.description}
                     </p>
