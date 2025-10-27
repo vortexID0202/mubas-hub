@@ -1,0 +1,156 @@
+
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { Header } from '@/components/layout/header';
+import { Footer } from '@/components/layout/footer';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { hybridSearch } from '@/app/actions';
+import type { HybridSearchOutput } from '@/ai/flows/hybrid-search';
+import { BookOpen, MessageSquare, Search, ArrowBigUp, CheckCircle2, Frown } from 'lucide-react';
+
+function SearchResultSkeleton() {
+  return (
+    <div className="space-y-6">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Card key={i} className="animate-pulse">
+          <CardHeader>
+            <Skeleton className="h-6 w-3/4 rounded bg-muted" />
+            <Skeleton className="h-4 w-1/4 mt-2 rounded bg-muted" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-4 w-full rounded bg-muted" />
+            <Skeleton className="h-4 w-5/6 mt-2 rounded bg-muted" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+export default function SearchPageComponent() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get('q') || '';
+  const [results, setResults] = useState<HybridSearchOutput['results']>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!query) {
+      setIsLoading(false);
+      return;
+    }
+
+    const performSearch = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const searchResults = await hybridSearch({ query });
+        setResults(searchResults.results);
+      } catch (err) {
+        console.error('Search failed:', err);
+        setError('An error occurred while searching. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    performSearch();
+  }, [query]);
+
+  const renderContent = () => {
+    if (isLoading) {
+      return <SearchResultSkeleton />;
+    }
+
+    if (error) {
+      return <div className="text-center text-red-500">{error}</div>;
+    }
+
+    if (results.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+            <Frown className="h-16 w-16 text-muted-foreground" />
+            <h2 className="mt-6 text-xl font-semibold">No Results Found</h2>
+            <p className="mt-2 text-center text-muted-foreground">
+                We couldn&apos;t find anything matching your search. Try using different keywords.
+            </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {results.map((result) => (
+          <Card key={`${result.type}-${result.id}`}>
+             <Link href={result.url} className="block hover:bg-muted/50 transition-colors">
+                <CardHeader>
+                <div className="flex items-center gap-4">
+                    {result.type === 'knowledgeBase' ? (
+                        <Badge variant="outline" className="border-accent text-accent">
+                            <BookOpen className="mr-2 h-4 w-4" />
+                            Knowledge Base
+                        </Badge>
+                    ) : (
+                        <Badge variant="outline" className="border-primary text-primary">
+                            <MessageSquare className="mr-2 h-4 w-4" />
+                            Community Forum
+                        </Badge>
+                    )}
+                     {result.isVerified && (
+                        <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+                           <CheckCircle2 className="mr-2 h-4 w-4" /> Verified
+                        </Badge>
+                    )}
+                </div>
+                <CardTitle className="pt-2 text-xl font-semibold">{result.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                <CardDescription>{result.description}</CardDescription>
+                {result.type === 'communityForum' && result.votes !== undefined && (
+                    <div className="mt-4 flex items-center text-sm text-muted-foreground">
+                        <ArrowBigUp className="mr-1 h-4 w-4" />
+                        <span>{result.votes} votes</span>
+                    </div>
+                )}
+                </CardContent>
+            </Link>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <Header />
+      <main className="flex-1">
+        <div className="container mx-auto max-w-4xl py-12">
+          <div className="space-y-4 mb-8">
+            <h1 className="font-headline flex items-center gap-3 text-3xl font-bold tracking-tighter">
+              <Search className="h-8 w-8 text-primary" />
+              Search Results
+            </h1>
+            {query && !isLoading && (
+              <p className="text-muted-foreground">
+                Showing {results.length} results for &quot;{query}&quot;
+              </p>
+            )}
+          </div>
+          {renderContent()}
+        </div>
+      </main>
+      <Footer />
+    </>
+  );
+}

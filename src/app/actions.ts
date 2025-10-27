@@ -13,6 +13,10 @@ import {
   suggestKnowledgeBaseArticles as suggestKnowledgeBaseArticlesAI,
   KnowledgeBaseSuggesterInput,
 } from '@/ai/flows/knowledge-base-suggester';
+import {
+  hybridSearch as hybridSearchAI,
+  HybridSearchInput,
+} from '@/ai/flows/hybrid-search';
 
 export async function getSearchSuggestions(
   input: HybridSearchSuggestionsInput
@@ -31,4 +35,8 @@ export async function getKnowledgeBaseSuggestions(
   input: KnowledgeBaseSuggesterInput
 ) {
   return suggestKnowledgeBaseArticlesAI(input);
+}
+
+export async function hybridSearch(input: HybridSearchInput) {
+  return hybridSearchAI(input);
 }

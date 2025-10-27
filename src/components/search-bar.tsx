@@ -1,6 +1,8 @@
+
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { BookOpen, Loader2, MessageSquare, Search } from 'lucide-react';
 import type { HybridSearchSuggestionsOutput } from '@/ai/flows/hybrid-search-suggestions';
@@ -16,6 +18,15 @@ export default function SearchBar() {
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+    setShowSuggestions(false);
+  };
+
 
   const debouncedGetSuggestions = useCallback(
     debounce(async (searchQuery: string) => {
@@ -58,20 +69,22 @@ export default function SearchBar() {
 
   return (
     <div className="relative w-full" ref={searchRef}>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Search for solutions or ask a question..."
-          className="w-full rounded-full bg-background py-6 pl-10 pr-4 text-base transition-all duration-300 focus:scale-[1.02] focus:shadow-lg"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setShowSuggestions(true)}
-        />
-        {loading && (
-          <Loader2 className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-muted-foreground" />
-        )}
-      </div>
+       <form onSubmit={handleSearch}>
+        <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+            type="search"
+            placeholder="Search for solutions or ask a question..."
+            className="w-full rounded-full bg-background py-6 pl-10 pr-4 text-base transition-all duration-300 focus:scale-[1.02] focus:shadow-lg"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setShowSuggestions(true)}
+            />
+            {loading && (
+            <Loader2 className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-muted-foreground" />
+            )}
+        </div>
+      </form>
       {showSuggestions && (suggestions?.length ?? 0) > 0 && (
         <div className="absolute top-full z-10 mt-2 w-full rounded-lg border bg-card shadow-lg animate-in fade-in-0 zoom-in-95">
           <div className="p-2">
