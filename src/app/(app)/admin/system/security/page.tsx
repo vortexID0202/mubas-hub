@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Card,
@@ -21,23 +22,66 @@ import {
 } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Shield, ShieldCheck, ShieldAlert as ShieldAlertIcon, PlusCircle, Trash2, KeyRound } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldAlert as ShieldAlertIcon, PlusCircle, Trash2, KeyRound, ServerCrash } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { Log } from '@/lib/types';
+import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { useMemo } from 'react';
+import ClientOnlyDate from '@/components/client-only-date';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const securityEvents = [
-    { id: 'sec-1', severity: 'High', type: 'Failed Login', description: 'Multiple failed login attempts for user: admin', timestamp: '2023-10-27 10:30:15', ip: '198.51.100.2' },
-    { id: 'sec-2', severity: 'Medium', type: 'Suspicious API Call', description: 'Unusual access pattern from API key: ...xxxx', timestamp: '2023-10-27 09:15:45', ip: '203.0.113.10' },
-    { id: 'sec-3', severity: 'Low', type: 'Content Flagged', description: 'User flagged content for review.', timestamp: '2023-10-27 08:55:02', user: 'user5' },
-];
 
 const apiKeys = [
     { id: 'key-1', name: 'Mobile App Key', value: 'sk_live_...a1b2', created: '2023-01-15', lastUsed: '2023-10-27' },
     { id: 'key-2', name: 'Analytics Service Key', value: 'sk_live_...c3d4', created: '2023-05-20', lastUsed: '2023-10-25' },
 ];
 
+function SecurityEventsSkeleton() {
+    return Array.from({length: 3}).map((_, i) => (
+        <TableRow key={i}>
+            <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+        </TableRow>
+    ));
+}
+
 
 export default function AdminSystemSecurityPage() {
+  const firestore = useFirestore();
+  const logsQuery = useMemoFirebase(
+    () => firestore ? query(
+        collection(firestore, 'logs'), 
+        where('level', 'in', ['warn', 'error']),
+        orderBy('createdAt', 'desc'), 
+        limit(10)
+    ) : null,
+    [firestore]
+  );
+  const { data: logs, isLoading } = useCollection<Log>(logsQuery);
+
+  const securityEvents = useMemo(() => {
+    return logs?.map(log => {
+      let type = 'System';
+      if (log.message.toLowerCase().includes('login')) type = 'Authentication';
+      if (log.message.toLowerCase().includes('delete')) type = 'Data Modification';
+      if (log.message.toLowerCase().includes('permission')) type = 'Security Rule';
+
+      return {
+        id: log.id,
+        severity: log.level === 'error' ? 'High' : 'Medium',
+        type: type,
+        description: log.message,
+        timestamp: log.createdAt,
+        context: log.context,
+      };
+    }) || [];
+  }, [logs]);
+
+
   return (
     <>
       <div className="flex items-center gap-4">
@@ -68,7 +112,8 @@ export default function AdminSystemSecurityPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {securityEvents.map(event => (
+                        {isLoading && <SecurityEventsSkeleton />}
+                        {!isLoading && securityEvents.map(event => (
                             <TableRow key={event.id}>
                                 <TableCell>
                                     <Badge variant={event.severity === 'High' ? 'destructive' : event.severity === 'Medium' ? 'secondary' : 'outline'}>
@@ -77,9 +122,22 @@ export default function AdminSystemSecurityPage() {
                                 </TableCell>
                                 <TableCell>{event.type}</TableCell>
                                 <TableCell className="font-medium">{event.description}</TableCell>
-                                <TableCell>{event.timestamp}</TableCell>
+                                <TableCell>
+                                    <ClientOnlyDate date={event.timestamp} formatString="Pp" />
+                                </TableCell>
                             </TableRow>
                         ))}
+                         {!isLoading && securityEvents.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                        <ShieldCheck className="h-10 w-10" />
+                                        <p className="font-semibold">No security events found</p>
+                                        <p className="text-sm">The system has not recorded any warnings or errors recently.</p>
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </CardContent>
