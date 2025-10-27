@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -124,7 +123,7 @@ export default function AdminModerationPage() {
   const [questionToAction, setQuestionToAction] = useState<{id: string, action: 'delete' | 'flag' | 'unflag'} | null>(null);
 
   const answersQuery = useMemoFirebase(
-    () => firestore ? query(collectionGroup(firestore, 'answers'), where('approved', '==', false)) : null,
+    () => firestore ? query(collectionGroup(firestore, 'answers'), where('approved', '==', false), orderBy('createdAt', 'desc')) : null,
     [firestore]
   );
   const { data: unapprovedAnswers, isLoading: isLoadingAnswers } = useCollection<QuestionAnswer>(answersQuery);

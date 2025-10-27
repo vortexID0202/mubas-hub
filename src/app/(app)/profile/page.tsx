@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -22,7 +21,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Pen, Loader2, MessageSquare, BookOpen, Rss } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { collection, doc, query, where, updateDoc, collectionGroup } from 'firebase/firestore';
+import { collection, doc, query, where, updateDoc, collectionGroup, orderBy } from 'firebase/firestore';
 import { updateProfile, EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useToast } from '@/hooks/use-toast';
@@ -118,7 +117,7 @@ export default function ProfilePage() {
 
   const userAnswersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid));
+    return query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid), where('approved', '==', true), orderBy('createdAt', 'desc'));
   }, [firestore, user?.uid]);
   const { data: userAnswers, isLoading: areAnswersLoading } = useCollection<QuestionAnswer>(userAnswersQuery);
   

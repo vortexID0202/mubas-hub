@@ -1,4 +1,3 @@
-
 'use client';
 import Link from 'next/link';
 import {
@@ -12,6 +11,7 @@ import {
   query,
   where,
   collectionGroup,
+  orderBy,
 } from 'firebase/firestore';
 import {
   Card,
@@ -69,7 +69,9 @@ export function UserProfileDetails({
       firestore && userProfile
         ? query(
             collectionGroup(firestore, 'answers'),
-            where('authorId', '==', userProfile.id)
+            where('authorId', '==', userProfile.id),
+            where('approved', '==', true),
+            orderBy('createdAt', 'desc')
           )
         : null,
     [firestore, userProfile]
