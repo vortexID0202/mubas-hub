@@ -240,7 +240,11 @@ export default function AdminModerationPage() {
                    {isLoadingAllQuestions && <TableRow><TableCell colSpan={4} className="text-center">Loading...</TableCell></TableRow>}
                    {!isLoadingAllQuestions && allQuestions?.map((q) => (
                     <TableRow key={q.id}>
-                        <TableCell className="font-medium max-w-sm truncate">{q.title}</TableCell>
+                        <TableCell className="font-medium max-w-sm truncate">
+                           <Link href={`/questions/${q.id}`} className="hover:underline" target="_blank">
+                             {q.title}
+                           </Link>
+                        </TableCell>
                         <TableCell>{q.author?.name || 'Unknown User'}</TableCell>
                         <TableCell><ClientOnlyDate date={q.createdAt} formatString="P" /></TableCell>
                         <TableCell className="text-right">
