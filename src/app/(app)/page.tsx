@@ -73,13 +73,13 @@ export default function Home() {
   , [firestore]);
   const { data: liveUpdates, isLoading: isLoadingUpdates } = useCollection<LiveUpdate>(liveUpdatesQuery);
 
-  // const usersQuery = useMemoFirebase(() => 
-  //   firestore ? query(collection(firestore, 'users'), orderBy('reputation', 'desc')) : null
-  // , [firestore]);
-  // const { data: allUsers, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
+  const usersQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'users'), orderBy('reputation', 'desc')) : null
+  , [firestore]);
+  const { data: allUsers, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
 
-  // const topThree = allUsers?.slice(0, 3) ?? [];
-  // const restUsers = allUsers?.slice(3, 10) ?? [];
+  const topThree = allUsers?.slice(0, 3) ?? [];
+  const restUsers = allUsers?.slice(3, 10) ?? [];
 
 
   const browseItems = [
@@ -218,9 +218,9 @@ export default function Home() {
                     <TabsTrigger value="knowledge">
                       <BookOpen className="mr-2 h-4 w-4" /> Knowledge Base
                     </TabsTrigger>
-                    {/* <TabsTrigger value="contributors">
+                    <TabsTrigger value="contributors">
                       <Users className="mr-2 h-4 w-4" /> Top Contributors
-                    </TabsTrigger> */}
+                    </TabsTrigger>
                   </TabsList>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -306,7 +306,7 @@ export default function Home() {
                     </Button>
                   </div>
                 </TabsContent>
-                {/* <TabsContent
+                <TabsContent
                   value="contributors"
                   className="mt-8"
                   id="contributors"
@@ -361,7 +361,7 @@ export default function Home() {
                                   <AvatarFallback>
                                     {topThree[0].fullName.charAt(0)}
                                   </AvatarFallback>
-                                ></Avatar>
+                                </Avatar>
                                 <Trophy className="mt-2 h-10 w-10 text-amber-400" />
                                 <p className="text-lg font-bold">
                                   {topThree[0].fullName}
@@ -378,7 +378,7 @@ export default function Home() {
                                   <AvatarFallback>
                                     {topThree[2].fullName.charAt(0)}
                                   </AvatarFallback>
-                                ></Avatar>
+                                </Avatar>
                                 <Medal className="mt-2 h-8 w-8 text-amber-800" />
                                 <p className="font-semibold">{topThree[2].fullName}</p>
                                 <p className="text-sm text-muted-foreground">
@@ -417,11 +417,17 @@ export default function Home() {
                         </>
                       )}
                       {!isLoadingUsers && (!allUsers || allUsers.length === 0) && (
-                        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">                            <Users className="h-16 w-16 text-muted-foreground" />                            <h2 className="mt-6 text-xl font-semibold">No Users Found</h2>                            <p className="mt-2 text-center text-muted-foreground">                                There are no users in the system yet.                            </p>                        </div>
+                        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                          <Users className="h-16 w-16 text-muted-foreground" />
+                          <h2 className="mt-6 text-xl font-semibold">No Users Found</h2>
+                          <p className="mt-2 text-center text-muted-foreground">
+                              There are no users in the system yet.
+                          </p>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
-                </TabsContent> */}
+                </TabsContent>
               </Tabs>
             </div>
           </section>
@@ -506,4 +512,3 @@ export default function Home() {
     </>
   );
 }
-
