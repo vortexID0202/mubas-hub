@@ -23,15 +23,16 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { UserProfile } from '@/lib/types';
-import { collection, query, where, Timestamp } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { UserProfile, Log, CommunityQuestion, QuestionAnswer, KnowledgeBaseArticle } from '@/lib/types';
+import { collection, query, where, Timestamp, getDocs, orderBy, limit } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 type ReportType = 'user_activity' | 'moderation_actions' | 'content_engagement' | 'system_health';
+type ReportData = UserProfile[] | Log[] | (CommunityQuestion | KnowledgeBaseArticle)[] | (CommunityQuestion | QuestionAnswer)[];
 
 export default function AdminSystemReportsPage() {
     const firestore = useFirestore();
@@ -42,42 +43,11 @@ export default function AdminSystemReportsPage() {
         to: new Date(),
     });
     const [isLoading, setIsLoading] = useState(false);
-    const [reportData, setReportData] = useState<UserProfile[] | null>(null);
-
-    const usersQuery = useMemoFirebase(() => {
-        if (!firestore || !reportData) return null;
-        
-        const fromDate = date?.from ? Timestamp.fromDate(date.from) : null;
-        const toDate = date?.to ? Timestamp.fromDate(date.to) : null;
-
-        let q = query(collection(firestore, 'users'));
-        if (fromDate) {
-            q = query(q, where('createdAt', '>=', fromDate));
-        }
-        if (toDate) {
-            q = query(q, where('createdAt', '<=', toDate));
-        }
-        return q;
-
-    }, [firestore, date, reportData]); // Depends on reportData to trigger re-query
-    
-    // This hook is just for fetching, result is handled in generateReport
-    const { data: fetchedUsers, isLoading: isLoadingUsers, error } = useCollection<UserProfile>(usersQuery);
-
+    const [reportData, setReportData] = useState<ReportData | null>(null);
 
     const generateReport = async () => {
         setIsLoading(true);
-        setReportData(null); // Clear previous results
-
-        if (reportType !== 'user_activity') {
-            toast({
-                variant: 'destructive',
-                title: 'Not Implemented',
-                description: 'This report type is not yet available.',
-            });
-            setIsLoading(false);
-            return;
-        }
+        setReportData(null);
 
         if (!firestore) {
             toast({ variant: 'destructive', title: 'Error', description: 'Database connection not available.' });
@@ -85,36 +55,207 @@ export default function AdminSystemReportsPage() {
             return;
         }
 
-        const fromDate = date?.from ? date.from : null;
-        const toDate = date?.to ? date.to : null;
+        const fromDate = date?.from ? Timestamp.fromDate(date.from) : null;
+        const toDate = date?.to ? Timestamp.fromDate(date.to) : null;
 
         try {
-            let q = query(collection(firestore, 'users'));
-             if (fromDate) {
-                const startOfDay = new Date(fromDate);
-                startOfDay.setHours(0, 0, 0, 0);
-                q = query(q, where('createdAt', '>=', Timestamp.fromDate(startOfDay)));
-            }
-            if (toDate) {
-                const endOfDay = new Date(toDate);
-                endOfDay.setHours(23, 59, 59, 999);
-                q = query(q, where('createdAt', '<=', Timestamp.fromDate(endOfDay)));
+            let fetchedData: any[] = [];
+            let baseQuery;
+
+            switch (reportType) {
+                case 'user_activity':
+                    baseQuery = query(collection(firestore, 'users'));
+                    if (fromDate) baseQuery = query(baseQuery, where('createdAt', '>=', fromDate));
+                    if (toDate) baseQuery = query(baseQuery, where('createdAt', '<=', toDate));
+                    const usersSnapshot = await getDocs(baseQuery);
+                    fetchedData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+                    break;
+                
+                case 'moderation_actions':
+                    const flaggedQuestionsQuery = query(collection(firestore, 'questions'), where('isFlagged', '==', true));
+                    const flaggedQuestionsSnap = await getDocs(flaggedQuestionsQuery);
+                    const flaggedQuestions = flaggedQuestionsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, type: 'question' } as CommunityQuestion & {type: 'question'}));
+                    
+                    // Note: collectionGroup queries can't be combined with date filters easily
+                    const unapprovedAnswersQuery = query(collection(firestore, 'answers'), where('approved', '==', false));
+                    const unapprovedAnswersSnap = await getDocs(unapprovedAnswersQuery);
+                    const unapprovedAnswers = unapprovedAnswersSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, type: 'answer' } as QuestionAnswer & {type: 'answer'}));
+
+                    fetchedData = [...flaggedQuestions, ...unapprovedAnswers];
+                    break;
+                
+                case 'content_engagement':
+                    const topQuestionsQuery = query(collection(firestore, 'questions'), orderBy('votes', 'desc'), limit(10));
+                    const topQuestionsSnap = await getDocs(topQuestionsQuery);
+                    const topQuestions = topQuestionsSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as CommunityQuestion));
+                    
+                    const topArticlesQuery = query(collection(firestore, 'knowledge_base_articles'), orderBy('views', 'desc'), limit(10));
+                    const topArticlesSnap = await getDocs(topArticlesQuery); // Assuming 'views' field exists
+                    const topArticles = topArticlesSnap.docs.map(doc => ({ ...doc.data(), id: doc.id } as KnowledgeBaseArticle));
+
+                    fetchedData = [...topQuestions, ...topArticles];
+                    break;
+                
+                case 'system_health':
+                    baseQuery = query(collection(firestore, 'logs'), where('level', 'in', ['error', 'warn']));
+                    if (fromDate) baseQuery = query(baseQuery, where('createdAt', '>=', fromDate));
+                    if (toDate) baseQuery = query(baseQuery, where('createdAt', '<=', toDate));
+                    baseQuery = query(baseQuery, orderBy('createdAt', 'desc'));
+                    const logsSnapshot = await getDocs(baseQuery);
+                    fetchedData = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Log));
+                    break;
             }
             
-            const usersSnapshot = await (await import('firebase/firestore')).getDocs(q);
-            const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
-            setReportData(users);
-             toast({
+            setReportData(fetchedData);
+            toast({
                 title: 'Report Generated',
-                description: `Found ${users.length} users matching your criteria.`,
+                description: `Found ${fetchedData.length} records matching your criteria.`,
             });
-        } catch (err) {
+        } catch (err: any) {
             console.error("Error generating report: ", err);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to generate report.' });
+            toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to generate report.' });
         } finally {
             setIsLoading(false);
         }
     };
+    
+    const renderReportPreview = () => {
+        if (isLoading) {
+             return (
+                 <div className="flex items-center justify-center h-full min-h-[200px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                 </div>
+            );
+        }
+        
+        if (!reportData) {
+            return (
+                <div className="flex h-full min-h-[200px] items-center justify-center rounded-lg border-2 border-dashed bg-muted/50 p-8">
+                    <div className="text-center">
+                        <FileCheck2 className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <p className="mt-4 text-muted-foreground">Select a report type and click Generate.</p>
+                    </div>
+                </div>
+            );
+        }
+
+        if (reportData.length === 0) {
+            return <p className="text-center text-muted-foreground">No data found for the selected criteria.</p>;
+        }
+
+        switch (reportType) {
+            case 'user_activity':
+                return (
+                    <div className="relative w-full overflow-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="min-w-[250px]">User</TableHead>
+                                    <TableHead>Reputation</TableHead>
+                                    <TableHead>Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {(reportData as UserProfile[]).map(user => (
+                                    <TableRow key={user.id}>
+                                        <TableCell className="font-medium">
+                                            <div className="font-medium">{user.fullName}</div>
+                                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                                        </TableCell>
+                                        <TableCell>{user.reputation}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={user.status === 'suspended' ? 'destructive' : 'outline'}>
+                                                {user.status || 'active'}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                );
+            case 'moderation_actions':
+                 return (
+                    <div className="relative w-full overflow-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Content</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Reason</TableHead>
+                                    <TableHead>Link</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                             <TableBody>
+                                {(reportData as any[]).map(item => (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="font-medium truncate max-w-xs">{item.title || item.body}</TableCell>
+                                        <TableCell><Badge variant="secondary">{item.type}</Badge></TableCell>
+                                        <TableCell>{item.type === 'question' ? 'Flagged by user' : 'Pending approval'}</TableCell>
+                                        <TableCell><Link href={item.type === 'question' ? `/questions/${item.id}`: `/questions/${item.questionId}`} className="text-primary underline">View</Link></TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                );
+            case 'content_engagement':
+                 return (
+                    <div className="relative w-full overflow-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Title</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead>Votes/Views</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {(reportData as any[]).map(item => (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="font-medium truncate max-w-xs">{item.title}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={item.body ? 'secondary' : 'outline'}>
+                                                {item.body ? 'Question' : 'Article'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>{item.votes ?? item.views ?? 0}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                );
+            case 'system_health':
+                return (
+                    <div className="relative w-full overflow-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Level</TableHead>
+                                    <TableHead>Message</TableHead>
+                                    <TableHead>Timestamp</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {(reportData as Log[]).map(log => (
+                                    <TableRow key={log.id}>
+                                        <TableCell>
+                                            <Badge variant={log.level === 'error' ? 'destructive' : 'secondary'}>{log.level}</Badge>
+                                        </TableCell>
+                                        <TableCell className="font-medium">{log.message}</TableCell>
+                                        <TableCell>{format(new Date((log.createdAt as Timestamp).seconds * 1000), 'Pp')}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                );
+            default:
+                 return <p>This report type is not yet implemented.</p>;
+        }
+    }
+
 
   return (
     <div className="space-y-6">
@@ -140,9 +281,9 @@ export default function AdminSystemReportsPage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="user_activity"><Users className="mr-2 h-4 w-4 inline-block" /> User Activity</SelectItem>
-                            <SelectItem value="moderation_actions" disabled><ShieldAlert className="mr-2 h-4 w-4 inline-block" /> Moderation Actions</SelectItem>
-                            <SelectItem value="content_engagement" disabled><BarChart className="mr-2 h-4 w-4 inline-block" /> Content Engagement</SelectItem>
-                            <SelectItem value="system_health" disabled><HeartPulse className="mr-2 h-4 w-4 inline-block" /> System Health</SelectItem>
+                            <SelectItem value="moderation_actions"><ShieldAlert className="mr-2 h-4 w-4 inline-block" /> Moderation Actions</SelectItem>
+                            <SelectItem value="content_engagement"><BarChart className="mr-2 h-4 w-4 inline-block" /> Content Engagement</SelectItem>
+                            <SelectItem value="system_health"><HeartPulse className="mr-2 h-4 w-4 inline-block" /> System Health</SelectItem>
                         </SelectContent>
                     </Select>
                  </div>
@@ -204,59 +345,13 @@ export default function AdminSystemReportsPage() {
         <CardHeader>
             <CardTitle>Report Preview</CardTitle>
             <CardDescription>
-                {reportData ? `Showing ${reportData.length} results for "User Activity"` : 'Your generated report will appear here.'}
+                {reportData ? `Showing ${reportData.length} results` : 'Your generated report will appear here.'}
             </CardDescription>
         </CardHeader>
         <CardContent>
-            {isLoading ? (
-                 <div className="flex items-center justify-center h-full min-h-[200px]">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                 </div>
-            ) : !reportData ? (
-                <div className="flex h-full min-h-[200px] items-center justify-center rounded-lg border-2 border-dashed bg-muted/50 p-8">
-                    <div className="text-center">
-                        <FileCheck2 className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <p className="mt-4 text-muted-foreground">Select a report type and click Generate.</p>
-                    </div>
-                </div>
-            ) : (
-                <div className="relative w-full overflow-auto">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="min-w-[250px]">User</TableHead>
-                                <TableHead>Reputation</TableHead>
-                                <TableHead>Status</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {reportData.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center">No users found for the selected date range.</TableCell>
-                                </TableRow>
-                            ) : (
-                                reportData.map(user => (
-                                    <TableRow key={user.id}>
-                                        <TableCell className="font-medium">
-                                            <div className="font-medium">{user.fullName}</div>
-                                            <div className="text-sm text-muted-foreground">{user.email}</div>
-                                        </TableCell>
-                                        <TableCell>{user.reputation}</TableCell>
-                                        <TableCell>
-                                             <Badge variant={user.status === 'suspended' ? 'destructive' : 'outline'}>
-                                                {user.status || 'active'}
-                                            </Badge>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-            )}
+            {renderReportPreview()}
         </CardContent>
       </Card>
     </div>
   );
 }
-
