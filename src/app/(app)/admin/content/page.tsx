@@ -1,4 +1,5 @@
 
+'use client';
 
 import {
   Card,
@@ -6,7 +7,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter
 } from '@/components/ui/card';
 import {
   Table,
@@ -23,8 +23,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { knowledgeBaseArticles, liveUpdates } from '@/lib/data';
-import { PlusCircle, File, MoreHorizontal, FileText, Trash2, Pencil } from 'lucide-react';
+import { PlusCircle, File, MoreHorizontal, Loader2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,8 +34,42 @@ import {
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import ClientOnlyDate from '@/components/client-only-date';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { KnowledgeBaseArticle, LiveUpdate } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
+
+
+function AdminContentPageSkeletonRow() {
+    return (
+        <TableRow>
+            <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+            <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+            <TableCell>
+                <div className="flex justify-end">
+                    <Skeleton className="h-8 w-8" />
+                </div>
+            </TableCell>
+        </TableRow>
+    )
+}
 
 export default function AdminContentPage() {
+  const firestore = useFirestore();
+  
+  const articlesQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'knowledge_base_articles'), orderBy('createdAt', 'desc')) : null,
+    [firestore]
+  );
+  const { data: articles, isLoading: isLoadingArticles } = useCollection<KnowledgeBaseArticle>(articlesQuery);
+
+  const updatesQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'live_updates'), orderBy('createdAt', 'desc')) : null,
+    [firestore]
+  );
+  const { data: updates, isLoading: isLoadingUpdates } = useCollection<LiveUpdate>(updatesQuery);
+
   return (
     <>
       <div className="flex items-center">
@@ -86,7 +119,8 @@ export default function AdminContentPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {knowledgeBaseArticles.map((article) => (
+                  {isLoadingArticles && Array.from({length: 3}).map((_, i) => <AdminContentPageSkeletonRow key={i}/>)}
+                  {articles?.map((article) => (
                     <TableRow key={article.id}>
                       <TableCell className="font-medium">
                         <Link href={`/kb/${article.id}`} className="hover:underline">{article.title}</Link>
@@ -118,6 +152,13 @@ export default function AdminContentPage() {
                       </TableCell>
                     </TableRow>
                   ))}
+                  {!isLoadingArticles && articles?.length === 0 && (
+                     <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                            No articles found.
+                        </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -144,7 +185,8 @@ export default function AdminContentPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {liveUpdates.map((update) => (
+                  {isLoadingUpdates && Array.from({length: 3}).map((_, i) => <AdminContentPageSkeletonRow key={i}/>)}
+                  {updates?.map((update) => (
                     <TableRow key={update.id}>
                       <TableCell className="font-medium">
                         {update.title}
@@ -184,6 +226,13 @@ export default function AdminContentPage() {
                       </TableCell>
                     </TableRow>
                   ))}
+                   {!isLoadingUpdates && updates?.length === 0 && (
+                     <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                            No live updates found.
+                        </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
