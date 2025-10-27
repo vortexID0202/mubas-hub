@@ -32,7 +32,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
   const Icon = iconMap[article.icon] || BookOpen;
 
   return (
-    <Link href={`/kb/${article.id}`} className="block">
+    <a href={`/kb/${article.id}`} className="block">
       <Card className="flex h-full flex-col transition-all duration-300 hover:scale-[1.02] hover:shadow-lg border-l-4 border-accent">
         <CardHeader>
           <div className="flex items-start justify-between">
@@ -61,6 +61,6 @@ export default function ArticleCard({ article }: ArticleCardProps) {
           </div>
         </CardFooter>
       </Card>
-    </Link>
+    </a>
   );
 }
