@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -23,7 +24,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, File, MoreHorizontal, Loader2 } from 'lucide-react';
+import { PlusCircle, File, MoreHorizontal } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,13 +32,24 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import ClientOnlyDate from '@/components/client-only-date';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import { KnowledgeBaseArticle, LiveUpdate } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 
 function AdminContentPageSkeletonRow() {
@@ -57,7 +69,11 @@ function AdminContentPageSkeletonRow() {
 
 export default function AdminContentPage() {
   const firestore = useFirestore();
+  const { toast } = useToast();
   
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<{id: string, type: 'articles' | 'updates'} | null>(null);
+
   const articlesQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'knowledge_base_articles'), orderBy('createdAt', 'desc')) : null,
     [firestore]
@@ -69,6 +85,28 @@ export default function AdminContentPage() {
     [firestore]
   );
   const { data: updates, isLoading: isLoadingUpdates } = useCollection<LiveUpdate>(updatesQuery);
+
+  const handleDeleteClick = (id: string, type: 'articles' | 'updates') => {
+      setItemToDelete({ id, type });
+      setDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete || !firestore) return;
+
+    const collectionName = itemToDelete.type === 'articles' ? 'knowledge_base_articles' : 'live_updates';
+    try {
+        await deleteDoc(doc(firestore, collectionName, itemToDelete.id));
+        toast({ title: 'Content Deleted', description: 'The item has been successfully deleted.' });
+    } catch (error) {
+        console.error("Error deleting document: ", error);
+        toast({ variant: 'destructive', title: 'Deletion Failed', description: 'There was a problem deleting the item.' });
+    } finally {
+        setDialogOpen(false);
+        setItemToDelete(null);
+    }
+  };
+
 
   return (
     <>
@@ -145,8 +183,12 @@ export default function AdminContentPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Delete</DropdownMenuItem>
+                             <DropdownMenuItem asChild>
+                                <Link href={`/admin/content/${article.id}/edit?type=article`}>Edit</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleDeleteClick(article.id, 'articles')} className="text-red-600">
+                                Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -219,8 +261,12 @@ export default function AdminContentPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem>Edit</DropdownMenuItem>
-                            <DropdownMenuItem>Delete</DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/admin/content/${update.id}/edit?type=update`}>Edit</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleDeleteClick(update.id, 'updates')} className="text-red-600">
+                                Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -239,6 +285,21 @@ export default function AdminContentPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the content
+                    from the database.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+     </AlertDialog>
     </>
   );
 }
