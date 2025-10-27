@@ -55,16 +55,20 @@ export default function AdminSystemSecurityPage() {
   const logsQuery = useMemoFirebase(
     () => firestore ? query(
         collection(firestore, 'logs'), 
-        where('level', 'in', ['warn', 'error']),
         orderBy('createdAt', 'desc'), 
-        limit(10)
+        limit(50) // Fetch more logs to filter on the client
     ) : null,
     [firestore]
   );
   const { data: logs, isLoading } = useCollection<Log>(logsQuery);
 
   const securityEvents = useMemo(() => {
-    return logs?.map(log => {
+    if (!logs) return [];
+    
+    // Filter for warnings and errors on the client side
+    const filtered = logs.filter(log => log.level === 'warn' || log.level === 'error');
+
+    return filtered.slice(0, 10).map(log => {
       let type = 'System';
       if (log.message.toLowerCase().includes('login')) type = 'Authentication';
       if (log.message.toLowerCase().includes('delete')) type = 'Data Modification';
@@ -78,7 +82,7 @@ export default function AdminSystemSecurityPage() {
         timestamp: log.createdAt,
         context: log.context,
       };
-    }) || [];
+    });
   }, [logs]);
 
 
