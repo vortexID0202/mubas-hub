@@ -117,16 +117,17 @@ export default function AdminSystemReportsPage() {
     };
 
   return (
-    <>
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Download className="h-6 w-6" />
         <h1 className="text-lg font-semibold md:text-2xl">System Reports</h1>
       </div>
+      
       <Card>
         <CardHeader>
           <CardTitle>Generate a New Report</CardTitle>
           <CardDescription>
-            Select the report type and date range to generate a new report. The results will be displayed below.
+            Select the report type and date range to generate a new report.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-6 md:grid-cols-3">
@@ -190,68 +191,67 @@ export default function AdminSystemReportsPage() {
                     )}
                  </Button>
             </div>
-            <div className="md:col-span-2">
-                 <Card className="h-full flex flex-col">
-                    <CardHeader>
-                        <CardTitle>Report Preview</CardTitle>
-                        <CardDescription>
-                            {reportData ? `Showing ${reportData.length} results for "User Activity"` : 'Your generated report will appear here.'}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 flex flex-col overflow-hidden">
-                        <ScrollArea className="h-[300px] sm:h-[400px] flex-1">
-                        {isLoading ? (
-                             <div className="flex items-center justify-center h-full">
-                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                             </div>
-                        ) : !reportData ? (
-                            <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed bg-muted/50 p-8">
-                                <div className="text-center">
-                                    <FileCheck2 className="mx-auto h-12 w-12 text-muted-foreground" />
-                                    <p className="mt-4 text-muted-foreground">Select a report type and click Generate.</p>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="relative w-full overflow-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>User</TableHead>
-                                        <TableHead>Reputation</TableHead>
-                                        <TableHead>Status</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {reportData.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="h-24 text-center">No users found for the selected date range.</TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        reportData.map(user => (
-                                            <TableRow key={user.id}>
-                                                <TableCell className="font-medium">
-                                                    <div className="font-medium">{user.fullName}</div>
-                                                    <div className="text-sm text-muted-foreground">{user.email}</div>
-                                                </TableCell>
-                                                <TableCell>{user.reputation}</TableCell>
-                                                <TableCell>
-                                                     <Badge variant={user.status === 'suspended' ? 'destructive' : 'outline'}>
-                                                        {user.status || 'active'}
-                                                    </Badge>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                            </div>
-                        )}
-                        </ScrollArea>
-                    </CardContent>
-                 </Card>
-            </div>
         </CardContent>
       </Card>
-    </>
+      
+      <Card>
+        <CardHeader>
+            <CardTitle>Report Preview</CardTitle>
+            <CardDescription>
+                {reportData ? `Showing ${reportData.length} results for "User Activity"` : 'Your generated report will appear here.'}
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            {isLoading ? (
+                 <div className="flex items-center justify-center h-full min-h-[200px]">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                 </div>
+            ) : !reportData ? (
+                <div className="flex h-full min-h-[200px] items-center justify-center rounded-lg border-2 border-dashed bg-muted/50 p-8">
+                    <div className="text-center">
+                        <FileCheck2 className="mx-auto h-12 w-12 text-muted-foreground" />
+                        <p className="mt-4 text-muted-foreground">Select a report type and click Generate.</p>
+                    </div>
+                </div>
+            ) : (
+                <ScrollArea className="h-[400px]">
+                    <div className="relative w-full overflow-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>User</TableHead>
+                                    <TableHead>Reputation</TableHead>
+                                    <TableHead>Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {reportData.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="h-24 text-center">No users found for the selected date range.</TableCell>
+                                    </TableRow>
+                                ) : (
+                                    reportData.map(user => (
+                                        <TableRow key={user.id}>
+                                            <TableCell className="font-medium">
+                                                <div className="font-medium">{user.fullName}</div>
+                                                <div className="text-sm text-muted-foreground">{user.email}</div>
+                                            </TableCell>
+                                            <TableCell>{user.reputation}</TableCell>
+                                            <TableCell>
+                                                 <Badge variant={user.status === 'suspended' ? 'destructive' : 'outline'}>
+                                                    {user.status || 'active'}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+                </ScrollArea>
+            )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
