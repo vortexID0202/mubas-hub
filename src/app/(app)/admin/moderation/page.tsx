@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -15,22 +16,29 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X } from 'lucide-react';
+import { Check, X, Frown, MessageSquare, AlertTriangle } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collectionGroup, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, collectionGroup, orderBy } from 'firebase/firestore';
 import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import ClientOnlyDate from '@/components/client-only-date';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
   const firestore = useFirestore();
   const questionRef = useMemoFirebase(() => firestore ? doc(firestore, 'questions', answer.questionId) : null, [firestore, answer.questionId]);
-  const { data: question, isLoading, error } = useDoc<CommunityQuestion>(questionRef);
+  const { data: question, isLoading } = useDoc<CommunityQuestion>(questionRef);
   const { toast } = useToast();
 
   const handleApprove = async () => {
@@ -59,15 +67,13 @@ function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
     <TableRow>
       <TableCell className="font-medium max-w-sm">
         <p className="truncate">{answer.body}</p>
-        {isLoading && <Skeleton className="h-4 w-32 mt-1" />}
-        {error && <p className="text-xs text-red-500 mt-1">Error loading question.</p>}
-        {question && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <p className="text-xs text-muted-foreground mt-1">
-                For question: <span className="underline cursor-pointer">{question.title}</span>
-              </p>
-            </PopoverTrigger>
+        <Popover>
+          <PopoverTrigger asChild>
+            <p className="text-xs text-muted-foreground mt-1">
+              For question: <span className="underline cursor-pointer">{isLoading ? "Loading..." : question?.title || "Not found"}</span>
+            </p>
+          </PopoverTrigger>
+          {question && (
             <PopoverContent>
               <div className="space-y-2">
                 <h4 className="font-semibold">{question.title}</h4>
@@ -78,12 +84,8 @@ function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
                 <Link href={`/questions/${question.id}`} className="text-sm text-primary underline" target="_blank" rel="noopener noreferrer">View full question</Link>
               </div>
             </PopoverContent>
-          </Popover>
-        )}
-        {!question && !isLoading && !error && <p className="text-xs text-muted-foreground mt-1">Question not found.</p>}
-      </TableCell>
-      <TableCell>
-        <Badge variant="outline">Answer</Badge>
+          )}
+        </Popover>
       </TableCell>
       <TableCell>{answer.author.name}</TableCell>
       <TableCell><ClientOnlyDate date={answer.createdAt} formatString="Pp" /></TableCell>
@@ -104,47 +106,152 @@ function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
 
 export default function AdminModerationPage() {
   const firestore = useFirestore();
+
   const answersQuery = useMemoFirebase(
-    () => firestore ? query(collectionGroup(firestore, 'answers'), where('approved', '!=', true)) : null,
+    () => firestore ? query(collectionGroup(firestore, 'answers'), where('approved', '==', false)) : null,
     [firestore]
   );
-  const { data: unapprovedAnswers, isLoading } = useCollection<QuestionAnswer>(answersQuery);
+  const { data: unapprovedAnswers, isLoading: isLoadingAnswers } = useCollection<QuestionAnswer>(answersQuery);
+
+  const unansweredQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'questions'), where('answersCount', '==', 0), orderBy('createdAt', 'desc')) : null,
+    [firestore]
+  );
+  const { data: unansweredQuestions, isLoading: isLoadingUnanswered } = useCollection<CommunityQuestion>(unansweredQuery);
+
+  // Placeholder for flagged content
+  const flaggedContent: any[] = [];
+  const isLoadingFlagged = false;
 
   return (
     <>
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl">Moderation Queue</h1>
+        <h1 className="text-lg font-semibold md:text-2xl">Moderation Center</h1>
       </div>
-       <Card>
-        <CardHeader>
-          <CardTitle>Unapproved Answers</CardTitle>
-          <CardDescription>
-            Review and approve or delete answers that have not yet been approved.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Content</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Author</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading && <TableRow><TableCell colSpan={5} className="text-center">Loading...</TableCell></TableRow>}
-              {!isLoading && unapprovedAnswers?.map((answer) => (
-                <AnswerModerationItem key={answer.id} answer={answer} />
-              ))}
-              {!isLoading && unapprovedAnswers?.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center">No unapproved answers.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="answers" className="flex-1 flex flex-col">
+        <TabsList className="grid w-full grid-cols-3 md:w-auto">
+            <TabsTrigger value="answers">
+              Unapproved Answers
+              <Badge variant="secondary" className="ml-2">{unapprovedAnswers?.length ?? 0}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="unanswered">
+              Unanswered Questions
+              <Badge variant="secondary" className="ml-2">{unansweredQuestions?.length ?? 0}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="flagged">
+              Flagged Content
+              <Badge variant="destructive" className="ml-2">{flaggedContent?.length ?? 0}</Badge>
+            </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="answers" className="flex-1 mt-4">
+           <Card className="h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>Unapproved Answers</CardTitle>
+              <CardDescription>
+                Review and approve or delete answers that have not yet been approved.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+             <ScrollArea className="h-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Content</TableHead>
+                    <TableHead>Author</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoadingAnswers && <TableRow><TableCell colSpan={4} className="text-center">Loading...</TableCell></TableRow>}
+                  {!isLoadingAnswers && unapprovedAnswers?.map((answer) => (
+                    <AnswerModerationItem key={answer.id} answer={answer} />
+                  ))}
+                  {!isLoadingAnswers && unapprovedAnswers?.length === 0 && (
+                    <TableRow><TableCell colSpan={4} className="h-24 text-center">
+                       <div className="flex flex-col items-center gap-2">
+                        <Check className="h-10 w-10 text-green-500" />
+                        <p className="text-lg font-semibold">Queue is clear!</p>
+                        <p className="text-muted-foreground">No unapproved answers right now.</p>
+                       </div>
+                    </TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="unanswered" className="flex-1 mt-4">
+           <Card className="h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>Unanswered Questions</CardTitle>
+              <CardDescription>
+                Questions from the community that haven&apos;t received any answers yet.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+             <ScrollArea className="h-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Question Title</TableHead>
+                    <TableHead>Author</TableHead>
+                    <TableHead>Asked On</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                   {isLoadingUnanswered && <TableRow><TableCell colSpan={4} className="text-center">Loading...</TableCell></TableRow>}
+                   {!isLoadingUnanswered && unansweredQuestions?.map((q) => (
+                    <TableRow key={q.id}>
+                        <TableCell className="font-medium max-w-sm truncate">{q.title}</TableCell>
+                        <TableCell>{q.author.name}</TableCell>
+                        <TableCell><ClientOnlyDate date={q.createdAt} formatString="P" /></TableCell>
+                        <TableCell className="text-right">
+                            <Button asChild variant="outline" size="sm">
+                                <Link href={`/questions/${q.id}`} target="_blank">View & Answer</Link>
+                            </Button>
+                        </TableCell>
+                    </TableRow>
+                  ))}
+                   {!isLoadingUnanswered && unansweredQuestions?.length === 0 && (
+                    <TableRow><TableCell colSpan={4} className="h-24 text-center">
+                       <div className="flex flex-col items-center gap-2">
+                        <MessageSquare className="h-10 w-10 text-muted-foreground" />
+                        <p className="text-lg font-semibold">All questions have answers.</p>
+                       </div>
+                    </TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="flagged" className="flex-1 mt-4">
+           <Card className="h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>Flagged Content</CardTitle>
+              <CardDescription>
+                Content reported by users for review.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+             <ScrollArea className="h-full">
+               <div className="flex h-full items-center justify-center">
+                 <div className="flex flex-col items-center gap-2 text-center">
+                  <AlertTriangle className="h-12 w-12 text-muted-foreground" />
+                  <p className="text-lg font-semibold">Coming Soon</p>
+                  <p className="text-muted-foreground">The ability for users to flag content is under development.</p>
+                 </div>
+               </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </>
   );
 }

@@ -158,6 +158,7 @@ export default function QuestionPage() {
         votes: 0,
         comments: [],
         upvotedBy: [],
+        approved: false,
     };
     
     try {
@@ -177,7 +178,7 @@ export default function QuestionPage() {
 
         toast({
             title: "Answer Submitted!",
-            description: "Your answer has been posted.",
+            description: "Your answer has been posted and is pending approval.",
         });
         form.reset();
 

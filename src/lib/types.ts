@@ -35,7 +35,7 @@ export type CommunityQuestion = {
   answersCount: number;
   views: number;
   isVerified?: boolean;
-  upvotedBy: string[]; // Add this
+  upvotedBy?: string[];
 };
 
 export type QuestionAnswer = {
@@ -48,7 +48,7 @@ export type QuestionAnswer = {
   votes: number;
   comments: AnswerComment[];
   isVerified?: boolean;
-  upvotedBy: string[]; // Add this
+  upvotedBy?: string[];
   approved?: boolean;
 };
 
