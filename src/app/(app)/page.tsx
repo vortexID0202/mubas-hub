@@ -51,6 +51,7 @@ import { CommunityQuestion, KnowledgeBaseArticle, LiveUpdate, UserProfile } from
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useMemo } from 'react';
 
 
 export default function Home() {
@@ -60,13 +61,8 @@ export default function Home() {
   
   const questionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    const baseQuery = query(collection(firestore, 'questions'), where('isFlagged', '!=', true), orderBy('isFlagged'), orderBy('createdAt', 'desc'), limit(3));
-    if (isAdmin) {
-        // For admin, we remove the isFlagged filter to show all, but still use the same ordering and limit
-        return query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3));
-    }
-    return baseQuery;
-  }, [firestore, isAdmin]);
+    return query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3));
+  }, [firestore]);
 
   const { data: communityQuestions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
 
@@ -88,6 +84,12 @@ export default function Home() {
   const nonAdminUsers = allUsers?.filter(u => u.email !== 'dante@gmail.com') ?? [];
   const topThree = nonAdminUsers.slice(0, 3);
   const restUsers = nonAdminUsers.slice(3, 10);
+  
+  const visibleQuestions = useMemo(() => {
+    if (!communityQuestions) return [];
+    if (isAdmin) return communityQuestions;
+    return communityQuestions.filter(q => !q.isFlagged);
+  }, [communityQuestions, isAdmin]);
 
 
   const browseItems = [
@@ -249,9 +251,9 @@ export default function Home() {
                         {Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-96" />)}
                     </div>
                   )}
-                  {communityQuestions && communityQuestions.length > 0 ? (
+                  {visibleQuestions && visibleQuestions.length > 0 ? (
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {communityQuestions.map((question) => (
+                      {visibleQuestions.map((question) => (
                         <QuestionCard key={question.id} question={question} />
                       ))}
                     </div>

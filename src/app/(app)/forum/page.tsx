@@ -90,23 +90,15 @@ export default function ForumPage() {
 
   const questionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    
-    const baseCollection = collection(firestore, 'questions');
-    
-    if (isAdmin) {
-      // Admin sees all questions, just ordered by creation date
-      return query(baseCollection, orderBy('createdAt', 'desc'));
-    }
-    
-    // Regular users see non-flagged questions
-    return query(baseCollection, where('isFlagged', '!=', true), orderBy('isFlagged'), orderBy('createdAt', 'desc'));
-  }, [firestore, isAdmin]);
+    return query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'));
+  }, [firestore]);
 
   const { data: questions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
   
   const filteredQuestions = useMemo(() => {
     if (!questions) return [];
-    let processedQuestions = [...questions];
+    
+    let processedQuestions = isAdmin ? [...questions] : questions.filter(q => !q.isFlagged);
 
     // Filter by tag first
     if (selectedTag) {
@@ -131,7 +123,7 @@ export default function ForumPage() {
     }
 
     return processedQuestions;
-  }, [questions, activeFilter, selectedTag]);
+  }, [questions, activeFilter, selectedTag, isAdmin]);
 
   const loadMore = () => {
     setVisibleQuestionsCount((prev) => prev + QUESTIONS_PER_PAGE);
