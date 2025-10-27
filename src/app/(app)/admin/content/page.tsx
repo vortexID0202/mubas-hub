@@ -50,6 +50,7 @@ import { collection, query, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import { KnowledgeBaseArticle, LiveUpdate } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 function AdminContentPageSkeletonRow() {
@@ -113,7 +114,7 @@ export default function AdminContentPage() {
       <div className="flex items-center">
         <h1 className="text-lg font-semibold md:text-2xl">Content Management</h1>
       </div>
-      <Tabs defaultValue="articles">
+      <Tabs defaultValue="articles" className="flex-1 flex flex-col">
         <div className="flex items-center">
           <TabsList>
             <TabsTrigger value="articles">Knowledge Base</TabsTrigger>
@@ -136,21 +137,22 @@ export default function AdminContentPage() {
             </Button>
           </div>
         </div>
-        <TabsContent value="articles">
-          <Card>
+        <TabsContent value="articles" className="flex-1 mt-4">
+          <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle>Knowledge Base Articles</CardTitle>
               <CardDescription>
                 Manage official articles and guides.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 overflow-hidden">
+             <ScrollArea className="h-full">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Created At</TableHead>
+                    <TableHead className="hidden md:table-cell">Category</TableHead>
+                    <TableHead className="hidden lg:table-cell">Created At</TableHead>
                     <TableHead>
                       <span className="sr-only">Actions</span>
                     </TableHead>
@@ -163,10 +165,10 @@ export default function AdminContentPage() {
                       <TableCell className="font-medium">
                         <Link href={`/kb/${article.id}`} className="hover:underline">{article.title}</Link>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <Badge variant="outline">{article.category}</Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <ClientOnlyDate date={article.createdAt} formatString="P" />
                       </TableCell>
                       <TableCell>
@@ -203,24 +205,26 @@ export default function AdminContentPage() {
                   )}
                 </TableBody>
               </Table>
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="updates">
-           <Card>
+        <TabsContent value="updates" className="flex-1 mt-4">
+           <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle>Live Updates</CardTitle>
               <CardDescription>
                 Manage university-wide announcements.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 overflow-hidden">
+             <ScrollArea className="h-full">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Title</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Created At</TableHead>
+                    <TableHead className="hidden md:table-cell">Category</TableHead>
+                    <TableHead className="hidden lg:table-cell">Created At</TableHead>
                     <TableHead>
                       <span className="sr-only">Actions</span>
                     </TableHead>
@@ -233,7 +237,7 @@ export default function AdminContentPage() {
                       <TableCell className="font-medium">
                         {update.title}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                          <Badge
                             variant={
                               update.category === 'Maintenance'
@@ -244,7 +248,7 @@ export default function AdminContentPage() {
                             {update.category}
                           </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <ClientOnlyDate date={update.createdAt} formatString="P" />
                       </TableCell>
                       <TableCell>
@@ -281,6 +285,7 @@ export default function AdminContentPage() {
                   )}
                 </TableBody>
               </Table>
+              </ScrollArea>
             </CardContent>
           </Card>
         </TabsContent>
