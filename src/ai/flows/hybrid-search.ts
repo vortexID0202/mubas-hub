@@ -11,9 +11,27 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { getSdks } from '@/firebase';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, App } from 'firebase-admin/app';
 import { CommunityQuestion, KnowledgeBaseArticle } from '@/lib/types';
+
+
+// Server-side Firebase Admin initialization
+function getAdminApp(): App {
+  const apps = getApps();
+  if (apps.length) {
+    return apps[0];
+  }
+  // Note: App Hosting provides service account credentials automatically.
+  return initializeApp();
+}
+
+function getSdks() {
+  const app = getAdminApp();
+  return {
+    firestore: getAdminFirestore(app)
+  };
+}
 
 
 export const HybridSearchInputSchema = z.object({
@@ -45,8 +63,8 @@ async function fetchAllContent() {
     const { firestore } = getSdks();
     const allContent = [];
 
-    const kbQuery = query(collection(firestore, 'knowledge_base_articles'));
-    const kbSnapshot = await getDocs(kbQuery);
+    const kbQuery = firestore.collection('knowledge_base_articles');
+    const kbSnapshot = await kbQuery.get();
     kbSnapshot.forEach(doc => {
         const data = doc.data() as KnowledgeBaseArticle;
         allContent.push({
@@ -58,8 +76,8 @@ async function fetchAllContent() {
         });
     });
 
-    const questionsQuery = query(collection(firestore, 'questions'));
-    const questionsSnapshot = await getDocs(questionsQuery);
+    const questionsQuery = firestore.collection('questions');
+    const questionsSnapshot = await questionsQuery.get();
     questionsSnapshot.forEach(doc => {
         const data = doc.data() as CommunityQuestion;
         allContent.push({
@@ -76,16 +94,30 @@ async function fetchAllContent() {
 }
 
 
-const allContentString = await fetchAllContent().then(content => 
-    content.map(item => `ID: ${item.id}, Type: ${item.type}, Title: ${item.title}, Content: ${item.content.substring(0, 200)}...`).join('\n---\n')
-);
+async function generateAllContentString() {
+    const content = await fetchAllContent();
+    return content.map(item => `ID: ${item.id}, Type: ${item.type}, Title: ${item.title}, Content: ${item.content.substring(0, 200)}...`).join('\n---\n');
+}
 
 
-const prompt = ai.definePrompt({
-  name: 'hybridSearchPrompt',
-  input: { schema: HybridSearchInputSchema },
-  output: { schema: HybridSearchOutputSchema },
-  prompt: `You are an intelligent search engine for the MUBAS Community Hub.
+const hybridSearchFlow = ai.defineFlow(
+  {
+    name: 'hybridSearchFlow',
+    inputSchema: HybridSearchInputSchema,
+    outputSchema: HybridSearchOutputSchema,
+  },
+  async (input) => {
+    if (input.query.length < 3) {
+      return { results: [] };
+    }
+    
+    const allContentString = await generateAllContentString();
+
+    const prompt = ai.definePrompt({
+      name: 'hybridSearchPrompt',
+      input: { schema: HybridSearchInputSchema },
+      output: { schema: HybridSearchOutputSchema },
+      prompt: `You are an intelligent search engine for the MUBAS Community Hub.
 
 Your task is to analyze the user's query and the available content (Knowledge Base articles and Community Forum questions) to provide the most relevant results.
 
@@ -106,18 +138,7 @@ ${allContentString}
 
 Return a JSON object with a "results" array, ordered from most to least relevant.
 `,
-});
-
-const hybridSearchFlow = ai.defineFlow(
-  {
-    name: 'hybridSearchFlow',
-    inputSchema: HybridSearchInputSchema,
-    outputSchema: HybridSearchOutputSchema,
-  },
-  async (input) => {
-    if (input.query.length < 3) {
-      return { results: [] };
-    }
+    });
 
     const { output } = await prompt(input);
     
