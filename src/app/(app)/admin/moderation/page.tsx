@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Frown, MessageSquare, AlertTriangle, Trash2 } from 'lucide-react';
+import { Check, X, MessageSquare, AlertTriangle, Trash2, MoreHorizontal } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, updateDoc, deleteDoc, collectionGroup, orderBy } from 'firebase/firestore';
 import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
@@ -45,6 +45,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 
 function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
   const firestore = useFirestore();
@@ -231,8 +232,8 @@ export default function AdminModerationPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Question Title</TableHead>
-                    <TableHead>Author</TableHead>
-                    <TableHead>Asked On</TableHead>
+                    <TableHead className="hidden sm:table-cell">Author</TableHead>
+                    <TableHead className="hidden md:table-cell">Asked On</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -240,21 +241,36 @@ export default function AdminModerationPage() {
                    {isLoadingAllQuestions && <TableRow><TableCell colSpan={4} className="text-center">Loading...</TableCell></TableRow>}
                    {!isLoadingAllQuestions && allQuestions?.map((q) => (
                     <TableRow key={q.id}>
-                        <TableCell className="font-medium max-w-sm truncate">
+                        <TableCell className="font-medium max-w-[200px] sm:max-w-sm truncate">
                            <Link href={`/questions/${q.id}`} className="hover:underline" target="_blank">
                              {q.title}
                            </Link>
                         </TableCell>
-                        <TableCell>{q.author?.name || 'Unknown User'}</TableCell>
-                        <TableCell><ClientOnlyDate date={q.createdAt} formatString="P" /></TableCell>
+                        <TableCell className="hidden sm:table-cell">{q.author?.name || 'Unknown User'}</TableCell>
+                        <TableCell className="hidden md:table-cell"><ClientOnlyDate date={q.createdAt} formatString="P" /></TableCell>
                         <TableCell className="text-right">
-                            <Button variant="outline" size="sm" className="mr-2" asChild>
-                                <Link href={`/questions/${q.id}`} target="_blank">View</Link>
-                            </Button>
-                            <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(q.id)}>
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
-                            </Button>
+                          <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                  <Button
+                                  aria-haspopup="true"
+                                  size="icon"
+                                  variant="ghost"
+                                  >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Toggle menu</span>
+                                  </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuItem asChild>
+                                      <Link href={`/questions/${q.id}`} target="_blank">View</Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleDeleteClick(q.id)} className="text-red-500">
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                  </DropdownMenuItem>
+                              </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                     </TableRow>
                   ))}
