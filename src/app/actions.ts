@@ -1,4 +1,3 @@
-
 'use server';
 
 import {
@@ -16,7 +15,9 @@ import {
 import {
   hybridSearch as hybridSearchAI,
   HybridSearchInput,
+  HybridSearchOutput,
 } from '@/ai/flows/hybrid-search';
+import { fetchAllContent } from '@/lib/firebase-admin';
 
 export async function getSearchSuggestions(
   input: HybridSearchSuggestionsInput
@@ -37,6 +38,43 @@ export async function getKnowledgeBaseSuggestions(
   return suggestKnowledgeBaseArticlesAI(input);
 }
 
-export async function hybridSearch(input: HybridSearchInput) {
-  return hybridSearchAI(input);
+export async function hybridSearch(input: { query: string }): Promise<HybridSearchOutput> {
+  const allContent = await fetchAllContent();
+  
+  const aiInput: HybridSearchInput = {
+    query: input.query,
+    content: allContent,
+  };
+
+  const output = await hybridSearchAI(aiInput);
+
+  // Post-process results to add URLs and sort
+  const resultsWithUrls = output.results.map(result => {
+      const originalContent = allContent.find(c => c.id === result.id);
+      return {
+          ...result,
+          url: result.type === 'knowledgeBase' ? `/kb/${result.id}` : `/questions/${result.id}`,
+          // Ensure original votes and verification status are preserved if AI hallucinates them
+          votes: originalContent?.votes, 
+          isVerified: originalContent?.isVerified,
+      }
+  });
+
+  // Final re-sorting to strictly enforce ranking rules
+  resultsWithUrls.sort((a, b) => {
+      // Verified content first
+      if ((a.isVerified ?? false) && !(b.isVerified ?? false)) return -1;
+      if (!(a.isVerified ?? false) && (b.isVerified ?? false)) return 1;
+
+      // Then by votes (for forum questions)
+      const votesA = a.type === 'communityForum' ? a.votes ?? 0 : 0;
+      const votesB = b.type === 'communityForum' ? b.votes ?? 0 : 0;
+      if (votesA !== votesB) {
+          return votesB - votesA;
+      }
+
+      return 0; // Keep AI's relevance ranking if other factors are equal
+  });
+
+  return { results: resultsWithUrls };
 }
