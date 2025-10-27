@@ -75,7 +75,7 @@ export default function SearchBar() {
             <Input
             type="search"
             placeholder="Search for solutions or ask a question..."
-            className="w-full rounded-full bg-background py-6 pl-10 pr-4 text-base transition-all duration-300 focus:scale-[1.02] focus:shadow-lg"
+            className="w-full rounded-full bg-background py-6 pl-10 pr-4 text-base text-black dark:text-white transition-all duration-300 focus:scale-[1.02] focus:shadow-lg"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
