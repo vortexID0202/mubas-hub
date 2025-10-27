@@ -48,10 +48,13 @@ function ArticlePageSkeleton() {
                     <Skeleton className="h-10 w-3/4 mt-4" />
                     <Skeleton className="h-5 w-1/2 mt-2" />
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-6">
                     <Skeleton className="h-6 w-full" />
                     <Skeleton className="h-6 w-full" />
                     <Skeleton className="h-6 w-5/6" />
+                     <Skeleton className="h-6 w-full mt-4" />
+                    <Skeleton className="h-6 w-full" />
+                    <Skeleton className="h-6 w-4/6" />
                 </CardContent>
             </Card>
         </div>
@@ -63,7 +66,7 @@ export default function KnowledgeBaseArticlePage() {
   const id = params.id as string;
   const firestore = useFirestore();
 
-  const articleRef = useMemoFirebase(() => firestore ? doc(firestore, 'knowledge_base_articles', id) : null, [firestore, id]);
+  const articleRef = useMemoFirebase(() => (firestore && id) ? doc(firestore, 'knowledge_base_articles', id) : null, [firestore, id]);
   const { data: article, isLoading } = useDoc<KnowledgeBaseArticle>(articleRef);
 
   if (isLoading) {
@@ -90,7 +93,7 @@ export default function KnowledgeBaseArticlePage() {
       <main className="flex-1">
         <div className="container mx-auto max-w-4xl py-12 md:py-16">
           <div className="space-y-6">
-            <Button variant="link" asChild className="pl-0">
+            <Button variant="link" asChild className="pl-0 text-muted-foreground hover:text-primary">
                 <Link href="/kb">
                     <ChevronLeft className="mr-2 h-4 w-4" />
                     Back to Knowledge Base
@@ -100,7 +103,9 @@ export default function KnowledgeBaseArticlePage() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-4">
-                    <Icon className="h-8 w-8 text-accent" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10">
+                        <Icon className="h-6 w-6 text-accent" />
+                    </div>
                     <Badge variant="outline" className="border-accent text-accent text-sm">
                         {article.category}
                     </Badge>
