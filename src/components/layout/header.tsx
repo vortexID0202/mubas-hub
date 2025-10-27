@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { ThemeToggle } from '../theme-toggle';
 import { useUser } from '@/firebase';
 import { cn } from '@/lib/utils';
+import NotificationsPopover from '../notifications-popover';
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -87,10 +88,7 @@ export function Header() {
               <Link href="/ask">Ask Question</Link>
             </Button>
           )}
-          <Button variant="ghost" size="icon">
-            <Bell className="h-5 w-5" />
-            <span className="sr-only">Notifications</span>
-          </Button>
+          <NotificationsPopover />
           <ThemeToggle />
           <UserProfileNav />
         </div>
