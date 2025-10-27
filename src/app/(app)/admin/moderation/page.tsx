@@ -252,7 +252,7 @@ export default function AdminModerationPage() {
                    {!isLoadingUnanswered && unansweredQuestions?.map((q) => (
                     <TableRow key={q.id}>
                         <TableCell className="font-medium max-w-sm truncate">{q.title}</TableCell>
-                        <TableCell>{q.author.name}</TableCell>
+                        <TableCell>{q.author?.name || 'Unknown User'}</TableCell>
                         <TableCell><ClientOnlyDate date={q.createdAt} formatString="P" /></TableCell>
                         <TableCell className="text-right">
                             <Button asChild variant="outline" size="sm">
@@ -299,7 +299,7 @@ export default function AdminModerationPage() {
                    {!isLoadingAllQuestions && allQuestions?.map((q) => (
                     <TableRow key={q.id}>
                         <TableCell className="font-medium max-w-sm truncate">{q.title}</TableCell>
-                        <TableCell>{q.author.name}</TableCell>
+                        <TableCell>{q.author?.name || 'Unknown User'}</TableCell>
                         <TableCell><ClientOnlyDate date={q.createdAt} formatString="P" /></TableCell>
                         <TableCell className="text-right">
                             <Button variant="outline" size="sm" className="mr-2" asChild>
@@ -366,5 +366,3 @@ export default function AdminModerationPage() {
     </>
   );
 }
-
-    
