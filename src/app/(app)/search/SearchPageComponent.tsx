@@ -3,7 +3,6 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import {
@@ -133,7 +132,7 @@ export default function SearchPageComponent() {
       <div className="space-y-6">
         {results.map((result) => (
           <Card key={`${result.type}-${result.id}`}>
-             <Link href={result.url} className="block hover:bg-muted/50 transition-colors">
+             <a href={result.url} className="block hover:bg-muted/50 transition-colors">
                 <CardHeader>
                 <div className="flex items-center gap-4">
                     {result.type === 'knowledgeBase' ? (
@@ -170,7 +169,7 @@ export default function SearchPageComponent() {
                     </div>
                 )}
                 </CardContent>
-            </Link>
+            </a>
           </Card>
         ))}
       </div>
