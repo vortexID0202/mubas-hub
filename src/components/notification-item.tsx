@@ -1,8 +1,9 @@
 
-import Link from 'next/link';
+'use client';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { ThumbsUp, MessageSquare, CheckCircle } from 'lucide-react';
+import { ThumbsUp, MessageSquare, CheckCircle, Bell } from 'lucide-react';
 
 interface NotificationItemProps {
   id: string;
@@ -18,7 +19,7 @@ interface NotificationItemProps {
 const getIconFromAction = (action: string) => {
     if (action.includes('upvoted')) return <ThumbsUp className="h-4 w-4 text-blue-500" />;
     if (action.includes('answer')) return <MessageSquare className="h-4 w-4 text-green-500" />;
-    if (action.includes('verified')) return <CheckCircle className="h-4 w-4 text-purple-500" />;
+    if (action.includes('approved')) return <CheckCircle className="h-4 w-4 text-purple-500" />;
     return <Bell className="h-4 w-4 text-gray-500" />;
 };
 
@@ -33,7 +34,7 @@ export function NotificationItem({
   href,
 }: NotificationItemProps) {
   return (
-    <Link href={href} className="block">
+    <a href={href} className="block">
       <div
         className={cn(
           'flex items-start gap-3 rounded-lg p-3 transition-colors hover:bg-muted',
@@ -60,6 +61,6 @@ export function NotificationItem({
           <div className="h-2.5 w-2.5 self-center rounded-full bg-primary" />
         )}
       </div>
-    </Link>
+    </a>
   );
 }
