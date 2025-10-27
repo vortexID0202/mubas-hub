@@ -90,11 +90,7 @@ export default function SearchBar() {
           <div className="p-2">
             {suggestions?.map((suggestion, index) => (
               <Link
-                href={
-                  suggestion.type === 'knowledgeBase'
-                    ? `/kb/${index + 1}`
-                    : `/questions/${index + 1}`
-                }
+                href={`/search?q=${encodeURIComponent(suggestion.title)}`}
                 key={index}
                 className="block"
                 onClick={() => setShowSuggestions(false)}
