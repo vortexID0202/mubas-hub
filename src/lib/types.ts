@@ -36,6 +36,7 @@ export type CommunityQuestion = {
   views: number;
   isVerified?: boolean;
   upvotedBy?: string[];
+  isFlagged?: boolean;
 };
 
 export type QuestionAnswer = {

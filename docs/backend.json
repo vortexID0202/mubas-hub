@@ -78,6 +78,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "isFlagged": {
+          "type": "boolean",
+          "description": "Indicates if the question has been flagged for moderation."
         }
       },
       "required": [

@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X, MessageSquare, AlertTriangle, Trash2, MoreHorizontal } from 'lucide-react';
+import { Check, X, MessageSquare, AlertTriangle, Trash2, MoreHorizontal, Flag, ShieldQuestion } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, updateDoc, deleteDoc, collectionGroup, orderBy } from 'firebase/firestore';
 import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
@@ -45,7 +45,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
   const firestore = useFirestore();
@@ -121,7 +121,7 @@ export default function AdminModerationPage() {
   const { toast } = useToast();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
+  const [questionToAction, setQuestionToAction] = useState<{id: string, action: 'delete' | 'flag' | 'unflag'} | null>(null);
 
   const answersQuery = useMemoFirebase(
     () => firestore ? query(collectionGroup(firestore, 'answers'), where('approved', '==', false)) : null,
@@ -134,28 +134,44 @@ export default function AdminModerationPage() {
     [firestore]
   );
   const { data: allQuestions, isLoading: isLoadingAllQuestions } = useCollection<CommunityQuestion>(allQuestionsQuery);
+  
+  const flaggedQuestionsQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'questions'), where('isFlagged', '==', true)) : null,
+    [firestore]
+  );
+  const { data: flaggedQuestions, isLoading: isLoadingFlagged } = useCollection<CommunityQuestion>(flaggedQuestionsQuery);
 
-
-  // Placeholder for flagged content
-  const flaggedContent: any[] = [];
-
-  const handleDeleteClick = (questionId: string) => {
-    setQuestionToDelete(questionId);
-    setDialogOpen(true);
+  const handleActionClick = (questionId: string, action: 'delete' | 'flag' | 'unflag') => {
+    setQuestionToAction({ id: questionId, action });
+    if (action === 'delete') {
+      setDialogOpen(true);
+    } else {
+      handleConfirmAction();
+    }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!questionToDelete || !firestore) return;
+  const handleConfirmAction = async () => {
+    if (!questionToAction || !firestore) return;
+
+    const { id, action } = questionToAction;
 
     try {
-        await deleteDoc(doc(firestore, 'questions', questionToDelete));
-        toast({ title: 'Question Deleted', description: 'The question has been successfully deleted.' });
+        if (action === 'delete') {
+            await deleteDoc(doc(firestore, 'questions', id));
+            toast({ title: 'Question Deleted', description: 'The question has been successfully deleted.' });
+        } else if (action === 'flag') {
+            await updateDoc(doc(firestore, 'questions', id), { isFlagged: true });
+            toast({ title: 'Question Flagged', description: 'The question has been flagged for review.' });
+        } else if (action === 'unflag') {
+            await updateDoc(doc(firestore, 'questions', id), { isFlagged: false });
+            toast({ title: 'Question Unflagged', description: 'The question is no longer flagged.' });
+        }
     } catch (error) {
-        console.error("Error deleting question: ", error);
-        toast({ variant: 'destructive', title: 'Deletion Failed', description: 'There was a problem deleting the question.' });
+        console.error(`Error performing action '${action}': `, error);
+        toast({ variant: 'destructive', title: 'Action Failed', description: 'There was a problem performing the action.' });
     } finally {
         setDialogOpen(false);
-        setQuestionToDelete(null);
+        setQuestionToAction(null);
     }
   };
 
@@ -175,7 +191,7 @@ export default function AdminModerationPage() {
               </TabsTrigger>
               <TabsTrigger value="flagged">
                 Flagged Content
-                <Badge variant="destructive" className="ml-2">{flaggedContent?.length ?? 0}</Badge>
+                <Badge variant="destructive" className="ml-2">{flaggedQuestions?.length ?? 0}</Badge>
               </TabsTrigger>
           </TabsList>
 
@@ -265,7 +281,12 @@ export default function AdminModerationPage() {
                                   <DropdownMenuItem asChild>
                                       <Link href={`/questions/${q.id}`} target="_blank">View</Link>
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleDeleteClick(q.id)} className="text-red-500">
+                                  <DropdownMenuItem onSelect={() => handleActionClick(q.id, 'flag')}>
+                                      <Flag className="mr-2 h-4 w-4" />
+                                      Flag Content
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onSelect={() => handleActionClick(q.id, 'delete')} className="text-red-500">
                                       <Trash2 className="mr-2 h-4 w-4" />
                                       Delete
                                   </DropdownMenuItem>
@@ -293,18 +314,68 @@ export default function AdminModerationPage() {
             <CardHeader>
               <CardTitle>Flagged Content</CardTitle>
               <CardDescription>
-                Content reported by users for review.
+                Content marked for administrative review.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 overflow-hidden">
              <ScrollArea className="h-full">
-               <div className="flex h-full items-center justify-center">
-                 <div className="flex flex-col items-center gap-2 text-center">
-                  <AlertTriangle className="h-12 w-12 text-muted-foreground" />
-                  <p className="text-lg font-semibold">Coming Soon</p>
-                  <p className="text-muted-foreground">The ability for users to flag content is under development.</p>
-                 </div>
-               </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Question Title</TableHead>
+                    <TableHead className="hidden sm:table-cell">Author</TableHead>
+                    <TableHead className="hidden md:table-cell">Asked On</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isLoadingFlagged && <TableRow><TableCell colSpan={4} className="text-center">Loading...</TableCell></TableRow>}
+                  {!isLoadingFlagged && flaggedQuestions?.map((q) => (
+                    <TableRow key={q.id}>
+                        <TableCell className="font-medium max-w-[200px] sm:max-w-sm truncate">
+                           <Link href={`/questions/${q.id}`} className="hover:underline" target="_blank">
+                             {q.title}
+                           </Link>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">{q.author?.name || 'Unknown User'}</TableCell>
+                        <TableCell className="hidden md:table-cell"><ClientOnlyDate date={q.createdAt} formatString="P" /></TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                  <Button
+                                  aria-haspopup="true"
+                                  size="icon"
+                                  variant="ghost"
+                                  >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Toggle menu</span>
+                                  </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuItem onSelect={() => handleActionClick(q.id, 'unflag')}>
+                                      <ShieldQuestion className="mr-2 h-4 w-4" />
+                                      Resolve & Unflag
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onSelect={() => handleActionClick(q.id, 'delete')} className="text-red-500">
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                  </DropdownMenuItem>
+                              </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                    </TableRow>
+                  ))}
+                  {!isLoadingFlagged && flaggedQuestions?.length === 0 && (
+                     <TableRow><TableCell colSpan={4} className="h-24 text-center">
+                       <div className="flex flex-col items-center gap-2">
+                        <Check className="h-10 w-10 text-green-500" />
+                        <p className="text-lg font-semibold">No flagged content!</p>
+                       </div>
+                    </TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
               </ScrollArea>
             </CardContent>
           </Card>
@@ -321,7 +392,7 @@ export default function AdminModerationPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmDelete}>Continue</AlertDialogAction>
+                <AlertDialogAction onClick={handleConfirmAction}>Continue</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
      </AlertDialog>
