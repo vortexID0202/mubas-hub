@@ -123,71 +123,77 @@ export default function AdminSystemReportsPage() {
         <h1 className="text-lg font-semibold md:text-2xl">System Reports</h1>
       </div>
       
-      <Card>
+       <Card>
         <CardHeader>
           <CardTitle>Generate a New Report</CardTitle>
           <CardDescription>
             Select the report type and date range to generate a new report.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-6 md:grid-cols-3">
-            <div className="flex flex-col gap-4 md:col-span-1">
-                 <Select value={reportType} onValueChange={(value) => setReportType(value as ReportType)}>
-                   <SelectTrigger>
-                     <SelectValue placeholder="Select report type" />
-                   </SelectTrigger>
-                   <SelectContent>
-                     <SelectItem value="user_activity"><Users className="mr-2 h-4 w-4 inline-block" /> User Activity</SelectItem>
-                     <SelectItem value="moderation_actions" disabled><ShieldAlert className="mr-2 h-4 w-4 inline-block" /> Moderation Actions</SelectItem>
-                     <SelectItem value="content_engagement" disabled><BarChart className="mr-2 h-4 w-4 inline-block" /> Content Engagement</SelectItem>
-                     <SelectItem value="system_health" disabled><HeartPulse className="mr-2 h-4 w-4 inline-block" /> System Health</SelectItem>
-                   </SelectContent>
-                 </Select>
+        <CardContent className="grid gap-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-end">
+                 <div className="grid gap-2">
+                    <label className="text-sm font-medium">Report Type</label>
+                    <Select value={reportType} onValueChange={(value) => setReportType(value as ReportType)}>
+                        <SelectTrigger className="w-full md:w-[240px]">
+                            <SelectValue placeholder="Select report type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="user_activity"><Users className="mr-2 h-4 w-4 inline-block" /> User Activity</SelectItem>
+                            <SelectItem value="moderation_actions" disabled><ShieldAlert className="mr-2 h-4 w-4 inline-block" /> Moderation Actions</SelectItem>
+                            <SelectItem value="content_engagement" disabled><BarChart className="mr-2 h-4 w-4 inline-block" /> Content Engagement</SelectItem>
+                            <SelectItem value="system_health" disabled><HeartPulse className="mr-2 h-4 w-4 inline-block" /> System Health</SelectItem>
+                        </SelectContent>
+                    </Select>
+                 </div>
 
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="date"
-                      variant={'outline'}
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !date && 'text-muted-foreground'
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      <span className="truncate">
-                      {date?.from ? (
-                        date.to ? (
-                          <>
-                            {format(date.from, 'LLL dd, y')} -{' '}
-                            {format(date.to, 'LLL dd, y')}
-                          </>
+                <div className="grid gap-2">
+                 <label className="text-sm font-medium">Date Range</label>
+                    <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        id="date"
+                        variant={'outline'}
+                        className={cn(
+                            'w-full md:w-[300px] justify-start text-left font-normal',
+                            !date && 'text-muted-foreground'
+                        )}
+                        >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        <span className="truncate">
+                        {date?.from ? (
+                            date.to ? (
+                            <>
+                                {format(date.from, 'LLL dd, y')} -{' '}
+                                {format(date.to, 'LLL dd, y')}
+                            </>
+                            ) : (
+                            format(date.from, 'LLL dd, y')
+                            )
                         ) : (
-                          format(date.from, 'LLL dd, y')
-                        )
-                      ) : (
-                        <span>Pick a date range</span>
-                      )}
-                      </span>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={date?.from}
-                      selected={date}
-                      onSelect={setDate}
-                      numberOfMonths={2}
-                    />
-                  </PopoverContent>
-                </Popover>
+                            <span>Pick a date range</span>
+                        )}
+                        </span>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={2}
+                        />
+                    </PopoverContent>
+                    </Popover>
+                </div>
 
-                 <Button className="w-full" onClick={generateReport} disabled={isLoading}>
+                 <Button className="w-full md:w-auto" onClick={generateReport} disabled={isLoading}>
                     {isLoading ? (
                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
                     ) : (
-                        <><Download className="mr-2 h-4 w-4" /> Generate Report</>
+                        <><Download className="mr-2 h-4 w-4" /> Generate</>
                     )}
                  </Button>
             </div>
@@ -214,44 +220,43 @@ export default function AdminSystemReportsPage() {
                     </div>
                 </div>
             ) : (
-                <ScrollArea className="h-[400px]">
-                    <div className="relative w-full overflow-auto">
-                        <Table>
-                            <TableHeader>
+                <div className="relative w-full overflow-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="min-w-[250px]">User</TableHead>
+                                <TableHead>Reputation</TableHead>
+                                <TableHead>Status</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {reportData.length === 0 ? (
                                 <TableRow>
-                                    <TableHead>User</TableHead>
-                                    <TableHead>Reputation</TableHead>
-                                    <TableHead>Status</TableHead>
+                                    <TableCell colSpan={3} className="h-24 text-center">No users found for the selected date range.</TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {reportData.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={3} className="h-24 text-center">No users found for the selected date range.</TableCell>
+                            ) : (
+                                reportData.map(user => (
+                                    <TableRow key={user.id}>
+                                        <TableCell className="font-medium">
+                                            <div className="font-medium">{user.fullName}</div>
+                                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                                        </TableCell>
+                                        <TableCell>{user.reputation}</TableCell>
+                                        <TableCell>
+                                             <Badge variant={user.status === 'suspended' ? 'destructive' : 'outline'}>
+                                                {user.status || 'active'}
+                                            </Badge>
+                                        </TableCell>
                                     </TableRow>
-                                ) : (
-                                    reportData.map(user => (
-                                        <TableRow key={user.id}>
-                                            <TableCell className="font-medium">
-                                                <div className="font-medium">{user.fullName}</div>
-                                                <div className="text-sm text-muted-foreground">{user.email}</div>
-                                            </TableCell>
-                                            <TableCell>{user.reputation}</TableCell>
-                                            <TableCell>
-                                                 <Badge variant={user.status === 'suspended' ? 'destructive' : 'outline'}>
-                                                    {user.status || 'active'}
-                                                </Badge>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </ScrollArea>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
