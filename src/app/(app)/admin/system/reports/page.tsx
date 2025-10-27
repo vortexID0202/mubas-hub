@@ -85,18 +85,18 @@ export default function AdminSystemReportsPage() {
             return;
         }
 
-        const fromDate = date?.from ? Timestamp.fromDate(date.from) : null;
-        const toDate = date?.to ? Timestamp.fromDate(date.to) : null;
+        const fromDate = date?.from ? date.from : null;
+        const toDate = date?.to ? date.to : null;
 
         try {
             let q = query(collection(firestore, 'users'));
              if (fromDate) {
-                const startOfDay = new Date(fromDate.toDate());
+                const startOfDay = new Date(fromDate);
                 startOfDay.setHours(0, 0, 0, 0);
                 q = query(q, where('createdAt', '>=', Timestamp.fromDate(startOfDay)));
             }
             if (toDate) {
-                const endOfDay = new Date(toDate.toDate());
+                const endOfDay = new Date(toDate);
                 endOfDay.setHours(23, 59, 59, 999);
                 q = query(q, where('createdAt', '<=', Timestamp.fromDate(endOfDay)));
             }
@@ -210,6 +210,7 @@ export default function AdminSystemReportsPage() {
                                 </div>
                             </div>
                         ) : (
+                            <div className="relative w-full overflow-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -241,6 +242,7 @@ export default function AdminSystemReportsPage() {
                                     )}
                                 </TableBody>
                             </Table>
+                            </div>
                         )}
                         </ScrollArea>
                     </CardContent>
