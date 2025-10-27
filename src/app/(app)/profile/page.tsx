@@ -105,9 +105,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const adminRoleRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user?.uid]);
-  const { data: adminRole, isLoading: isAdminLoading } = useDoc(adminRoleRef);
-  const isAdmin = !!adminRole;
+  const isAdmin = user?.email === 'dante@gmail.com';
 
   const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -268,7 +266,7 @@ export default function ProfilePage() {
     }
   };
 
-  const isLoading = isUserLoading || isProfileLoading || isAdminLoading || areQuestionsLoading || areAnswersLoading || areArticlesLoading || areUpdatesLoading;
+  const isLoading = isUserLoading || isProfileLoading || areQuestionsLoading || areAnswersLoading || areArticlesLoading || areUpdatesLoading;
   
   if (isLoading) {
     return <ProfilePageSkeleton />;

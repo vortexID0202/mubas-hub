@@ -48,7 +48,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { CommunityQuestion, KnowledgeBaseArticle, LiveUpdate, UserProfile } from '@/lib/types';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import ClientOnlyDate from '@/components/client-only-date';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -58,9 +58,16 @@ export default function Home() {
   const isAdmin = user?.email === 'dante@gmail.com';
   const firestore = useFirestore();
   
-  const questionsQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3)) : null
-  , [firestore]);
+  const questionsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    const baseQuery = query(collection(firestore, 'questions'), where('isFlagged', '!=', true), orderBy('isFlagged'), orderBy('createdAt', 'desc'), limit(3));
+    if (isAdmin) {
+        // For admin, we remove the isFlagged filter to show all, but still use the same ordering and limit
+        return query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'), limit(3));
+    }
+    return baseQuery;
+  }, [firestore, isAdmin]);
+
   const { data: communityQuestions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
 
   const articlesQuery = useMemoFirebase(() =>

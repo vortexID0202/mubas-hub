@@ -22,7 +22,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { CommunityQuestion, Tag } from '@/lib/types';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { sampleTags } from '@/lib/data';
 
@@ -88,9 +88,20 @@ export default function ForumPage() {
   const { user } = useUser();
   const isAdmin = user?.email === 'dante@gmail.com';
 
-  const questionsQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc')) : null
-  , [firestore]);
+  const questionsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    
+    const baseCollection = collection(firestore, 'questions');
+    
+    if (isAdmin) {
+      // Admin sees all questions, just ordered by creation date
+      return query(baseCollection, orderBy('createdAt', 'desc'));
+    }
+    
+    // Regular users see non-flagged questions
+    return query(baseCollection, where('isFlagged', '!=', true), orderBy('isFlagged'), orderBy('createdAt', 'desc'));
+  }, [firestore, isAdmin]);
+
   const { data: questions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
   
   const filteredQuestions = useMemo(() => {

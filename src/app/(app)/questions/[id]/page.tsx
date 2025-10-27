@@ -76,9 +76,7 @@ export default function QuestionPage() {
   const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
-  const adminRoleRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user?.uid]);
-  const { data: adminRole } = useDoc(adminRoleRef);
-  const isAdmin = !!adminRole;
+  const isAdmin = user?.email === 'dante@gmail.com';
   
   const form = useForm<z.infer<typeof answerSchema>>({
     resolver: zodResolver(answerSchema),
@@ -209,6 +207,10 @@ export default function QuestionPage() {
 
   if (error) {
     // Handle error state, maybe show an error message
+    notFound();
+  }
+
+  if (!isLoading && (question?.isFlagged && !isAdmin)) {
     notFound();
   }
 

@@ -91,7 +91,7 @@ function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
                 <h4 className="font-semibold">{question.title}</h4>
                 <p className="text-sm text-muted-foreground line-clamp-3">{question.body}</p>
                 <div className="text-xs text-muted-foreground">
-                  Asked by {question.author.name} on <ClientOnlyDate date={question.createdAt} formatString="P" />
+                  Asked by {question.author?.name || 'Unknown User'} on <ClientOnlyDate date={question.createdAt} formatString="P" />
                 </div>
                 <Link href={`/questions/${question.id}`} className="text-sm text-primary underline" target="_blank" rel="noopener noreferrer">View full question</Link>
               </div>

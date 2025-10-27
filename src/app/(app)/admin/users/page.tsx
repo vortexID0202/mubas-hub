@@ -49,7 +49,6 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function AdminUsersPage() {
   const firestore = useFirestore();
-  const { user: currentUser, isUserLoading: isCurrentUserLoading } = useUser();
   const { toast } = useToast();
   
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -62,7 +61,7 @@ export default function AdminUsersPage() {
   const { data: users, isLoading: areUsersLoading } = useCollection<UserProfile>(usersQuery);
 
   const filteredUsers = users?.filter(user => user.email !== 'dante@gmail.com');
-  const isLoading = areUsersLoading || isCurrentUserLoading;
+  const isLoading = areUsersLoading;
   
   const handleSuspendClick = (user: UserProfile) => {
     setUserToAction(user);
@@ -83,12 +82,12 @@ export default function AdminUsersPage() {
         description: `${userToAction.fullName}'s account has been ${newStatus}.`,
       });
     } catch (error) {
-       const permissionError = new FirestorePermissionError({
-            path: userRef.path,
-            operation: 'update',
-            requestResourceData: updateData,
+        console.error("Error updating user status:", error);
+        toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: "Could not update user status. You may not have permission."
         });
-        errorEmitter.emit('permission-error', permissionError);
     } finally {
       setDialogOpen(false);
       setUserToAction(null);

@@ -21,9 +21,9 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
   const { user } = useUser();
   const { toast } = useToast();
 
-  const adminRoleRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user?.uid]);
-  const { data: adminRole, isLoading: isAdminLoading } = useDoc(adminRoleRef);
-  const isAdmin = !!adminRole;
+  const isAdmin = user?.email === 'dante@gmail.com';
+  const isUserLoading = !user;
+
 
   const answersQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, `questions/${question.id}/answers`), orderBy('votes', 'desc')) : null,
@@ -158,7 +158,7 @@ export default function AnswerSection({ question }: AnswerSectionProps) {
                             <ThumbsUp className="h-4 w-4" />
                             <span>{answer.votes}</span>
                             </Button>
-                            {isAdmin && !isAdminLoading && (
+                            {isAdmin && !isUserLoading && (
                               <>
                                 {!answer.approved && <Button variant="ghost" size="sm" onClick={() => handleApprove(answer.id)}>Approve</Button>}
                                 <Button variant="ghost" size="sm" onClick={() => handleDelete(answer.id)}>Delete</Button>

@@ -19,10 +19,6 @@
           "description": "The user's email address.",
           "format": "email"
         },
-        "role": {
-          "type": "string",
-          "description": "The user's role (e.g., student, admin)."
-        },
         "profileImageUrl": {
           "type": "string",
           "description": "URL of the user's profile image.",
@@ -41,8 +37,7 @@
       "required": [
         "id",
         "username",
-        "email",
-        "role"
+        "email"
       ]
     },
     "Question": {

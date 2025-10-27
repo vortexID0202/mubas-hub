@@ -20,7 +20,7 @@ import type { HybridSearchOutput, HybridSearchInput } from '@/ai/flows/hybrid-se
 import { BookOpen, MessageSquare, Search, ArrowBigUp, CheckCircle2, Frown } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { CommunityQuestion, KnowledgeBaseArticle } from '@/lib/types';
-import { collection, query } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 
 function SearchResultSkeleton() {
@@ -56,7 +56,13 @@ export default function SearchPageComponent() {
   const articlesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'knowledge_base_articles')) : null, [firestore]);
   const { data: knowledgeBaseArticles, isLoading: isLoadingArticles } = useCollection<KnowledgeBaseArticle>(articlesQuery);
 
-  const questionsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'questions')) : null, [firestore]);
+  const questionsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    if (isAdmin) {
+      return query(collection(firestore, 'questions'));
+    }
+    return query(collection(firestore, 'questions'), where('isFlagged', '!=', true));
+  }, [firestore, isAdmin]);
   const { data: questions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
 
 
