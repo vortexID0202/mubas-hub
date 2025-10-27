@@ -129,25 +129,27 @@ export default function AdminModerationPage() {
         <h1 className="text-lg font-semibold md:text-2xl">Moderation Center</h1>
       </div>
       <Tabs defaultValue="answers" className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-3 md:w-auto">
-            <TabsTrigger value="answers">
-              Unapproved Answers
-              <Badge variant="secondary" className="ml-2">{unapprovedAnswers?.length ?? 0}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="unanswered">
-              Unanswered Questions
-              <Badge variant="secondary" className="ml-2">{unansweredQuestions?.length ?? 0}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="flagged">
-              Flagged Content
-              <Badge variant="destructive" className="ml-2">{flaggedContent?.length ?? 0}</Badge>
-            </TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto">
+          <TabsList>
+              <TabsTrigger value="answers">
+                Pending Approval
+                <Badge variant="secondary" className="ml-2">{unapprovedAnswers?.length ?? 0}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="unanswered">
+                Unanswered
+                <Badge variant="secondary" className="ml-2">{unansweredQuestions?.length ?? 0}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="flagged">
+                Flagged Content
+                <Badge variant="destructive" className="ml-2">{flaggedContent?.length ?? 0}</Badge>
+              </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="answers" className="flex-1 mt-4">
            <Card className="h-full flex flex-col">
             <CardHeader>
-              <CardTitle>Unapproved Answers</CardTitle>
+              <CardTitle>Pending Approval</CardTitle>
               <CardDescription>
                 Review and approve or delete answers that have not yet been approved.
               </CardDescription>
