@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -10,10 +11,8 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { CommunityQuestion, KnowledgeBaseArticle } from '@/lib/types';
 
-
-export const HybridSearchInputSchema = z.object({
+const HybridSearchInputSchema = z.object({
   query: z.string().describe('The user input query.'),
   content: z.array(z.object({
     id: z.string(),
@@ -26,7 +25,7 @@ export const HybridSearchInputSchema = z.object({
 });
 export type HybridSearchInput = z.infer<typeof HybridSearchInputSchema>;
 
-export const HybridSearchOutputSchema = z.object({
+const HybridSearchOutputSchema = z.object({
   results: z.array(
     z.object({
       id: z.string().describe('The document ID.'),
@@ -38,7 +37,6 @@ export const HybridSearchOutputSchema = z.object({
   ).describe('A list of search results.'),
 });
 export type HybridSearchOutput = z.infer<typeof HybridSearchOutputSchema>;
-
 
 const hybridSearchFlow = ai.defineFlow(
   {
