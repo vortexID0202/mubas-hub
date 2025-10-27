@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -117,7 +118,7 @@ export default function ProfilePage() {
 
   const userAnswersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid), where('approved', '==', true), orderBy('createdAt', 'desc'));
+    return query(collectionGroup(firestore, 'answers'), where('authorId', '==', user.uid), orderBy('createdAt', 'desc'));
   }, [firestore, user?.uid]);
   const { data: userAnswers, isLoading: areAnswersLoading } = useCollection<QuestionAnswer>(userAnswersQuery);
   
@@ -574,3 +575,5 @@ export default function ProfilePage() {
     </>
   );
 }
+
+    

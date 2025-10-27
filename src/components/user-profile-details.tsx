@@ -1,3 +1,4 @@
+
 'use client';
 import Link from 'next/link';
 import {
@@ -70,7 +71,6 @@ export function UserProfileDetails({
         ? query(
             collectionGroup(firestore, 'answers'),
             where('authorId', '==', userProfile.id),
-            where('approved', '==', true),
             orderBy('createdAt', 'desc')
           )
         : null,
@@ -201,3 +201,5 @@ export function UserProfileDetails({
     </div>
   );
 }
+
+    
