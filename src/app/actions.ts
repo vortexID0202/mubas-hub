@@ -1,3 +1,4 @@
+
 'use server';
 
 import {
@@ -17,7 +18,7 @@ import {
   HybridSearchInput,
   HybridSearchOutput,
 } from '@/ai/flows/hybrid-search';
-import { fetchAllContent } from '@/lib/firebase-admin';
+
 
 export async function getSearchSuggestions(
   input: HybridSearchSuggestionsInput
@@ -38,19 +39,13 @@ export async function getKnowledgeBaseSuggestions(
   return suggestKnowledgeBaseArticlesAI(input);
 }
 
-export async function hybridSearch(input: { query: string }): Promise<HybridSearchOutput> {
-  const allContent = await fetchAllContent();
+export async function hybridSearch(input: HybridSearchInput): Promise<HybridSearchOutput> {
   
-  const aiInput: HybridSearchInput = {
-    query: input.query,
-    content: allContent,
-  };
-
-  const output = await hybridSearchAI(aiInput);
+  const output = await hybridSearchAI(input);
 
   // Post-process results to add URLs and sort
   const resultsWithUrls = output.results.map(result => {
-      const originalContent = allContent.find(c => c.id === result.id);
+      const originalContent = input.content.find(c => c.id === result.id);
       return {
           ...result,
           url: result.type === 'knowledgeBase' ? `/kb/${result.id}` : `/questions/${result.id}`,

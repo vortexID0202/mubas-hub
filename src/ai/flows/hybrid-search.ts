@@ -50,7 +50,7 @@ const hybridSearchFlow = ai.defineFlow(
 
     const prompt = ai.definePrompt({
       name: 'hybridSearchPrompt',
-      input: { schema: z.object({ query: z.string() }) },
+      input: { schema: HybridSearchInputSchema },
       output: { schema: HybridSearchOutputSchema },
       prompt: `You are an intelligent search engine for the MUBAS Community Hub.
 
@@ -75,7 +75,7 @@ Return a JSON object with a "results" array, ordered from most to least relevant
 `,
     });
 
-    const { output } = await prompt({ query: input.query });
+    const { output } = await prompt(input);
     
     if (!output) {
       return { results: [] };

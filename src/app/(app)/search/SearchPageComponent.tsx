@@ -16,8 +16,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { hybridSearch } from '@/app/actions';
-import type { HybridSearchOutput } from '@/ai/flows/hybrid-search';
+import type { HybridSearchOutput, HybridSearchInput } from '@/ai/flows/hybrid-search';
 import { BookOpen, MessageSquare, Search, ArrowBigUp, CheckCircle2, Frown } from 'lucide-react';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { CommunityQuestion, KnowledgeBaseArticle } from '@/lib/types';
+import { collection, query } from 'firebase/firestore';
 
 function SearchResultSkeleton() {
   return (
@@ -40,14 +43,26 @@ function SearchResultSkeleton() {
 
 export default function SearchPageComponent() {
   const searchParams = useSearchParams();
-  const query = searchParams.get('q') || '';
+  const queryParam = searchParams.get('q') || '';
   const [results, setResults] = useState<HybridSearchOutput['results']>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  const firestore = useFirestore();
+
+  const articlesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'knowledge_base_articles')) : null, [firestore]);
+  const { data: knowledgeBaseArticles, isLoading: isLoadingArticles } = useCollection<KnowledgeBaseArticle>(articlesQuery);
+
+  const questionsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'questions')) : null, [firestore]);
+  const { data: questions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
+
 
   useEffect(() => {
-    if (!query) {
-      setIsLoading(false);
+    const isDataLoading = isLoadingArticles || isLoadingQuestions;
+    if (!queryParam || isDataLoading) {
+      if (!isDataLoading) {
+        setIsLoading(false);
+      }
       return;
     }
 
@@ -55,8 +70,32 @@ export default function SearchPageComponent() {
       setIsLoading(true);
       setError(null);
       try {
-        const searchResults = await hybridSearch({ query });
+        const allContent: HybridSearchInput['content'] = [];
+
+        knowledgeBaseArticles?.forEach(doc => {
+            allContent.push({
+                id: doc.id,
+                type: 'knowledgeBase' as const,
+                title: doc.title,
+                content: doc.content,
+                isVerified: true,
+            });
+        });
+
+        questions?.forEach(doc => {
+            allContent.push({
+                id: doc.id,
+                type: 'communityForum' as const,
+                title: doc.title,
+                content: doc.body,
+                isVerified: doc.isVerified || false,
+                votes: doc.votes || 0,
+            });
+        });
+        
+        const searchResults = await hybridSearch({ query: queryParam, content: allContent });
         setResults(searchResults.results);
+
       } catch (err) {
         console.error('Search failed:', err);
         setError('An error occurred while searching. Please try again.');
@@ -66,10 +105,10 @@ export default function SearchPageComponent() {
     };
 
     performSearch();
-  }, [query]);
+  }, [queryParam, knowledgeBaseArticles, questions, isLoadingArticles, isLoadingQuestions]);
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoading || isLoadingArticles || isLoadingQuestions) {
       return <SearchResultSkeleton />;
     }
 
@@ -141,9 +180,9 @@ export default function SearchPageComponent() {
               <Search className="h-8 w-8 text-primary" />
               Search Results
             </h1>
-            {query && !isLoading && (
+            {queryParam && !isLoading && (
               <p className="text-muted-foreground">
-                Showing {results.length} results for &quot;{query}&quot;
+                Showing {results.length} results for &quot;{queryParam}&quot;
               </p>
             )}
           </div>
