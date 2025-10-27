@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -24,7 +25,7 @@ import {
 } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check, X, Frown, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Check, X, Frown, MessageSquare, AlertTriangle, Trash2 } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, updateDoc, deleteDoc, collectionGroup, orderBy } from 'firebase/firestore';
 import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
@@ -34,6 +35,16 @@ import ClientOnlyDate from '@/components/client-only-date';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
   const firestore = useFirestore();
@@ -106,6 +117,10 @@ function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
 
 export default function AdminModerationPage() {
   const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
 
   const answersQuery = useMemoFirebase(
     () => firestore ? query(collectionGroup(firestore, 'answers'), where('approved', '==', false)) : null,
@@ -119,9 +134,36 @@ export default function AdminModerationPage() {
   );
   const { data: unansweredQuestions, isLoading: isLoadingUnanswered } = useCollection<CommunityQuestion>(unansweredQuery);
 
+  const allQuestionsQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc')) : null,
+    [firestore]
+  );
+  const { data: allQuestions, isLoading: isLoadingAllQuestions } = useCollection<CommunityQuestion>(allQuestionsQuery);
+
+
   // Placeholder for flagged content
   const flaggedContent: any[] = [];
   const isLoadingFlagged = false;
+
+  const handleDeleteClick = (questionId: string) => {
+    setQuestionToDelete(questionId);
+    setDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!questionToDelete || !firestore) return;
+
+    try {
+        await deleteDoc(doc(firestore, 'questions', questionToDelete));
+        toast({ title: 'Question Deleted', description: 'The question has been successfully deleted.' });
+    } catch (error) {
+        console.error("Error deleting question: ", error);
+        toast({ variant: 'destructive', title: 'Deletion Failed', description: 'There was a problem deleting the question.' });
+    } finally {
+        setDialogOpen(false);
+        setQuestionToDelete(null);
+    }
+  };
 
   return (
     <>
@@ -129,7 +171,7 @@ export default function AdminModerationPage() {
         <h1 className="text-lg font-semibold md:text-2xl">Moderation Center</h1>
       </div>
       <Tabs defaultValue="answers" className="flex-1 flex flex-col">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-1 sm:grid-cols-3">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4">
               <TabsTrigger value="answers">
                 Pending Approval
                 <Badge variant="secondary" className="ml-2">{unapprovedAnswers?.length ?? 0}</Badge>
@@ -137,6 +179,9 @@ export default function AdminModerationPage() {
               <TabsTrigger value="unanswered">
                 Unanswered
                 <Badge variant="secondary" className="ml-2">{unansweredQuestions?.length ?? 0}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="questions">
+                All Questions
               </TabsTrigger>
               <TabsTrigger value="flagged">
                 Flagged Content
@@ -230,6 +275,57 @@ export default function AdminModerationPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        <TabsContent value="questions" className="flex-1 mt-4">
+           <Card className="h-full flex flex-col">
+            <CardHeader>
+              <CardTitle>All Questions</CardTitle>
+              <CardDescription>
+                Review and manage all questions posted in the community forum.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+             <ScrollArea className="h-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Question Title</TableHead>
+                    <TableHead>Author</TableHead>
+                    <TableHead>Asked On</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                   {isLoadingAllQuestions && <TableRow><TableCell colSpan={4} className="text-center">Loading...</TableCell></TableRow>}
+                   {!isLoadingAllQuestions && allQuestions?.map((q) => (
+                    <TableRow key={q.id}>
+                        <TableCell className="font-medium max-w-sm truncate">{q.title}</TableCell>
+                        <TableCell>{q.author.name}</TableCell>
+                        <TableCell><ClientOnlyDate date={q.createdAt} formatString="P" /></TableCell>
+                        <TableCell className="text-right">
+                            <Button variant="outline" size="sm" className="mr-2" asChild>
+                                <Link href={`/questions/${q.id}`} target="_blank">View</Link>
+                            </Button>
+                            <Button variant="destructive" size="sm" onClick={() => handleDeleteClick(q.id)}>
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                            </Button>
+                        </TableCell>
+                    </TableRow>
+                  ))}
+                   {!isLoadingAllQuestions && allQuestions?.length === 0 && (
+                    <TableRow><TableCell colSpan={4} className="h-24 text-center">
+                       <div className="flex flex-col items-center gap-2">
+                        <MessageSquare className="h-10 w-10 text-muted-foreground" />
+                        <p className="text-lg font-semibold">No questions found.</p>
+                       </div>
+                    </TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
         <TabsContent value="flagged" className="flex-1 mt-4">
            <Card className="h-full flex flex-col">
             <CardHeader>
@@ -252,6 +348,23 @@ export default function AdminModerationPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the question
+                    and all its associated answers from the database.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmDelete}>Continue</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+     </AlertDialog>
     </>
   );
 }
+
+    
