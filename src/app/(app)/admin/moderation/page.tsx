@@ -128,12 +128,6 @@ export default function AdminModerationPage() {
   );
   const { data: unapprovedAnswers, isLoading: isLoadingAnswers } = useCollection<QuestionAnswer>(answersQuery);
 
-  const unansweredQuery = useMemoFirebase(
-    () => firestore ? query(collection(firestore, 'questions'), where('answersCount', '==', 0), orderBy('createdAt', 'desc')) : null,
-    [firestore]
-  );
-  const { data: unansweredQuestions, isLoading: isLoadingUnanswered } = useCollection<CommunityQuestion>(unansweredQuery);
-
   const allQuestionsQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'questions'), orderBy('createdAt', 'desc')) : null,
     [firestore]
@@ -143,7 +137,6 @@ export default function AdminModerationPage() {
 
   // Placeholder for flagged content
   const flaggedContent: any[] = [];
-  const isLoadingFlagged = false;
 
   const handleDeleteClick = (questionId: string) => {
     setQuestionToDelete(questionId);
@@ -171,14 +164,10 @@ export default function AdminModerationPage() {
         <h1 className="text-lg font-semibold md:text-2xl">Moderation Center</h1>
       </div>
       <Tabs defaultValue="answers" className="flex-1 flex flex-col">
-        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-1 sm:grid-cols-3">
               <TabsTrigger value="answers">
                 Pending Approval
                 <Badge variant="secondary" className="ml-2">{unapprovedAnswers?.length ?? 0}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="unanswered">
-                Unanswered
-                <Badge variant="secondary" className="ml-2">{unansweredQuestions?.length ?? 0}</Badge>
               </TabsTrigger>
               <TabsTrigger value="questions">
                 All Questions
@@ -219,53 +208,6 @@ export default function AdminModerationPage() {
                         <Check className="h-10 w-10 text-green-500" />
                         <p className="text-lg font-semibold">Queue is clear!</p>
                         <p className="text-muted-foreground">No unapproved answers right now.</p>
-                       </div>
-                    </TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="unanswered" className="flex-1 mt-4">
-           <Card className="h-full flex flex-col">
-            <CardHeader>
-              <CardTitle>Unanswered Questions</CardTitle>
-              <CardDescription>
-                Questions from the community that haven&apos;t received any answers yet.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-hidden">
-             <ScrollArea className="h-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Question Title</TableHead>
-                    <TableHead>Author</TableHead>
-                    <TableHead>Asked On</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                   {isLoadingUnanswered && <TableRow><TableCell colSpan={4} className="text-center">Loading...</TableCell></TableRow>}
-                   {!isLoadingUnanswered && unansweredQuestions?.map((q) => (
-                    <TableRow key={q.id}>
-                        <TableCell className="font-medium max-w-sm truncate">{q.title}</TableCell>
-                        <TableCell>{q.author?.name || 'Unknown User'}</TableCell>
-                        <TableCell><ClientOnlyDate date={q.createdAt} formatString="P" /></TableCell>
-                        <TableCell className="text-right">
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={`/questions/${q.id}`} target="_blank">View & Answer</Link>
-                            </Button>
-                        </TableCell>
-                    </TableRow>
-                  ))}
-                   {!isLoadingUnanswered && unansweredQuestions?.length === 0 && (
-                    <TableRow><TableCell colSpan={4} className="h-24 text-center">
-                       <div className="flex flex-col items-center gap-2">
-                        <MessageSquare className="h-10 w-10 text-muted-foreground" />
-                        <p className="text-lg font-semibold">All questions have answers.</p>
                        </div>
                     </TableCell></TableRow>
                   )}
