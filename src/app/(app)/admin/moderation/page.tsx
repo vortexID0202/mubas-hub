@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -26,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, X, MessageSquare, AlertTriangle, Trash2, MoreHorizontal, Flag, ShieldQuestion } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, doc, updateDoc, deleteDoc, collectionGroup, orderBy, runTransaction, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, collectionGroup, orderBy, runTransaction, serverTimestamp, increment, addDoc } from 'firebase/firestore';
 import { CommunityQuestion, QuestionAnswer, Notification } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -190,7 +191,7 @@ export default function AdminModerationPage() {
              // Notify admin
             const adminId = 'AAXL7PXM5eNkUQ3CabRFvYAthAe2';
             const questionDoc = allQuestions?.find(q => q.id === id);
-            if (questionDoc) {
+            if (questionDoc && user.name) {
                 const adminNotificationData: Omit<Notification, 'id'> = {
                     userId: adminId,
                     actorId: user.uid,
@@ -442,3 +443,5 @@ export default function AdminModerationPage() {
     </>
   );
 }
+
+    
