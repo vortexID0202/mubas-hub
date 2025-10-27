@@ -129,8 +129,7 @@ export default function AdminModerationPage() {
         <h1 className="text-lg font-semibold md:text-2xl">Moderation Center</h1>
       </div>
       <Tabs defaultValue="answers" className="flex-1 flex flex-col">
-        <div className="w-full overflow-x-auto">
-          <TabsList>
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-1 sm:grid-cols-3">
               <TabsTrigger value="answers">
                 Pending Approval
                 <Badge variant="secondary" className="ml-2">{unapprovedAnswers?.length ?? 0}</Badge>
@@ -144,7 +143,6 @@ export default function AdminModerationPage() {
                 <Badge variant="destructive" className="ml-2">{flaggedContent?.length ?? 0}</Badge>
               </TabsTrigger>
           </TabsList>
-        </div>
 
         <TabsContent value="answers" className="flex-1 mt-4">
            <Card className="h-full flex flex-col">
