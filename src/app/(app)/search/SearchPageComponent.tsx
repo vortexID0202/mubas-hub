@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import {
@@ -17,9 +18,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { hybridSearch } from '@/app/actions';
 import type { HybridSearchOutput, HybridSearchInput } from '@/ai/flows/hybrid-search';
 import { BookOpen, MessageSquare, Search, ArrowBigUp, CheckCircle2, Frown } from 'lucide-react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { CommunityQuestion, KnowledgeBaseArticle } from '@/lib/types';
 import { collection, query } from 'firebase/firestore';
+import { Button } from '@/components/ui/button';
 
 function SearchResultSkeleton() {
   return (
@@ -48,6 +50,8 @@ export default function SearchPageComponent() {
   const [error, setError] = useState<string | null>(null);
   
   const firestore = useFirestore();
+  const { user } = useUser();
+  const isAdmin = user?.email === 'dante@gmail.com';
 
   const articlesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'knowledge_base_articles')) : null, [firestore]);
   const { data: knowledgeBaseArticles, isLoading: isLoadingArticles } = useCollection<KnowledgeBaseArticle>(articlesQuery);
@@ -124,6 +128,11 @@ export default function SearchPageComponent() {
             <p className="mt-2 text-center text-muted-foreground">
                 We couldn&apos;t find anything matching your search. Try using different keywords.
             </p>
+            {!isAdmin && (
+              <Button asChild className="mt-6">
+                <Link href="/ask">Ask a Question</Link>
+              </Button>
+            )}
         </div>
       );
     }
