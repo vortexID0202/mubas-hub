@@ -3,8 +3,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Info, Send, AlertCircle, Loader2, BookOpen, Lightbulb } from 'lucide-react';
-import React, { useEffect, useState, useCallback } from 'react';
+import { Info, Send, Loader2 } from 'lucide-react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -21,7 +21,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
@@ -30,9 +29,6 @@ import { CommunityQuestion, Tag, UserProfile } from '@/lib/types';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { doc } from 'firebase/firestore';
-import { getKnowledgeBaseSuggestions } from '@/app/actions';
-import { debounce } from '@/lib/utils';
-import type { KnowledgeBaseSuggesterOutput } from '@/ai/flows/knowledge-base-suggester';
 
 const questionSchema = z.object({
   title: z.string().min(10, 'Title must be at least 10 characters long.'),
@@ -48,9 +44,6 @@ export default function AskQuestionPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  
-  const [suggestions, setSuggestions] = useState<KnowledgeBaseSuggesterOutput['suggestions']>([]);
-  const [isSuggestionLoading, setIsSuggestionLoading] = useState(false);
 
   const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
@@ -64,32 +57,7 @@ export default function AskQuestionPage() {
     },
   });
   
-  const { formState: { isSubmitting }, watch } = form;
-  const titleValue = watch('title');
-
-  const debouncedGetSuggestions = useCallback(
-    debounce(async (query: string) => {
-      if (query.length < 15) {
-        setSuggestions([]);
-        return;
-      }
-      setIsSuggestionLoading(true);
-      try {
-        const result = await getKnowledgeBaseSuggestions({ query });
-        setSuggestions(result.suggestions);
-      } catch (error) {
-        console.error("Error fetching suggestions:", error);
-        setSuggestions([]);
-      } finally {
-        setIsSuggestionLoading(false);
-      }
-    }, 500),
-    []
-  );
-
-  useEffect(() => {
-    debouncedGetSuggestions(titleValue);
-  }, [titleValue, debouncedGetSuggestions]);
+  const { formState: { isSubmitting } } = form;
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -127,7 +95,7 @@ export default function AskQuestionPage() {
         votes: 0,
         answersCount: 0,
         views: 0,
-        isFlagged: false, // Explicitly set to false on creation
+        isFlagged: false,
     };
 
     try {
@@ -215,34 +183,6 @@ export default function AskQuestionPage() {
                         </FormItem>
                       )}
                     />
-
-                    {isSuggestionLoading && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Checking for existing answers...</span>
-                      </div>
-                    )}
-                    
-                    {suggestions.length > 0 && (
-                      <Alert variant="default" className="border-accent bg-accent/5">
-                        <Lightbulb className="h-4 w-4 text-accent" />
-                        <AlertTitle className="text-accent">Already have an answer?</AlertTitle>
-                        <AlertDescription className="space-y-3 mt-2">
-                           <p>Your question might be answered in our Knowledge Base. Check these articles:</p>
-                           <ul className="space-y-2">
-                            {suggestions.map(suggestion => (
-                              <li key={suggestion.id}>
-                                <Link href={`/kb/${suggestion.id}`} target="_blank" className="font-semibold text-primary hover:underline">
-                                  <BookOpen className="inline h-4 w-4 mr-2" />
-                                  {suggestion.title}
-                                </Link>
-                                <p className="text-xs text-muted-foreground pl-6">{suggestion.reason}</p>
-                              </li>
-                            ))}
-                           </ul>
-                        </AlertDescription>
-                      </Alert>
-                    )}
 
                     <FormField
                       control={form.control}
