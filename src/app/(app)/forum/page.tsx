@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Frown, MessageSquare, Filter, Loader2, CheckCircle } from 'lucide-react';
 import QuestionCard from '@/components/question-card';
 import { Button } from '@/components/ui/button';
@@ -20,9 +20,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { CommunityQuestion, Tag } from '@/lib/types';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, getDocs, startAfter, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { sampleTags } from '@/lib/data';
 
@@ -77,89 +77,130 @@ function CardSkeleton() {
     )
 }
 
-
 export default function ForumPage() {
-  const [visibleQuestionsCount, setVisibleQuestionsCount] = useState(
-    QUESTIONS_PER_PAGE
-  );
+  const [questions, setQuestions] = useState<CommunityQuestion[]>([]);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [activeFilter, setActiveFilter] = useState('recent');
   const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+  
   const firestore = useFirestore();
   const { user } = useUser();
   const isAdmin = user?.email === 'dante@gmail.com';
 
-  const questionsQuery = useMemoFirebase(() => {
+  const buildQuery = useCallback(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'questions'), orderBy('createdAt', 'desc'));
-  }, [firestore]);
 
-  const { data: questions, isLoading: isLoadingQuestions } = useCollection<CommunityQuestion>(questionsQuery);
-  
-  const filteredQuestions = useMemo(() => {
-    if (!questions) return [];
-    
-    let processedQuestions = isAdmin ? [...questions] : questions.filter(q => !q.isFlagged);
+    let q = query(collection(firestore, 'questions'));
 
-    // Filter by tag first
-    if (selectedTag) {
-      processedQuestions = processedQuestions.filter(q => q.tags.some(t => t.name === selectedTag.name));
+    if (!isAdmin) {
+      q = query(q, where('isFlagged', '!=', true));
     }
     
-    // Then sort/filter by the active tab
+    if (selectedTag) {
+      q = query(q, where('tags', 'array-contains', selectedTag));
+    }
+    
     switch (activeFilter) {
       case 'popular':
-        processedQuestions.sort((a, b) => b.votes - a.votes);
+        q = query(q, orderBy('votes', 'desc'));
         break;
       case 'unanswered':
-        processedQuestions = processedQuestions.filter(q => q.answersCount === 0);
+        q = query(q, where('answersCount', '==', 0), orderBy('createdAt', 'desc'));
         break;
       case 'verified':
-        processedQuestions = processedQuestions.filter(q => q.isVerified);
+        q = query(q, where('isVerified', '==', true), orderBy('createdAt', 'desc'));
         break;
       case 'recent':
       default:
-        // Already sorted by date from the query
+        q = query(q, orderBy('createdAt', 'desc'));
         break;
     }
 
-    return processedQuestions;
-  }, [questions, activeFilter, selectedTag, isAdmin]);
+    return q;
+  }, [firestore, isAdmin, selectedTag, activeFilter]);
+  
+  const fetchQuestions = useCallback(async (initial = false) => {
+    const q = buildQuery();
+    if (!q) return;
 
-  const loadMore = () => {
-    setVisibleQuestionsCount((prev) => prev + QUESTIONS_PER_PAGE);
-  };
+    if (initial) {
+      setIsLoading(true);
+      setQuestions([]);
+      setLastDoc(null);
+    } else {
+      setIsLoadingMore(true);
+    }
+
+    let queryToRun = query(q, limit(QUESTIONS_PER_PAGE));
+    
+    if (!initial && lastDoc) {
+      queryToRun = query(queryToRun, startAfter(lastDoc));
+    }
+
+    try {
+      const documentSnapshots = await getDocs(queryToRun);
+      const newQuestions = documentSnapshots.docs.map(doc => ({ id: doc.id, ...doc.data() } as CommunityQuestion));
+      const lastVisible = documentSnapshots.docs[documentSnapshots.docs.length - 1];
+
+      setQuestions(prev => initial ? newQuestions : [...prev, ...newQuestions]);
+      setLastDoc(lastVisible);
+      setHasMore(documentSnapshots.docs.length === QUESTIONS_PER_PAGE);
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  }, [buildQuery, lastDoc]);
+  
+  useEffect(() => {
+    fetchQuestions(true);
+  }, [activeFilter, selectedTag]);
 
   const handleTagSelect = (tag: Tag | null) => {
     setSelectedTag(tag);
-    setVisibleQuestionsCount(QUESTIONS_PER_PAGE); // Reset pagination
   };
-
-  const questionsToShow = filteredQuestions.slice(0, visibleQuestionsCount);
-
-  const isLoading = isLoadingQuestions;
   
+  const handleFilterChange = (value: string) => {
+    setActiveFilter(value);
+  }
+
   const renderContent = () => {
-    if (questionsToShow.length > 0) {
+    if (isLoading) {
       return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {questionsToShow.map((question) => (
-            <QuestionCard key={question.id} question={question} />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <CardSkeleton key={i} />
           ))}
         </div>
       );
     }
-    return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-        <Frown className="h-16 w-16 text-muted-foreground" />
-        <h2 className="mt-6 text-xl font-semibold">
-          No questions found.
-        </h2>
-        <p className="mt-2 text-center text-muted-foreground">
-          Try adjusting your filters or be the first to ask a question!
-        </p>
-         <Button asChild className="mt-6">
+    
+    if (questions.length === 0) {
+      return (
+        <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+          <Frown className="h-16 w-16 text-muted-foreground" />
+          <h2 className="mt-6 text-xl font-semibold">
+            No questions found.
+          </h2>
+          <p className="mt-2 text-center text-muted-foreground">
+            Try adjusting your filters or be the first to ask a question!
+          </p>
+          <Button asChild className="mt-6">
             <Link href="/ask">Ask a Question</Link>
           </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {questions.map((question) => (
+          <QuestionCard key={question.id} question={question} />
+        ))}
       </div>
     );
   };
@@ -168,9 +209,6 @@ export default function ForumPage() {
     <>
       <Header />
       <main className="flex-1">
-        {isLoading && !questions ? (
-            <ForumPageSkeleton />
-        ) : (
         <div className="container mx-auto py-12">
           <div className="flex flex-col items-start justify-between gap-4 border-b pb-4 md:flex-row md:items-center">
             <div className="space-y-2">
@@ -189,7 +227,7 @@ export default function ForumPage() {
             )}
           </div>
 
-          <Tabs defaultValue="recent" className="w-full mt-8" onValueChange={setActiveFilter}>
+          <Tabs defaultValue="recent" className="w-full mt-8" onValueChange={handleFilterChange}>
             <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
               <TabsList className="grid w-full grid-cols-4 md:w-auto">
                 <TabsTrigger value="recent">Recent</TabsTrigger>
@@ -218,29 +256,19 @@ export default function ForumPage() {
                 </DropdownMenu>
               </div>
             </div>
-            <TabsContent value="recent" className="mt-8">
+            <div className="mt-8">
               {renderContent()}
-            </TabsContent>
-            <TabsContent value="popular" className="mt-8">
-              {renderContent()}
-            </TabsContent>
-            <TabsContent value="unanswered" className="mt-8">
-              {renderContent()}
-            </TabsContent>
-            <TabsContent value="verified" className="mt-8">
-              {renderContent()}
-            </TabsContent>
+            </div>
           </Tabs>
 
-           {visibleQuestionsCount < (filteredQuestions?.length || 0) && (
+           {hasMore && (
             <div className="mt-10 text-center">
-              <Button onClick={loadMore} size="lg" variant="outline" disabled={isLoading}>
-                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Loading...</> : 'Load More Questions'}
+              <Button onClick={() => fetchQuestions(false)} size="lg" variant="outline" disabled={isLoadingMore}>
+                {isLoadingMore ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Loading...</> : 'Load More Questions'}
               </Button>
             </div>
           )}
         </div>
-        )}
       </main>
       <Footer />
     </>
