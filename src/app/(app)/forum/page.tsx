@@ -107,7 +107,8 @@ export default function ForumPage() {
         q = query(q, where('answersCount', '==', 0), orderBy('createdAt', 'desc'));
         break;
       case 'verified':
-        q = query(q, where('isVerified', '==', true), orderBy('createdAt', 'desc'));
+        // We will fetch by recent and filter on the client to avoid composite index
+        q = query(q, orderBy('createdAt', 'desc'));
         break;
       case 'recent':
       default:
@@ -165,9 +166,12 @@ export default function ForumPage() {
   }
 
   const visibleQuestions = useMemo(() => {
-    if (isAdmin) return questions;
-    return questions.filter(q => !q.isFlagged);
-  }, [questions, isAdmin]);
+    let filtered = isAdmin ? questions : questions.filter(q => !q.isFlagged);
+    if (activeFilter === 'verified') {
+        filtered = filtered.filter(q => q.isVerified);
+    }
+    return filtered;
+  }, [questions, isAdmin, activeFilter]);
 
   const renderContent = () => {
     if (isLoading) {
