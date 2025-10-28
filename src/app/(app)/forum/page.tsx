@@ -94,10 +94,6 @@ export default function ForumPage() {
     if (!firestore) return null;
 
     let q = query(collection(firestore, 'questions'));
-
-    if (!isAdmin) {
-      q = query(q, where('isFlagged', '==', false));
-    }
     
     if (selectedTag) {
       q = query(q, where('tags', 'array-contains', selectedTag));
@@ -120,7 +116,7 @@ export default function ForumPage() {
     }
 
     return q;
-  }, [firestore, isAdmin, selectedTag, activeFilter]);
+  }, [firestore, selectedTag, activeFilter]);
   
   const fetchQuestions = useCallback(async (initial = false) => {
     const q = buildQuery();
@@ -168,6 +164,11 @@ export default function ForumPage() {
     setActiveFilter(value);
   }
 
+  const visibleQuestions = useMemo(() => {
+    if (isAdmin) return questions;
+    return questions.filter(q => !q.isFlagged);
+  }, [questions, isAdmin]);
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -179,7 +180,7 @@ export default function ForumPage() {
       );
     }
     
-    if (questions.length === 0) {
+    if (visibleQuestions.length === 0) {
       return (
         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
           <Frown className="h-16 w-16 text-muted-foreground" />
@@ -198,7 +199,7 @@ export default function ForumPage() {
 
     return (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {questions.map((question) => (
+        {visibleQuestions.map((question) => (
           <QuestionCard key={question.id} question={question} />
         ))}
       </div>
