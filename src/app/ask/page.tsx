@@ -127,6 +127,7 @@ export default function AskQuestionPage() {
         votes: 0,
         answersCount: 0,
         views: 0,
+        isFlagged: false, // Explicitly set to false on creation
     };
 
     try {

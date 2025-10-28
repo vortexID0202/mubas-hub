@@ -96,7 +96,7 @@ export default function ForumPage() {
     let q = query(collection(firestore, 'questions'));
 
     if (!isAdmin) {
-      q = query(q, where('isFlagged', '!=', true));
+      q = query(q, where('isFlagged', '==', false));
     }
     
     if (selectedTag) {
