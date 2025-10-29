@@ -28,7 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Check, X, MessageSquare, AlertTriangle, Trash2, MoreHorizontal, Flag, ShieldQuestion } from 'lucide-react';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, doc, updateDoc, deleteDoc, collectionGroup, orderBy, runTransaction, serverTimestamp, increment, addDoc } from 'firebase/firestore';
-import { CommunityQuestion, QuestionAnswer, Notification } from '@/lib/types';
+import { CommunityQuestion, QuestionAnswer, Notification, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import ClientOnlyDate from '@/components/client-only-date';
@@ -64,19 +64,18 @@ function AnswerModerationItem({ answer }: { answer: QuestionAnswer }) {
         transaction.update(answerRef, { approved: true });
 
         // 2. Create a notification for the answer's author
-        const notificationData: Omit<Notification, 'id'> = {
+        const notificationData: Omit<Notification, 'id' | 'questionTitle'> = {
             userId: answer.authorId,
             actorId: adminUser.uid,
             actorName: 'Admin',
             actorAvatar: '', // Admin might not have a public avatar
             type: 'answer_approved',
-            questionTitle: question.title,
             relatedItemId: question.id,
             createdAt: serverTimestamp(),
             isRead: false,
         };
         const notificationRef = doc(collection(firestore, `users/${answer.authorId}/notifications`));
-        transaction.set(notificationRef, notificationData);
+        transaction.set(notificationRef, { ...notificationData, questionTitle: question.title });
       });
 
       toast({ title: "Answer approved and author notified." });
@@ -147,6 +146,9 @@ export default function AdminModerationPage() {
   const { user } = useUser();
   const { toast } = useToast();
 
+  const userProfileRef = useMemoFirebase(() => (firestore && user?.uid) ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
+  const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [questionToAction, setQuestionToAction] = useState<{id: string, action: 'delete' | 'flag' | 'unflag'} | null>(null);
 
@@ -163,7 +165,7 @@ export default function AdminModerationPage() {
   const { data: allQuestions, isLoading: isLoadingAllQuestions } = useCollection<CommunityQuestion>(allQuestionsQuery);
   
   const flaggedQuestionsQuery = useMemoFirebase(
-    () => firestore ? query(collection(firestore, 'questions'), where('isFlagged', '==', true)) : null,
+    () => firestore ? query(collection(firestore, 'questions'), where('isFlagged', '==', true), orderBy('createdAt', 'desc')) : null,
     [firestore]
   );
   const { data: flaggedQuestions, isLoading: isLoadingFlagged } = useCollection<CommunityQuestion>(flaggedQuestionsQuery);
@@ -173,41 +175,27 @@ export default function AdminModerationPage() {
     if (action === 'delete') {
       setDialogOpen(true);
     } else {
-      handleConfirmAction();
+      // For flag/unflag, we can directly confirm as it's less destructive.
+      handleConfirmAction({ id: questionId, action });
     }
   };
 
-  const handleConfirmAction = async () => {
-    if (!questionToAction || !firestore || !user) return;
+  const handleConfirmAction = async (actionDetails?: {id: string, action: 'delete' | 'flag' | 'unflag'}) => {
+    const details = actionDetails || questionToAction;
+    if (!details || !firestore || !user || !userProfile) return;
 
-    const { id, action } = questionToAction;
+    const { id, action } = details;
+    const questionRef = doc(firestore, 'questions', id);
 
     try {
         if (action === 'delete') {
-            await deleteDoc(doc(firestore, 'questions', id));
+            await deleteDoc(questionRef);
             toast({ title: 'Question Deleted', description: 'The question has been successfully deleted.' });
         } else if (action === 'flag') {
-            await updateDoc(doc(firestore, 'questions', id), { isFlagged: true });
-             // Notify admin
-            const adminId = 'AAXL7PXM5eNkUQ3CabRFvYAthAe2';
-            const questionDoc = allQuestions?.find(q => q.id === id);
-            if (questionDoc && user.name) {
-                const adminNotificationData: Omit<Notification, 'id'> = {
-                    userId: adminId,
-                    actorId: user.uid,
-                    actorName: user.name,
-                    actorAvatar: user.photoURL || '',
-                    type: 'question_flagged',
-                    questionTitle: questionDoc.title,
-                    relatedItemId: id,
-                    createdAt: serverTimestamp(),
-                    isRead: false,
-                };
-                await addDoc(collection(firestore, `users/${adminId}/notifications`), adminNotificationData);
-            }
+            await updateDoc(questionRef, { isFlagged: true });
             toast({ title: 'Question Flagged', description: 'The question has been flagged for review.' });
         } else if (action === 'unflag') {
-            await updateDoc(doc(firestore, 'questions', id), { isFlagged: false });
+            await updateDoc(questionRef, { isFlagged: false });
             toast({ title: 'Question Unflagged', description: 'The question is no longer flagged.' });
         }
     } catch (error) {
@@ -303,6 +291,7 @@ export default function AdminModerationPage() {
                     <TableRow key={q.id}>
                         <TableCell className="font-medium max-w-[200px] sm:max-w-sm truncate">
                            <Link href={`/questions/${q.id}`} className="hover:underline" target="_blank">
+                             {q.isFlagged && <Flag className="mr-2 h-4 w-4 inline-block text-red-500" />}
                              {q.title}
                            </Link>
                         </TableCell>
@@ -325,10 +314,17 @@ export default function AdminModerationPage() {
                                   <DropdownMenuItem asChild>
                                       <Link href={`/questions/${q.id}`} target="_blank">View</Link>
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onSelect={() => handleActionClick(q.id, 'flag')}>
-                                      <Flag className="mr-2 h-4 w-4" />
-                                      Flag Content
-                                  </DropdownMenuItem>
+                                  {!q.isFlagged ? (
+                                    <DropdownMenuItem onSelect={() => handleActionClick(q.id, 'flag')}>
+                                        <Flag className="mr-2 h-4 w-4" />
+                                        Flag Content
+                                    </DropdownMenuItem>
+                                  ) : (
+                                    <DropdownMenuItem onSelect={() => handleActionClick(q.id, 'unflag')}>
+                                        <ShieldQuestion className="mr-2 h-4 w-4" />
+                                        Unflag Content
+                                    </DropdownMenuItem>
+                                  )}
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onSelect={() => handleActionClick(q.id, 'delete')} className="text-red-500">
                                       <Trash2 className="mr-2 h-4 w-4" />
@@ -401,6 +397,7 @@ export default function AdminModerationPage() {
                                       <ShieldQuestion className="mr-2 h-4 w-4" />
                                       Resolve & Unflag
                                   </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem onSelect={() => handleActionClick(q.id, 'delete')} className="text-red-500">
                                       <Trash2 className="mr-2 h-4 w-4" />
                                       Delete
@@ -436,7 +433,7 @@ export default function AdminModerationPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmAction}>Continue</AlertDialogAction>
+                <AlertDialogAction onClick={() => handleConfirmAction()}>Continue</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
      </AlertDialog>
