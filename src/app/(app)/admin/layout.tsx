@@ -32,6 +32,9 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { UserProfileNav } from '@/components/user-profile-nav';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collectionGroup, query, where, collection } from 'firebase/firestore';
+import { CommunityQuestion, QuestionAnswer } from '@/lib/types';
 
 export default function AdminLayout({
   children,
@@ -39,11 +42,26 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const firestore = useFirestore();
+
+  const unapprovedAnswersQuery = useMemoFirebase(
+    () => firestore ? query(collectionGroup(firestore, 'answers'), where('approved', '==', false)) : null,
+    [firestore]
+  );
+  const { data: unapprovedAnswers } = useCollection<QuestionAnswer>(unapprovedAnswersQuery);
+
+  const flaggedQuestionsQuery = useMemoFirebase(
+    () => firestore ? query(collection(firestore, 'questions'), where('isFlagged', '==', true)) : null,
+    [firestore]
+  );
+  const { data: flaggedQuestions } = useCollection<CommunityQuestion>(flaggedQuestionsQuery);
+  
+  const moderationCount = (unapprovedAnswers?.length ?? 0) + (flaggedQuestions?.length ?? 0);
 
   const navItems = [
     { href: '/admin', icon: LineChart, label: 'Overview' },
     { href: '/admin/content', icon: BookCopy, label: 'Content' },
-    { href: '/admin/moderation', icon: ShieldAlert, label: 'Moderation', badge: 3 },
+    { href: '/admin/moderation', icon: ShieldAlert, label: 'Moderation', badge: moderationCount },
     { href: '/admin/users', icon: Users, label: 'Users' },
   ];
 
@@ -76,11 +94,11 @@ export default function AdminLayout({
                 >
                   <item.icon className="h-4 w-4" />
                   {item.label}
-                  {item.badge && (
+                  {item.badge && item.badge > 0 ? (
                     <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
                       {item.badge}
                     </Badge>
-                  )}
+                  ) : null}
                 </Link>
               ))}
             </nav>
@@ -157,11 +175,11 @@ export default function AdminLayout({
                   >
                     <item.icon className="h-5 w-5" />
                     {item.label}
-                    {item.badge && (
+                    {item.badge && item.badge > 0 ? (
                       <Badge className="ml-auto flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
                         {item.badge}
                       </Badge>
-                    )}
+                    ) : null}
                   </Link>
                 ))}
               </nav>

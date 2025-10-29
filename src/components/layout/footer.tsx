@@ -70,7 +70,7 @@ export function Footer() {
                  <a href="https://www.linkedin.com/school/mubas" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn page for MUBAS" className="text-muted-foreground transition-colors hover:text-foreground">
                     <Linkedin className="h-6 w-6" />
                 </a>
-                <a href="https://www.youtube.com/@mubastv" target="_blank" rel="noopener noreferrer" aria-label="YouTube channel for MUBAS" className="text-muted-foreground transition-colors hover:text-foreground">
+                <a href="https://www.youtube.com/@mubasmw" target="_blank" rel="noopener noreferrer" aria-label="YouTube channel for MUBAS" className="text-muted-foreground transition-colors hover:text-foreground">
                     <Youtube className="h-6 w-6" />
                 </a>
             </div>

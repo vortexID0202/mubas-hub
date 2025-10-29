@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -8,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Rss } from 'lucide-react';
+import { Rss } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import ClientOnlyDate from '@/components/client-only-date';
@@ -16,14 +17,26 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, orderBy, query } from 'firebase/firestore';
 import { LiveUpdate } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { WithId } from '@/firebase/firestore/use-collection';
 
 export default function UpdatesPage() {
   const firestore = useFirestore();
+  const [liveUpdates, setLiveUpdates] = useState<WithId<LiveUpdate>[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const updatesQuery = useMemoFirebase(
     () => firestore ? query(collection(firestore, 'live_updates'), orderBy('createdAt', 'desc')) : null,
     [firestore]
   );
-  const { data: liveUpdates, isLoading } = useCollection<LiveUpdate>(updatesQuery);
+
+  const { data, isLoading: collectionIsLoading } = useCollection<LiveUpdate>(updatesQuery);
+
+  useEffect(() => {
+    if (!collectionIsLoading) {
+      setLiveUpdates(data);
+      setIsLoading(false);
+    }
+  }, [data, collectionIsLoading]);
 
   return (
     <>
