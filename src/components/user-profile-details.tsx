@@ -121,7 +121,7 @@ export function UserProfileDetails({
             <h1 className="mt-4 text-center font-headline text-2xl font-bold">
               {userProfile.fullName}
             </h1>
-            <p className="mt-1 text-center text-muted-foreground">
+            <p className="mt-1 text-center text-muted-foreground break-all">
               {userProfile.email}
             </p>
             <div className="mt-4 w-full text-center">
@@ -201,5 +201,3 @@ export function UserProfileDetails({
     </div>
   );
 }
-
-    
