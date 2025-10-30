@@ -41,15 +41,15 @@ export async function suggestKnowledgeBaseArticles(
   return knowledgeBaseSuggesterFlow(input);
 }
 
-const allArticles = knowledgeBaseArticles
-  interface KnowledgeBaseArticle {
-     id: string;
-     title: string;
-     body: string;  
-   }
-.map((article) => `ID: ${article.id}, Title: ${article.title}, Body: ${article.body ?? 'N/A'}`)
-  .join('\n---\n');
+interface KnowledgeBaseArticle {
+  id: string;
+  title: string;
+  body: string;
+}
 
+const allArticles = knowledgeBaseArticles
+  .map((article) => `ID: ${article.id}, Title: ${article.title}, Body: ${article.body ?? 'N/A'}`)
+  .join('\n---\n');
 const prompt = ai.definePrompt({
   name: 'knowledgeBaseSuggesterPrompt',
   input: { schema: KnowledgeBaseSuggesterInputSchema },
