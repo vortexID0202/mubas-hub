@@ -9,7 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { knowledgeBaseArticles } from '@/lib/data';
+import { knowledgeBaseArticles } from '@/lib/data.ts';
 
 const KnowledgeBaseSuggesterInputSchema = z.object({
   query: z.string().describe("The user's question title or query."),
