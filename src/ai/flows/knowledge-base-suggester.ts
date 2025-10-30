@@ -42,7 +42,12 @@ export async function suggestKnowledgeBaseArticles(
 }
 
 const allArticles = knowledgeBaseArticles
-  .map((article) => `ID: ${article.id}, Title: ${article.title}, Body: ${article.body}`)
+  interface KnowledgeBaseArticle {
+     id: string;
+     title: string;
+     body: string;  
+   }
+.map((article) => `ID: ${article.id}, Title: ${article.title}, Body: ${article.body ?? 'N/A'}`)
   .join('\n---\n');
 
 const prompt = ai.definePrompt({
